@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visipak Daily Job Track</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#eef1f3;
+    --surface:#ffffff;
+    --surface-2:#f6f8f9;
+    --ink:#1a1e22;
+    --ink-soft:#5e6971;
+    --ink-faint:#94a0a8;
+    --line:#dbe1e5;
+    --line-strong:#c3ccd2;
+    --accent:#155f9c;
+    --accent-ink:#ffffff;
+    --accent-soft:#e3eff9;
+    --good:#28914f;
+    --good-soft:#e2f4e8;
+    --warn:#b5760a;
+    --warn-soft:#fbeed7;
+    --crit:#c93f3f;
+    --crit-soft:#fbe4e3;
+    --orange:#c05a10;
+    --orange-soft:#fce8d6;
+    --shadow:0 1px 2px rgba(20,26,31,.06), 0 4px 12px rgba(20,26,31,.05);
+    --radius:10px;
+    --font-display:"Oswald",system-ui,sans-serif;
+    --font-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#14181b;
+      --surface:#1c2125;
+      --surface-2:#20262a;
+      --ink:#e9edf0;
+      --ink-soft:#9aa6ad;
+      --ink-faint:#6b767d;
+      --line:#2b3238;
+      --line-strong:#39424a;
+      --accent:#5aa8e6;
+      --accent-ink:#0b1720;
+      --accent-soft:#1c3245;
+      --good:#4fbd79;
+      --good-soft:#173627;
+      --warn:#e0a648;
+      --warn-soft:#3a2c12;
+      --crit:#e2726c;
+      --crit-soft:#3c201f;
+      --orange:#f0973a;
+      --orange-soft:#3d2a10;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 16px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#14181b;
+    --surface:#1c2125;
+    --surface-2:#20262a;
+    --ink:#e9edf0;
+    --ink-soft:#9aa6ad;
+    --ink-faint:#6b767d;
+    --line:#2b3238;
+    --line-strong:#39424a;
+    --accent:#5aa8e6;
+    --accent-ink:#0b1720;
+    --accent-soft:#1c3245;
+    --good:#4fbd79;
+    --good-soft:#173627;
+    --warn:#e0a648;
+    --warn-soft:#3a2c12;
+    --crit:#e2726c;
+    --crit-soft:#3c201f;
+    --orange:#f0973a;
+    --orange-soft:#3d2a10;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 16px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:14px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:var(--font-display);letter-spacing:.01em;text-wrap:balance;margin:0;}
+  button{font-family:inherit;}
+  input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+  }
+
+  .app{max-width:1400px;margin:0 auto;padding:20px 24px 48px;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+    padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{
+    display:grid;place-items:center;width:40px;height:40px;border-radius:8px;
+    background:var(--accent);color:var(--accent-ink);
+    font-family:var(--font-mono);font-weight:600;font-size:13px;letter-spacing:.02em;
+    flex:none;
+  }
+  .brand-text h1{font-size:20px;font-weight:600;color:var(--ink);}
+  .brand-text p{margin:2px 0 0;font-size:12px;color:var(--ink-soft);}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;}
+  .field{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;}
+  .field input, .field select{
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+    border-radius:7px;padding:7px 10px;font-size:13px;min-width:120px;
+  }
+  .field select:disabled{opacity:.6;cursor:not-allowed;}
+  .deviceTag{
+    display:flex;align-items:center;gap:8px;padding:8px 12px;align-self:center;
+    border:1px solid var(--line-strong);border-radius:8px;background:var(--surface-2);
+    font-size:12px;color:var(--ink-soft);white-space:nowrap;
+  }
+  .deviceTag strong{color:var(--ink);font-weight:600;}
+  .deviceTag button{
+    border:none;background:transparent;color:var(--accent);font-size:12px;font-weight:600;
+    cursor:pointer;padding:0;text-decoration:underline;
+  }
+  .readOnlyNote{
+    background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);
+    border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:14px;line-height:1.5;
+  }
+  .viewToggle{display:flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;align-self:center;}
+  .toggleBtn{
+    border:none;background:var(--surface);color:var(--ink-soft);padding:8px 14px;font-size:13px;font-weight:500;
+    cursor:pointer;border-right:1px solid var(--line-strong);
+  }
+  .toggleBtn:last-child{border-right:none;}
+  .toggleBtn.active{background:var(--accent);color:var(--accent-ink);}
+  .btn{
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+    border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;
+    align-self:center;white-space:nowrap;
+  }
+  .btn:hover{border-color:var(--line-strong);background:var(--surface-2);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .btn.primary:hover{filter:brightness(1.06);}
+  .btn.ghost{background:transparent;}
+  .btn.danger{border-color:var(--crit);color:var(--crit);background:transparent;}
+  .btn.danger:hover{background:var(--crit-soft);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .banner{
+    background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);
+    border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;
+  }
+
+  /* ---------- Summary bar ---------- */
+  .summaryBar{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+  .statTile{
+    background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:10px 18px;display:flex;flex-direction:column;gap:2px;min-width:132px;
+  }
+  .statTile .statLabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+  .statTile .statValue{font-family:var(--font-mono);font-size:24px;font-weight:600;line-height:1.3;color:var(--ink);}
+  .statTile.manpower{border-color:var(--accent);}
+  .statTile.manpower .statValue{color:var(--accent);}
+  .statTile.completed .statValue{color:var(--good);}
+  .statTile.inprogress .statValue{color:var(--orange);}
+  .statTile.notstarted .statValue{color:var(--crit);}
+
+  /* ---------- Status pill ---------- */
+  .statusPill{
+    display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;
+    padding:2px 8px;border-radius:20px;white-space:nowrap;
+  }
+  .statusPill.completed{background:var(--good-soft);color:var(--good);}
+  .statusPill.in-progress{background:var(--orange-soft);color:var(--orange);}
+  .statusPill.not-started{background:var(--crit-soft);color:var(--crit);}
+
+  /* ---------- Board ---------- */
+  .board{
+    display:grid;grid-auto-flow:column;grid-auto-columns:272px;gap:14px;
+    overflow-x:auto;padding-bottom:12px;
+  }
+  .stageCol{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);
+    display:flex;flex-direction:column;min-height:140px;max-height:calc(100vh - 220px);
+  }
+  .stageColHead{
+    padding:12px 14px 10px;border-bottom:1px solid var(--line);
+    display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex:none;
+  }
+  .stageColHead h3{font-size:14px;font-weight:600;color:var(--ink);line-height:1.25;}
+  .capChip{
+    font-family:var(--font-mono);font-size:11px;font-weight:600;
+    padding:3px 7px;border-radius:20px;flex:none;font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  .capChip.good{background:var(--good-soft);color:var(--good);}
+  .capChip.warn{background:var(--warn-soft);color:var(--warn);}
+  .capChip.crit{background:var(--crit-soft);color:var(--crit);}
+  .stageColBody{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
+  .emptyHint{
+    border:1px dashed var(--line-strong);border-radius:8px;padding:14px 10px;
+    text-align:center;color:var(--ink-faint);font-size:12px;line-height:1.5;
+  }
+
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);
+    border-radius:8px;padding:10px 11px;box-shadow:var(--shadow);cursor:pointer;
+  }
+  .card:hover{border-color:var(--accent);}
+  .card.status-completed{border-left-color:var(--good);}
+  .card.status-in-progress{border-left-color:var(--orange);}
+  .card.status-not-started{border-left-color:var(--crit);}
+  .cardTop{display:flex;justify-content:space-between;align-items:baseline;gap:6px;}
+  .cardStatusRow{margin-top:5px;}
+  .jobCard{font-family:var(--font-mono);font-weight:600;font-size:13px;color:var(--accent);}
+  .shiftTag{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;}
+  .productName{font-size:13px;font-weight:500;margin-top:3px;color:var(--ink);}
+  .cardStats{display:flex;gap:10px;margin-top:7px;font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex-wrap:wrap;}
+  .cardStats span{font-family:var(--font-mono);}
+  .cardRemarks{
+    margin-top:6px;font-size:11.5px;color:var(--ink-soft);
+    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  }
+  .cardMeta{
+    margin-top:8px;padding-top:6px;border-top:1px solid var(--line);
+    font-size:10.5px;color:var(--ink-faint);display:flex;justify-content:space-between;gap:6px;
+  }
+  .cardMeta .who{font-weight:500;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ---------- Log view ---------- */
+  .logView{display:flex;flex-direction:column;gap:12px;}
+  .logControls{display:flex;flex-wrap:wrap;gap:10px;}
+  .logControls input[type="text"], .logControls select{
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+    border-radius:7px;padding:8px 11px;font-size:13px;
+  }
+  .logControls input[type="text"]{flex:1;min-width:200px;}
+  .tableWrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
+  table{border-collapse:collapse;width:100%;min-width:920px;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--ink-soft);background:var(--surface-2);padding:10px 12px;border-bottom:1px solid var(--line);
+    white-space:nowrap;position:sticky;top:0;
+  }
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);cursor:pointer;}
+  td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;}
+  td.mono{font-family:var(--font-mono);}
+  .logEmpty{padding:32px;text-align:center;color:var(--ink-faint);font-size:13px;}
+
+  /* ---------- Modal ---------- */
+  .modalOverlay{
+    position:fixed;inset:0;background:rgba(10,14,17,.5);display:grid;place-items:center;
+    padding:20px;z-index:20;
+  }
+  .modalOverlay[hidden]{display:none;}
+  .modal{
+    background:var(--surface);border-radius:12px;padding:22px 24px;width:100%;max-width:480px;
+    box-shadow:0 12px 32px rgba(0,0,0,.25);border:1px solid var(--line);
+    max-height:90vh;overflow-y:auto;
+  }
+  .modal h2{font-size:18px;margin-bottom:16px;}
+  .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .formGrid label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .formGrid label.span2{grid-column:1 / -1;}
+  .formGrid input, .formGrid select, .formGrid textarea{
+    border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);
+    font-size:13px;resize:vertical;
+  }
+  .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
+  .spacer{flex:1;}
+  .modal.wide{max-width:640px;}
+  .supTable{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+  .supTable th{text-align:left;padding:6px 8px;color:var(--ink-soft);text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;border-bottom:1px solid var(--line-strong);}
+  .supTable td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .supTable tr:last-child td{border-bottom:none;}
+  .btn.small{padding:5px 10px;font-size:12px;}
+  .supAddRow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:14px;align-items:end;}
+  .supAddRow label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .supAddRow input, .supAddRow select{border:1px solid var(--line-strong);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);font-size:13px;}
+  .supEmpty{padding:16px;text-align:center;color:var(--ink-faint);font-size:12.5px;}
+  .setupToggleLink{display:inline-block;margin:10px 0 0;font-size:12px;color:var(--accent);cursor:pointer;background:none;border:none;padding:0;text-decoration:underline;}
+
+  .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">VP</span>
+      <div class="brand-text">
+        <h1>Visipak Daily Job Track</h1>
+        <p>Which product is running in which stage, live</p>
+      </div>
+    </div>
+    <div class="controls">
+      <label class="field">Date
+        <input type="date" id="dateInput">
+      </label>
+      <label class="field">Shift
+        <select id="boardShiftFilter">
+          <option value="">All</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="General">General</option>
+        </select>
+      </label>
+      <datalist id="shiftOptions">
+        <option value="A"></option>
+        <option value="B"></option>
+        <option value="C"></option>
+        <option value="General"></option>
+      </datalist>
+      <label class="field">Stage
+        <select id="boardStageFilter"><option value="">All</option></select>
+      </label>
+      <label class="field">Status
+        <select id="boardStatusFilter">
+          <option value="">All</option>
+          <option value="Not Started">Not Started</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </label>
+      <div class="deviceTag">
+        This device: <strong id="deviceTagLabel">All stages</strong>
+        <button type="button" id="changeDeviceBtn">Change</button>
+      </div>
+      <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden>Manage Supervisors</button>
+      <div class="viewToggle" role="tablist">
+        <button class="toggleBtn active" data-view="board" type="button">Board</button>
+        <button class="toggleBtn" data-view="log" type="button">Log</button>
+      </div>
+      <button class="btn primary" id="addBtn" type="button">+ Add Entry</button>
+    </div>
+  </header>
+
+  <div id="statusBanner" class="banner" hidden></div>
+
+  <div class="summaryBar">
+    <div class="statTile manpower">
+      <span class="statLabel">Total Manpower Today</span>
+      <span class="statValue" id="statManpower">0</span>
+    </div>
+    <div class="statTile completed">
+      <span class="statLabel">Completed</span>
+      <span class="statValue" id="statCompleted">0</span>
+    </div>
+    <div class="statTile inprogress">
+      <span class="statLabel">In Progress</span>
+      <span class="statValue" id="statInProgress">0</span>
+    </div>
+    <div class="statTile notstarted">
+      <span class="statLabel">Not Started</span>
+      <span class="statValue" id="statNotStarted">0</span>
+    </div>
+  </div>
+
+  <main id="boardView" class="board"></main>
+
+  <main id="logView" class="logView" hidden>
+    <div class="logControls">
+      <input type="text" id="logSearch" placeholder="Search job card or product name…">
+      <select id="logStageFilter"><option value="">All stages</option></select>
+      <select id="logStatusFilter">
+        <option value="">All statuses</option>
+        <option value="Not Started">Not Started</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+      </select>
+      <button class="btn ghost" id="exportBtn" type="button">Export CSV</button>
+    </div>
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Shift</th><th>Stage</th><th>Product Name</th><th>Job Card No</th><th>Status</th>
+            <th>Qty</th><th>Start Time</th><th>End Time</th><th>Run Time</th><th>Man&nbsp;power</th><th>Remarks</th>
+            <th>Updated&nbsp;By</th><th>Last&nbsp;Updated</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+      <div class="logEmpty" id="logEmpty" hidden>No entries match. Try clearing filters.</div>
+    </div>
+  </main>
+</div>
+
+<div class="modalOverlay" id="deviceSetupOverlay" hidden>
+  <div class="modal">
+    <h2>Set Up This Device</h2>
+    <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      Enter the stage supervisor's phone number and this device will automatically be set up for their stage.
+      It will then only be able to add or edit job cards for that stage — entries from other stages will show
+      read-only. You can change this anytime from the header.
+    </p>
+    <div id="deviceSetupPhoneMode">
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
+        Supervisor phone number
+        <input type="tel" id="deviceSetupPhoneInput" placeholder="e.g. 9876543210" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+      </label>
+    </div>
+    <div id="deviceSetupManualMode" hidden>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
+        This device is for
+        <select id="deviceStageSelect" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+          <option value="ALL">All stages (full access)</option>
+        </select>
+      </label>
+    </div>
+    <div class="readOnlyNote" id="deviceSetupPhoneError" hidden style="margin-top:12px;"></div>
+    <button type="button" id="deviceSetupToggleLink" class="setupToggleLink" data-mode="manual">Set up manually instead</button>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="deviceSetupCancelBtn" hidden>Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="deviceSetupSaveBtn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="supervisorsOverlay" hidden>
+  <div class="modal wide">
+    <h2>Manage Supervisors</h2>
+    <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      Add each stage supervisor's phone number here. When they enter it on a device during setup, that device
+      automatically locks to their stage. Adding a number that's already listed updates its name/stage.
+    </p>
+    <table class="supTable">
+      <thead><tr><th>Phone</th><th>Name</th><th>Stage</th><th></th></tr></thead>
+      <tbody id="supervisorsBody"></tbody>
+    </table>
+    <div class="supEmpty" id="supervisorsEmpty" hidden>No supervisors added yet.</div>
+    <div class="supAddRow">
+      <label>Phone number
+        <input type="tel" id="supPhoneInput" placeholder="9876543210">
+      </label>
+      <label>Name
+        <input type="text" id="supNameInput" placeholder="e.g. Raju">
+      </label>
+      <label>Stage
+        <select id="supStageInput"><option value="">Choose…</option></select>
+      </label>
+      <button class="btn primary small" id="supAddBtn" type="button">Add</button>
+    </div>
+    <div class="readOnlyNote" id="supervisorsError" hidden style="margin-top:12px;"></div>
+    <div class="modalActions">
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="supervisorsCloseBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="modalOverlay" hidden>
+  <form class="modal" id="entryForm">
+    <h2 id="modalTitle">Add Entry</h2>
+    <div class="readOnlyNote" id="readOnlyNote" hidden></div>
+    <div class="formGrid">
+      <label>Date <input type="date" id="f_date" required></label>
+      <label>Shift <input type="text" id="f_shift" list="shiftOptions" required></label>
+      <label class="span2">Stage
+        <select id="f_stage" required></select>
+      </label>
+      <label>Product Name <input type="text" id="f_product" placeholder="e.g. Fevicol Carton"></label>
+      <label>Job Card No <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031"></label>
+      <label>Quantity <input type="number" id="f_qty" min="0" step="1" placeholder="500"></label>
+      <label>Start Time <input type="time" id="f_starttime"></label>
+      <label>End Time <input type="time" id="f_endtime"></label>
+      <label>Run Time (Hrs) <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5"></label>
+      <label>Man power <input type="number" id="f_manpower" min="0" step="1" placeholder="3"></label>
+      <label>Updated By <input type="text" id="f_updatedby" required placeholder="Your name"></label>
+      <label>Status
+        <select id="f_status">
+          <option value="Not Started">Not Started</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </label>
+      <label>Next Stage
+        <select id="f_nextstage"><option value="">— stays here —</option></select>
+      </label>
+      <label class="span2">Remarks <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule"></textarea></label>
+    </div>
+    <div class="modalActions">
+      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn primary" id="saveBtn">Save</button>
+    </div>
+  </form>
+</div>
+
+<!-- Firebase (self-hosted backend — replaces Claude's live db) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Firebase init ----------
+  var firebaseConfig = {
+    apiKey: "AIzaSyDuA5ww1SMpBGl2uOzVWkCx9m4XrNtI2Dk",
+    authDomain: "visipak-daily-job-track.firebaseapp.com",
+    projectId: "visipak-daily-job-track",
+    storageBucket: "visipak-daily-job-track.firebasestorage.app",
+    messagingSenderId: "30257376497",
+    appId: "1:30257376497:web:af1c5c1b51be4697c78d50"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var firestoreDb = firebase.firestore();
+
+  var STAGES = [
+    "Plant",
+    "1 Color Printing Die Cut",
+    "2 Color Printing Die Cut",
+    "4 Color Printing Die Cut",
+    "Gluing",
+    "Punching",
+    "Man Creasing",
+    "Stitching / Repairs",
+    "Stamp",
+    "Hand Glue",
+    "Cleaning",
+    "Shifting",
+    "Checking Bundles",
+    "Dispatch"
+  ];
+  var SLOTS = 10;
+
+  function todayStr(){
+    var d = new Date();
+    var m = String(d.getMonth()+1).padStart(2,"0");
+    var day = String(d.getDate()).padStart(2,"0");
+    return d.getFullYear()+"-"+m+"-"+day;
+  }
+  function fmtDateForDisplay(iso){
+    if(!iso) return "";
+    var parts = iso.split("-");
+    if(parts.length!==3) return iso;
+    var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return parts[2]+"-"+months[parseInt(parts[1],10)-1]+"-"+parts[0];
+  }
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function fmtDateTime(ms){
+    if(!ms) return "";
+    var d = new Date(ms);
+    var hh = d.getHours(), mm = String(d.getMinutes()).padStart(2,"0");
+    var ampm = hh >= 12 ? "PM" : "AM";
+    hh = hh % 12; if(hh === 0) hh = 12;
+    return d.getDate()+"-"+MONTHS[d.getMonth()]+"-"+d.getFullYear()+", "+hh+":"+mm+" "+ampm;
+  }
+  function fmtTime12(hhmm){
+    if(!hhmm) return "";
+    var parts = hhmm.split(":");
+    if(parts.length < 2) return hhmm;
+    var hh = parseInt(parts[0],10), mm = parts[1];
+    if(isNaN(hh)) return hhmm;
+    var ampm = hh >= 12 ? "PM" : "AM";
+    hh = hh % 12; if(hh === 0) hh = 12;
+    return hh+":"+mm+" "+ampm;
+  }
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function csvEscape(s){
+    s = String(s==null?"":s);
+    if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+
+  var state = {
+    db: firestoreDb,
+    view: "board",
+    date: todayStr(),
+    shift: "",
+    boardStage: "",
+    boardStatus: "",
+    boardEntries: [],     // entries for current date (+shift filter applied client-side)
+    logEntries: [],       // recent entries window for the log tab
+    editingId: null,
+    unsubBoard: null,
+    unsubLog: null,
+    deviceStage: "ALL",   // which stage this device is locked to ("ALL" = full access)
+    modalReadOnly: false
+  };
+
+  // ---------- DOM refs ----------
+  var el = {
+    dateInput: document.getElementById("dateInput"),
+    boardShiftFilter: document.getElementById("boardShiftFilter"),
+    boardStageFilter: document.getElementById("boardStageFilter"),
+    addBtn: document.getElementById("addBtn"),
+    boardView: document.getElementById("boardView"),
+    logView: document.getElementById("logView"),
+    logBody: document.getElementById("logBody"),
+    logEmpty: document.getElementById("logEmpty"),
+    logSearch: document.getElementById("logSearch"),
+    logStageFilter: document.getElementById("logStageFilter"),
+    logStatusFilter: document.getElementById("logStatusFilter"),
+    boardStatusFilter: document.getElementById("boardStatusFilter"),
+    exportBtn: document.getElementById("exportBtn"),
+    banner: document.getElementById("statusBanner"),
+    modalOverlay: document.getElementById("modalOverlay"),
+    entryForm: document.getElementById("entryForm"),
+    modalTitle: document.getElementById("modalTitle"),
+    readOnlyNote: document.getElementById("readOnlyNote"),
+    deleteBtn: document.getElementById("deleteBtn"),
+    saveBtn: document.getElementById("saveBtn"),
+    cancelBtn: document.getElementById("cancelBtn"),
+    deviceTagLabel: document.getElementById("deviceTagLabel"),
+    changeDeviceBtn: document.getElementById("changeDeviceBtn"),
+    manageSupervisorsBtn: document.getElementById("manageSupervisorsBtn"),
+    deviceSetupOverlay: document.getElementById("deviceSetupOverlay"),
+    deviceStageSelect: document.getElementById("deviceStageSelect"),
+    deviceSetupSaveBtn: document.getElementById("deviceSetupSaveBtn"),
+    deviceSetupCancelBtn: document.getElementById("deviceSetupCancelBtn"),
+    deviceSetupPhoneMode: document.getElementById("deviceSetupPhoneMode"),
+    deviceSetupManualMode: document.getElementById("deviceSetupManualMode"),
+    deviceSetupPhoneInput: document.getElementById("deviceSetupPhoneInput"),
+    deviceSetupPhoneError: document.getElementById("deviceSetupPhoneError"),
+    deviceSetupToggleLink: document.getElementById("deviceSetupToggleLink"),
+    supervisorsOverlay: document.getElementById("supervisorsOverlay"),
+    supervisorsBody: document.getElementById("supervisorsBody"),
+    supervisorsEmpty: document.getElementById("supervisorsEmpty"),
+    supPhoneInput: document.getElementById("supPhoneInput"),
+    supNameInput: document.getElementById("supNameInput"),
+    supStageInput: document.getElementById("supStageInput"),
+    supAddBtn: document.getElementById("supAddBtn"),
+    supervisorsError: document.getElementById("supervisorsError"),
+    supervisorsCloseBtn: document.getElementById("supervisorsCloseBtn"),
+    f_date: document.getElementById("f_date"),
+    f_shift: document.getElementById("f_shift"),
+    f_stage: document.getElementById("f_stage"),
+    f_product: document.getElementById("f_product"),
+    f_jobcard: document.getElementById("f_jobcard"),
+    f_qty: document.getElementById("f_qty"),
+    f_starttime: document.getElementById("f_starttime"),
+    f_endtime: document.getElementById("f_endtime"),
+    f_runtime: document.getElementById("f_runtime"),
+    f_manpower: document.getElementById("f_manpower"),
+    f_updatedby: document.getElementById("f_updatedby"),
+    f_status: document.getElementById("f_status"),
+    f_nextstage: document.getElementById("f_nextstage"),
+    f_remarks: document.getElementById("f_remarks"),
+    statManpower: document.getElementById("statManpower"),
+    statCompleted: document.getElementById("statCompleted"),
+    statInProgress: document.getElementById("statInProgress"),
+    statNotStarted: document.getElementById("statNotStarted")
+  };
+  var lastUpdatedBy = "";
+
+  el.dateInput.value = state.date;
+
+  // populate stage selects
+  STAGES.forEach(function(s){
+    var o1 = document.createElement("option"); o1.value=s; o1.textContent=s;
+    el.f_stage.appendChild(o1);
+    var o2 = document.createElement("option"); o2.value=s; o2.textContent=s;
+    el.logStageFilter.appendChild(o2);
+    var o3 = document.createElement("option"); o3.value=s; o3.textContent=s;
+    el.f_nextstage.appendChild(o3);
+    var o4 = document.createElement("option"); o4.value=s; o4.textContent=s;
+    el.boardStageFilter.appendChild(o4);
+    var o5 = document.createElement("option"); o5.value=s; o5.textContent=s;
+    el.deviceStageSelect.appendChild(o5);
+    var o6 = document.createElement("option"); o6.value=s; o6.textContent=s;
+    el.supStageInput.appendChild(o6);
+  });
+
+  var ALL_FORM_FIELDS = [
+    el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_qty,
+    el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
+    el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks
+  ];
+
+  // ---------- Device stage lock ----------
+  function normalizePhone(raw){
+    var digits = String(raw||"").replace(/\D/g,"");
+    if(digits.length > 10) digits = digits.slice(-10);
+    return digits;
+  }
+
+  var deviceSupervisorName = "";
+  function applyDeviceStage(stage, supervisorName){
+    state.deviceStage = stage;
+    deviceSupervisorName = supervisorName || "";
+    try{
+      localStorage.setItem("visipakDeviceStage", stage);
+      localStorage.setItem("visipakDeviceSupervisor", deviceSupervisorName);
+    }catch(e){}
+    el.deviceTagLabel.textContent = stage === "ALL" ? "All stages" :
+      (stage + (deviceSupervisorName ? " (" + deviceSupervisorName + ")" : ""));
+    el.manageSupervisorsBtn.hidden = stage !== "ALL";
+
+    // When locked to one stage, only that stage is shown anywhere in the app —
+    // the Stage filters are forced to it and locked so the operator can't switch away.
+    var locked = stage !== "ALL";
+    state.boardStage = locked ? stage : "";
+    el.boardStageFilter.value = locked ? stage : "";
+    el.boardStageFilter.disabled = locked;
+    el.logStageFilter.value = locked ? stage : "";
+    el.logStageFilter.disabled = locked;
+
+    renderBoard();
+    renderLog();
+  }
+
+  function showDeviceSetupMode(mode){
+    el.deviceSetupPhoneMode.hidden = mode !== "phone";
+    el.deviceSetupManualMode.hidden = mode !== "manual";
+    el.deviceSetupToggleLink.textContent = mode === "phone" ? "Set up manually instead" : "Use phone number instead";
+    el.deviceSetupToggleLink.dataset.mode = mode === "phone" ? "manual" : "phone";
+    el.deviceSetupPhoneError.hidden = true;
+  }
+  el.deviceSetupToggleLink.addEventListener("click", function(){
+    showDeviceSetupMode(el.deviceSetupToggleLink.dataset.mode);
+  });
+
+  el.changeDeviceBtn.addEventListener("click", function(){
+    el.deviceStageSelect.value = state.deviceStage;
+    el.deviceSetupPhoneInput.value = "";
+    el.deviceSetupCancelBtn.hidden = false;
+    showDeviceSetupMode("phone");
+    el.deviceSetupOverlay.hidden = false;
+  });
+  el.deviceSetupCancelBtn.addEventListener("click", function(){
+    el.deviceSetupOverlay.hidden = true;
+  });
+  el.deviceSetupSaveBtn.addEventListener("click", function(){
+    var manualMode = !el.deviceSetupManualMode.hidden;
+    if(manualMode){
+      applyDeviceStage(el.deviceStageSelect.value, "");
+      el.deviceSetupOverlay.hidden = true;
+      return;
+    }
+    var phone = normalizePhone(el.deviceSetupPhoneInput.value);
+    if(phone.length < 10){
+      el.deviceSetupPhoneError.textContent = "Enter a valid 10-digit phone number.";
+      el.deviceSetupPhoneError.hidden = false;
+      return;
+    }
+    el.deviceSetupSaveBtn.disabled = true;
+    state.db.collection("supervisors").doc(phone).get().then(function(doc){
+      el.deviceSetupSaveBtn.disabled = false;
+      if(doc && doc.exists){
+        var data = doc.data();
+        applyDeviceStage(data.stage, data.name || "");
+        el.deviceSetupOverlay.hidden = true;
+      } else {
+        el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Supervisors\", or set up this device manually.";
+        el.deviceSetupPhoneError.hidden = false;
+      }
+    }).catch(function(){
+      el.deviceSetupSaveBtn.disabled = false;
+      el.deviceSetupPhoneError.textContent = "Couldn't check that number right now. Check your connection and try again.";
+      el.deviceSetupPhoneError.hidden = false;
+    });
+  });
+  (function initDeviceStage(){
+    var stored = null, storedName = "";
+    try{
+      stored = localStorage.getItem("visipakDeviceStage");
+      storedName = localStorage.getItem("visipakDeviceSupervisor") || "";
+    }catch(e){}
+    if(stored){
+      applyDeviceStage(stored, storedName);
+    } else {
+      applyDeviceStage("ALL", "");
+      showDeviceSetupMode("phone");
+      el.deviceSetupOverlay.hidden = false;
+    }
+  })();
+
+  // ---------- Manage supervisors (admin only, shown when this device = All stages) ----------
+  function renderSupervisors(list){
+    el.supervisorsBody.innerHTML = "";
+    el.supervisorsEmpty.hidden = list.length > 0;
+    list.forEach(function(s){
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + esc(s.phone) + "</td>" +
+        "<td>" + esc(s.name || "") + "</td>" +
+        "<td>" + esc(s.stage) + "</td>" +
+        "<td><button type=\"button\" class=\"btn danger small\" data-phone=\"" + esc(s.phone) + "\">Remove</button></td>";
+      el.supervisorsBody.appendChild(tr);
+    });
+    el.supervisorsBody.querySelectorAll("button[data-phone]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var phone = btn.getAttribute("data-phone");
+        btn.disabled = true;
+        state.db.collection("supervisors").doc(phone).delete().then(function(){
+          loadSupervisors();
+        }).catch(function(){
+          btn.disabled = false;
+          el.supervisorsError.textContent = "Couldn't remove that entry. Try again.";
+          el.supervisorsError.hidden = false;
+        });
+      });
+    });
+  }
+  function loadSupervisors(){
+    el.supervisorsError.hidden = true;
+    state.db.collection("supervisors").orderBy("stage").get().then(function(snap){
+      var list = [];
+      snap.forEach(function(doc){ list.push(doc.data()); });
+      renderSupervisors(list);
+    }).catch(function(){
+      el.supervisorsError.textContent = "Couldn't load supervisors. Check your connection.";
+      el.supervisorsError.hidden = false;
+    });
+  }
+  el.manageSupervisorsBtn.addEventListener("click", function(){
+    el.supervisorsOverlay.hidden = false;
+    loadSupervisors();
+  });
+  el.supervisorsCloseBtn.addEventListener("click", function(){
+    el.supervisorsOverlay.hidden = true;
+  });
+  el.supervisorsOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.supervisorsOverlay) el.supervisorsOverlay.hidden = true;
+  });
+  el.supAddBtn.addEventListener("click", function(){
+    var phone = normalizePhone(el.supPhoneInput.value);
+    var name = el.supNameInput.value.trim();
+    var stage = el.supStageInput.value;
+    el.supervisorsError.hidden = true;
+    if(phone.length < 10){
+      el.supervisorsError.textContent = "Enter a valid 10-digit phone number.";
+      el.supervisorsError.hidden = false;
+      return;
+    }
+    if(!stage){
+      el.supervisorsError.textContent = "Choose a stage.";
+      el.supervisorsError.hidden = false;
+      return;
+    }
+    el.supAddBtn.disabled = true;
+    state.db.collection("supervisors").doc(phone).set({
+      phone: phone, name: name, stage: stage, updatedAt: Date.now()
+    }).then(function(){
+      el.supAddBtn.disabled = false;
+      el.supPhoneInput.value = "";
+      el.supNameInput.value = "";
+      el.supStageInput.value = "";
+      loadSupervisors();
+    }).catch(function(){
+      el.supAddBtn.disabled = false;
+      el.supervisorsError.textContent = "Couldn't save. Try again.";
+      el.supervisorsError.hidden = false;
+    });
+  });
+
+  function showBanner(msg){
+    el.banner.textContent = msg;
+    el.banner.hidden = false;
+  }
+
+  // ---------- View toggle ----------
+  document.querySelectorAll(".toggleBtn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".toggleBtn").forEach(function(b){b.classList.remove("active");});
+      btn.classList.add("active");
+      state.view = btn.dataset.view;
+      el.boardView.hidden = state.view !== "board";
+      el.logView.hidden = state.view !== "log";
+    });
+  });
+
+  // ---------- Board rendering ----------
+  function capacityClass(n){
+    if(n >= SLOTS) return "crit";
+    if(n >= SLOTS - 2) return "warn";
+    return "good";
+  }
+
+  function statusClass(status){
+    if(status === "Completed") return "completed";
+    if(status === "In Progress") return "in-progress";
+    return "not-started";
+  }
+  function statusLabel(status){
+    return status === "Completed" || status === "In Progress" ? status : "Not Started";
+  }
+
+  function renderSummary(filtered){
+    var totalMP = 0, completed = 0, inProgress = 0, notStarted = 0;
+    filtered.forEach(function(e){
+      if(e.manpower != null) totalMP += Number(e.manpower) || 0;
+      var s = statusLabel(e.status);
+      if(s === "Completed") completed++;
+      else if(s === "In Progress") inProgress++;
+      else notStarted++;
+    });
+    el.statManpower.textContent = totalMP;
+    el.statCompleted.textContent = completed;
+    el.statInProgress.textContent = inProgress;
+    el.statNotStarted.textContent = notStarted;
+  }
+
+  function renderBoard(){
+    var byStage = {};
+    STAGES.forEach(function(s){ byStage[s]=[]; });
+    var filtered = state.boardEntries.filter(function(e){
+      if(state.shift && (e.shift||"").toLowerCase() !== state.shift.toLowerCase()) return false;
+      if(state.boardStage && e.stage !== state.boardStage) return false;
+      if(state.boardStatus && statusLabel(e.status) !== state.boardStatus) return false;
+      return true;
+    });
+    filtered.forEach(function(e){
+      if(byStage[e.stage]) byStage[e.stage].push(e);
+      else { byStage[e.stage] = byStage[e.stage] || []; byStage[e.stage].push(e); }
+    });
+    renderSummary(filtered);
+
+    el.boardView.innerHTML = "";
+    var stagesToShow = state.boardStage ? [state.boardStage] : STAGES;
+    stagesToShow.forEach(function(stage){
+      var entries = byStage[stage] || [];
+      entries.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
+
+      var col = document.createElement("div");
+      col.className = "stageCol";
+
+      var head = document.createElement("div");
+      head.className = "stageColHead";
+      var h3 = document.createElement("h3");
+      h3.textContent = stage;
+      var chip = document.createElement("span");
+      chip.className = "capChip " + capacityClass(entries.length);
+      chip.textContent = entries.length + "/" + SLOTS;
+      head.appendChild(h3);
+      head.appendChild(chip);
+      col.appendChild(head);
+
+      var body = document.createElement("div");
+      body.className = "stageColBody";
+
+      if(entries.length === 0){
+        var hint = document.createElement("div");
+        hint.className = "emptyHint";
+        hint.textContent = "No job cards logged here yet for this date.";
+        body.appendChild(hint);
+      } else {
+        entries.forEach(function(e){
+          body.appendChild(renderCard(e));
+        });
+      }
+      col.appendChild(body);
+      el.boardView.appendChild(col);
+    });
+  }
+
+  function renderCard(e){
+    var card = document.createElement("div");
+    var sClass = statusClass(e.status);
+    card.className = "card status-" + sClass;
+    card.tabIndex = 0;
+    card.innerHTML =
+      '<div class="cardTop">' +
+        '<span class="jobCard">' + esc(e.jobCardNo || "—") + '</span>' +
+        '<span class="shiftTag">' + esc(e.shift || "") + '</span>' +
+      '</div>' +
+      '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(statusLabel(e.status)) + '</span></div>' +
+      '<div class="productName">' + esc(e.productName || "(no product name)") + '</div>' +
+      '<div class="cardStats">' +
+        '<span>Qty ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+        '<span>Start ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
+        '<span>End ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
+        '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' hrs</span>' +
+        '<span>MP ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
+      '</div>' +
+      (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "") +
+      '<div class="cardMeta">' +
+        '<span class="who">' + esc(e.updatedBy || "—") + '</span>' +
+        '<span>' + esc(fmtDateTime(e.updatedAt)) + '</span>' +
+      '</div>';
+    card.addEventListener("click", function(){ openModal(e); });
+    card.addEventListener("keydown", function(ev){
+      if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); openModal(e); }
+    });
+    return card;
+  }
+
+  // ---------- Log rendering ----------
+  function renderLog(){
+    var q = (el.logSearch.value || "").trim().toLowerCase();
+    var stageFilter = el.logStageFilter.value;
+    var statusFilter = el.logStatusFilter.value;
+    var rows = state.logEntries.filter(function(e){
+      if(stageFilter && e.stage !== stageFilter) return false;
+      if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
+      if(q){
+        var hay = ((e.jobCardNo||"") + " " + (e.productName||"")).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+
+    el.logBody.innerHTML = "";
+    el.logEmpty.hidden = rows.length !== 0;
+
+    rows.forEach(function(e){
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + esc(fmtDateForDisplay(e.date)) + "</td>" +
+        "<td>" + esc(e.shift) + "</td>" +
+        "<td>" + esc(e.stage) + "</td>" +
+        "<td>" + esc(e.productName) + "</td>" +
+        '<td class="mono">' + esc(e.jobCardNo) + "</td>" +
+        '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(statusLabel(e.status)) + '</span></td>' +
+        '<td class="num">' + esc(e.quantity != null ? e.quantity : "") + "</td>" +
+        '<td class="mono">' + esc(e.startTime ? fmtTime12(e.startTime) : "") + "</td>" +
+        '<td class="mono">' + esc(e.endTime ? fmtTime12(e.endTime) : "") + "</td>" +
+        '<td class="num">' + esc(e.runtimeHrs != null ? e.runtimeHrs : "") + "</td>" +
+        '<td class="num">' + esc(e.manpower != null ? e.manpower : "") + "</td>" +
+        "<td>" + esc(e.remarks) + "</td>" +
+        "<td>" + esc(e.updatedBy) + "</td>" +
+        "<td>" + esc(fmtDateTime(e.updatedAt)) + "</td>";
+      tr.addEventListener("click", function(){ openModal(e); });
+      el.logBody.appendChild(tr);
+    });
+  }
+
+  el.logSearch.addEventListener("input", renderLog);
+  el.logStageFilter.addEventListener("change", renderLog);
+  el.logStatusFilter.addEventListener("change", renderLog);
+
+  // ---------- CSV export (real browser download — no Claude sandbox here) ----------
+  function buildCsv(rows){
+    var header = ["Date","Shift","Stage","Product Name","Job Card No","Status","Quantity","Start Time","End Time","Run Time (Hrs)","Man power","Remarks","Updated By","Last Updated"];
+    var lines = [header.map(csvEscape).join(",")];
+    rows.forEach(function(e){
+      lines.push([
+        e.date, e.shift, e.stage, e.productName, e.jobCardNo, statusLabel(e.status),
+        e.quantity != null ? e.quantity : "",
+        e.startTime ? fmtTime12(e.startTime) : "",
+        e.endTime ? fmtTime12(e.endTime) : "",
+        e.runtimeHrs != null ? e.runtimeHrs : "",
+        e.manpower != null ? e.manpower : "",
+        e.remarks,
+        e.updatedBy,
+        fmtDateTime(e.updatedAt)
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+
+  function downloadCsv(filename, csv){
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  el.exportBtn.addEventListener("click", function(){
+    var q = (el.logSearch.value || "").trim().toLowerCase();
+    var stageFilter = el.logStageFilter.value;
+    var statusFilter = el.logStatusFilter.value;
+    var rows = state.logEntries.filter(function(e){
+      if(stageFilter && e.stage !== stageFilter) return false;
+      if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
+      if(q){
+        var hay = ((e.jobCardNo||"") + " " + (e.productName||"")).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    if(rows.length === 0){ showBanner("No rows to export."); return; }
+    var csv = buildCsv(rows);
+    downloadCsv("visipak-daily-job-track-log.csv", csv);
+  });
+
+  // ---------- Modal ----------
+  function openModal(entry){
+    state.editingId = entry ? entry.id : null;
+    var deviceLocked = state.deviceStage !== "ALL";
+    var targetStage = entry ? entry.stage : (deviceLocked ? state.deviceStage : STAGES[0]);
+    var readOnly = !!entry && deviceLocked && entry.stage !== state.deviceStage;
+    state.modalReadOnly = readOnly;
+
+    el.modalTitle.textContent = entry ? (readOnly ? "View Entry" : "Edit Entry") : "Add Entry";
+    el.deleteBtn.hidden = !entry || readOnly;
+    el.saveBtn.hidden = readOnly;
+    el.cancelBtn.textContent = readOnly ? "Close" : "Cancel";
+
+    el.f_date.value = entry ? entry.date : state.date;
+    el.f_shift.value = entry ? entry.shift : state.shift;
+    el.f_stage.value = targetStage;
+    el.f_stage.disabled = deviceLocked;
+    el.f_product.value = entry ? (entry.productName||"") : "";
+    el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
+    el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
+    el.f_starttime.value = entry ? (entry.startTime || "") : "";
+    el.f_endtime.value = entry ? (entry.endTime || "") : "";
+    el.f_runtime.value = entry && entry.runtimeHrs != null ? entry.runtimeHrs : "";
+    el.f_manpower.value = entry && entry.manpower != null ? entry.manpower : "";
+    el.f_updatedby.value = entry ? (entry.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
+    el.f_status.value = entry ? statusLabel(entry.status) : "In Progress";
+    el.f_nextstage.value = entry ? (entry.nextStage || "") : "";
+    el.f_remarks.value = entry ? (entry.remarks||"") : "";
+
+    ALL_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
+
+    if(readOnly){
+      el.readOnlyNote.hidden = false;
+      el.readOnlyNote.textContent = "This entry belongs to " + entry.stage + " — this device is set up for " +
+        state.deviceStage + ". Switch this device's stage (top right, \"Change\") to edit it.";
+    } else {
+      el.readOnlyNote.hidden = true;
+    }
+
+    el.modalOverlay.hidden = false;
+    if(!readOnly) el.f_jobcard.focus();
+  }
+  function closeModal(){
+    el.modalOverlay.hidden = true;
+    state.editingId = null;
+    el.entryForm.reset();
+  }
+  el.addBtn.addEventListener("click", function(){ openModal(null); });
+  el.cancelBtn.addEventListener("click", closeModal);
+  el.modalOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.modalOverlay) closeModal();
+  });
+  document.addEventListener("keydown", function(ev){
+    if(ev.key === "Escape" && !el.modalOverlay.hidden) closeModal();
+  });
+
+  el.entryForm.addEventListener("submit", function(ev){
+    ev.preventDefault();
+    if(state.modalReadOnly) return;
+    var saveBtn = el.saveBtn;
+    saveBtn.disabled = true;
+
+    var chosenStage = el.f_stage.value;
+    var chosenStatus = el.f_status.value;
+    var chosenNextStage = el.f_nextstage.value;
+    var movedTo = null;
+    if(chosenStatus === "Completed" && chosenNextStage && chosenNextStage !== chosenStage){
+      movedTo = chosenNextStage;
+    }
+
+    var payload = {
+      date: el.f_date.value,
+      shift: el.f_shift.value.trim(),
+      stage: movedTo || chosenStage,
+      productName: el.f_product.value.trim(),
+      jobCardNo: el.f_jobcard.value.trim(),
+      quantity: el.f_qty.value === "" ? null : Number(el.f_qty.value),
+      startTime: el.f_starttime.value === "" ? null : el.f_starttime.value,
+      endTime: el.f_endtime.value === "" ? null : el.f_endtime.value,
+      runtimeHrs: el.f_runtime.value === "" ? null : Number(el.f_runtime.value),
+      manpower: el.f_manpower.value === "" ? null : Number(el.f_manpower.value),
+      updatedBy: el.f_updatedby.value.trim(),
+      status: movedTo ? "Not Started" : chosenStatus,
+      nextStage: movedTo ? "" : chosenNextStage,
+      remarks: el.f_remarks.value.trim(),
+      updatedAt: Date.now()
+    };
+    lastUpdatedBy = payload.updatedBy;
+
+    var promise;
+    if(state.editingId){
+      promise = state.db.doc("entries/" + state.editingId).update(payload);
+    } else {
+      payload.createdAt = Date.now();
+      promise = state.db.collection("entries").add(payload);
+    }
+    promise.then(function(){
+      saveBtn.disabled = false;
+      closeModal();
+      if(movedTo){
+        showBanner("Job Card " + (payload.jobCardNo || "") + " completed at " + chosenStage + " — moved to " + movedTo + ".");
+      }
+    }).catch(function(err){
+      saveBtn.disabled = false;
+      showBanner("Save failed: " + (err && err.message ? err.message : "unknown error"));
+    });
+  });
+
+  el.deleteBtn.addEventListener("click", function(){
+    if(!state.editingId || state.modalReadOnly) return;
+    el.deleteBtn.disabled = true;
+    state.db.doc("entries/" + state.editingId).delete().then(function(){
+      el.deleteBtn.disabled = false;
+      closeModal();
+    }).catch(function(err){
+      el.deleteBtn.disabled = false;
+      showBanner("Delete failed: " + (err && err.message ? err.message : "unknown error"));
+    });
+  });
+
+  // ---------- Subscriptions ----------
+  function subscribeBoard(){
+    if(state.unsubBoard){ state.unsubBoard(); state.unsubBoard = null; }
+    var query = state.db.collection("entries").where("date", "==", state.date);
+    state.unsubBoard = query.onSnapshot(function(snap){
+      state.boardEntries = snap.docs.map(function(d){
+        var data = d.data() || {};
+        return Object.assign({ id: d.id }, data);
+      });
+      renderBoard();
+    }, function(err){
+      showBanner("Live updates stopped: " + (err && err.message ? err.message : "unknown error"));
+    });
+  }
+
+  function subscribeLog(){
+    if(state.unsubLog){ state.unsubLog(); state.unsubLog = null; }
+    var query = state.db.collection("entries").orderBy("date", "desc").limit(300);
+    state.unsubLog = query.onSnapshot(function(snap){
+      state.logEntries = snap.docs.map(function(d){
+        var data = d.data() || {};
+        return Object.assign({ id: d.id }, data);
+      });
+      renderLog();
+    }, function(err){
+      showBanner("Log updates stopped: " + (err && err.message ? err.message : "unknown error"));
+    });
+  }
+
+  el.dateInput.addEventListener("change", function(){
+    state.date = el.dateInput.value || todayStr();
+    subscribeBoard();
+  });
+  el.boardShiftFilter.addEventListener("change", function(){
+    state.shift = el.boardShiftFilter.value;
+    renderBoard();
+  });
+  el.boardStageFilter.addEventListener("change", function(){
+    state.boardStage = el.boardStageFilter.value;
+    renderBoard();
+  });
+  el.boardStatusFilter.addEventListener("change", function(){
+    state.boardStatus = el.boardStatusFilter.value;
+    renderBoard();
+  });
+
+  // ---------- Init ----------
+  renderBoard();
+  renderLog();
+  subscribeBoard();
+  subscribeLog();
+})();
+</script>
+</body>
+</html>
