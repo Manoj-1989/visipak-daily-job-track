@@ -279,7 +279,7 @@
   }
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
-  .modal.wide{max-width:640px;}
+  .modal.wide{max-width:720px;}
   .supTable{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
   .supTable th{text-align:left;padding:6px 8px;color:var(--ink-soft);text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;border-bottom:1px solid var(--line-strong);}
   .supTable td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
@@ -348,7 +348,7 @@
         This device: <strong id="deviceTagLabel">All stages</strong>
         <button type="button" id="changeDeviceBtn">Change</button>
       </div>
-      <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden>Manage Supervisors</button>
+      <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden>Manage Users</button>
       <div class="viewToggle" role="tablist">
         <button class="toggleBtn active" data-view="board" type="button">Board</button>
         <button class="toggleBtn" data-view="log" type="button">Log</button>
@@ -412,13 +412,13 @@
   <div class="modal">
     <h2>Set Up This Device</h2>
     <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
-      Enter the stage supervisor's phone number and this device will automatically be set up for their stage.
-      It will then only be able to add or edit job cards for that stage — entries from other stages will show
+      Enter your phone number and this device will automatically be set up for your assigned stage(s).
+      It will then only be able to add or edit job cards for those stages — entries from other stages will show
       read-only. You can change this anytime from the header.
     </p>
     <div id="deviceSetupPhoneMode">
       <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
-        Supervisor phone number
+        Phone number
         <input type="tel" id="deviceSetupPhoneInput" placeholder="e.g. 9876543210" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
       </label>
     </div>
@@ -442,23 +442,23 @@
 
 <div class="modalOverlay" id="supervisorsOverlay" hidden>
   <div class="modal wide">
-    <h2>Manage Supervisors</h2>
+    <h2>Manage Users</h2>
     <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
-      Add each supervisor's phone number and the stage(s) they should have access to. When they enter their number
+      Add each user's phone number and the stage(s) they should have access to. When they enter their number
       on a device during setup, that device locks to just those stages. Re-adding (or clicking Edit on) a number
-      that's already listed updates their name/stages. Give a shift in-charge "All stages" for full access.
+      that's already listed updates their details. Give someone like a shift in-charge "All stages" for full access.
     </p>
     <table class="supTable">
-      <thead><tr><th>Phone</th><th>Name</th><th>Stage access</th><th></th></tr></thead>
+      <thead><tr><th>Phone</th><th>Name</th><th>Role</th><th>Stage access</th><th></th></tr></thead>
       <tbody id="supervisorsBody"></tbody>
     </table>
-    <div class="supEmpty" id="supervisorsEmpty" hidden>No supervisors added yet.</div>
+    <div class="supEmpty" id="supervisorsEmpty" hidden>No users added yet.</div>
     <div class="supAddRow">
-      <label>Phone number
-        <input type="tel" id="supPhoneInput" placeholder="9876543210">
-      </label>
       <label>Name
         <input type="text" id="supNameInput" placeholder="e.g. Raju">
+      </label>
+      <label>Role
+        <input type="text" id="supRoleInput" placeholder="e.g. Supervisor">
       </label>
     </div>
     <div class="supStagesField">
@@ -469,10 +469,15 @@
         </label>
       </div>
     </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;margin-top:10px;">
+      <label>Phone number
+        <input type="tel" id="supPhoneInput" placeholder="9876543210">
+      </label>
+    </div>
     <div class="modalActions" style="margin-top:12px;">
       <button type="button" class="btn ghost" id="supClearBtn" hidden>Cancel edit</button>
       <div class="spacer"></div>
-      <button class="btn primary small" id="supAddBtn" type="button">Add supervisor</button>
+      <button class="btn primary small" id="supAddBtn" type="button">Add user</button>
     </div>
     <div class="readOnlyNote" id="supervisorsError" hidden style="margin-top:12px;"></div>
     <div class="modalActions">
@@ -659,6 +664,7 @@
     supervisorsEmpty: document.getElementById("supervisorsEmpty"),
     supPhoneInput: document.getElementById("supPhoneInput"),
     supNameInput: document.getElementById("supNameInput"),
+    supRoleInput: document.getElementById("supRoleInput"),
     supStagesBox: document.getElementById("supStagesBox"),
     supStageAll: document.getElementById("supStageAll"),
     supAddBtn: document.getElementById("supAddBtn"),
@@ -702,7 +708,7 @@
     el.deviceStageSelect.appendChild(o5);
   });
 
-  // populate the "Manage Supervisors" stage checkbox list (All stages + one checkbox per stage)
+  // populate the "Manage Users" stage checkbox list (All stages + one checkbox per stage)
   STAGES.forEach(function(s, i){
     var label = document.createElement("label");
     label.className = "supStageChk";
@@ -778,7 +784,7 @@
       localStorage.setItem("visipakDeviceSupervisor", deviceSupervisorName);
       localStorage.removeItem("visipakDeviceStage");
     }catch(e){}
-    el.deviceTagLabel.textContent = stagesLabel(stages) + (deviceSupervisorName ? " (" + deviceSupervisorName + ")" : "");
+    el.deviceTagLabel.textContent = stagesLabel(stages);
     el.manageSupervisorsBtn.hidden = stages !== "ALL";
 
     // When locked to one or more stages, only those stages are shown anywhere in the app —
@@ -844,14 +850,14 @@
         var data = doc.data();
         var stages = data.stages || (data.stage ? [data.stage] : []);
         if(stages !== "ALL" && (!stages || !stages.length)){
-          el.deviceSetupPhoneError.textContent = "That number has no stage access assigned yet. Ask admin to fix it under \"Manage Supervisors\".";
+          el.deviceSetupPhoneError.textContent = "That number has no stage access assigned yet. Ask admin to fix it under \"Manage Users\".";
           el.deviceSetupPhoneError.hidden = false;
           return;
         }
         applyDeviceStage(stages, data.name || "");
         el.deviceSetupOverlay.hidden = true;
       } else {
-        el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Supervisors\", or set up this device manually.";
+        el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Users\", or set up this device manually.";
         el.deviceSetupPhoneError.hidden = false;
       }
     }).catch(function(){
@@ -893,12 +899,13 @@
     el.supPhoneInput.value = "";
     el.supPhoneInput.disabled = false;
     el.supNameInput.value = "";
+    el.supRoleInput.value = "";
     el.supStageAll.checked = false;
     supStageCheckboxes().forEach(function(cb){
       cb.checked = false; cb.disabled = false;
       cb.closest("label").classList.remove("disabled");
     });
-    el.supAddBtn.textContent = "Add supervisor";
+    el.supAddBtn.textContent = "Add user";
     el.supAddBtn.classList.remove("editing");
     el.supClearBtn.hidden = true;
   }
@@ -908,6 +915,7 @@
     el.supPhoneInput.value = s.phone;
     el.supPhoneInput.disabled = true; // editing keeps the same phone (the document id)
     el.supNameInput.value = s.name || "";
+    el.supRoleInput.value = s.role || "";
     var stages = supervisorStages(s);
     var isAll = stages === "ALL";
     el.supStageAll.checked = isAll;
@@ -931,6 +939,7 @@
       tr.innerHTML =
         "<td>" + esc(s.phone) + "</td>" +
         "<td>" + esc(s.name || "") + "</td>" +
+        "<td>" + esc(s.role || "") + "</td>" +
         "<td>" + esc(stagesLabel(supervisorStages(s))) + "</td>" +
         '<td style="white-space:nowrap;">' +
           "<button type=\"button\" class=\"btn ghost small\" data-edit-phone=\"" + esc(s.phone) + "\">Edit</button> " +
@@ -987,6 +996,7 @@
   el.supAddBtn.addEventListener("click", function(){
     var phone = editingSupervisorPhone || normalizePhone(el.supPhoneInput.value);
     var name = el.supNameInput.value.trim();
+    var role = el.supRoleInput.value.trim();
     var isAll = el.supStageAll.checked;
     var chosenStages = isAll ? "ALL" : supStageCheckboxes().filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
     el.supervisorsError.hidden = true;
@@ -1002,7 +1012,7 @@
     }
     el.supAddBtn.disabled = true;
     state.db.collection("supervisors").doc(phone).set({
-      phone: phone, name: name, stages: chosenStages, updatedAt: Date.now()
+      phone: phone, name: name, role: role, stages: chosenStages, updatedAt: Date.now()
     }).then(function(){
       el.supAddBtn.disabled = false;
       resetSupervisorForm();
