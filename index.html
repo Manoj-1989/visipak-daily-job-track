@@ -285,11 +285,19 @@
   .supTable td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
   .supTable tr:last-child td{border-bottom:none;}
   .btn.small{padding:5px 10px;font-size:12px;}
-  .supAddRow{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:14px;align-items:end;}
+  .supAddRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;align-items:end;}
   .supAddRow label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
   .supAddRow input, .supAddRow select{border:1px solid var(--line-strong);border-radius:7px;padding:7px 9px;background:var(--surface);color:var(--ink);font-size:13px;}
   .supEmpty{padding:16px;text-align:center;color:var(--ink-faint);font-size:12.5px;}
   .setupToggleLink{display:inline-block;margin:10px 0 0;font-size:12px;color:var(--accent);cursor:pointer;background:none;border:none;padding:0;text-decoration:underline;}
+  .supStagesField{margin-top:12px;}
+  .supStagesLabel{display:block;font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .supStagesBox{border:1px solid var(--line-strong);border-radius:8px;padding:10px 12px;max-height:170px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;background:var(--surface);}
+  .supStageChk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;}
+  .supStageChk input{margin:0;}
+  .supStageChk.allStages{grid-column:1 / -1;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:2px;}
+  .supStageChk.disabled{opacity:.45;cursor:not-allowed;}
+  .btn.editing{border-color:var(--accent);color:var(--accent);}
 
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
   [hidden]{display:none !important;}
@@ -436,11 +444,12 @@
   <div class="modal wide">
     <h2>Manage Supervisors</h2>
     <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
-      Add each stage supervisor's phone number here. When they enter it on a device during setup, that device
-      automatically locks to their stage. Adding a number that's already listed updates its name/stage.
+      Add each supervisor's phone number and the stage(s) they should have access to. When they enter their number
+      on a device during setup, that device locks to just those stages. Re-adding (or clicking Edit on) a number
+      that's already listed updates their name/stages. Give a shift in-charge "All stages" for full access.
     </p>
     <table class="supTable">
-      <thead><tr><th>Phone</th><th>Name</th><th>Stage</th><th></th></tr></thead>
+      <thead><tr><th>Phone</th><th>Name</th><th>Stage access</th><th></th></tr></thead>
       <tbody id="supervisorsBody"></tbody>
     </table>
     <div class="supEmpty" id="supervisorsEmpty" hidden>No supervisors added yet.</div>
@@ -451,10 +460,19 @@
       <label>Name
         <input type="text" id="supNameInput" placeholder="e.g. Raju">
       </label>
-      <label>Stage
-        <select id="supStageInput"><option value="">Choose…</option></select>
-      </label>
-      <button class="btn primary small" id="supAddBtn" type="button">Add</button>
+    </div>
+    <div class="supStagesField">
+      <span class="supStagesLabel">Stage access</span>
+      <div class="supStagesBox" id="supStagesBox">
+        <label class="supStageChk allStages">
+          <input type="checkbox" id="supStageAll" value="ALL"> All stages (full access)
+        </label>
+      </div>
+    </div>
+    <div class="modalActions" style="margin-top:12px;">
+      <button type="button" class="btn ghost" id="supClearBtn" hidden>Cancel edit</button>
+      <div class="spacer"></div>
+      <button class="btn primary small" id="supAddBtn" type="button">Add supervisor</button>
     </div>
     <div class="readOnlyNote" id="supervisorsError" hidden style="margin-top:12px;"></div>
     <div class="modalActions">
@@ -596,7 +614,8 @@
     editingId: null,
     unsubBoard: null,
     unsubLog: null,
-    deviceStage: "ALL",   // which stage this device is locked to ("ALL" = full access)
+    deviceStage: "ALL",    // legacy single-stage field, kept for older saved devices; "ALL" = full access
+    deviceStages: "ALL",   // "ALL", or an array of one or more stage names this device is locked to
     modalReadOnly: false
   };
 
@@ -640,8 +659,10 @@
     supervisorsEmpty: document.getElementById("supervisorsEmpty"),
     supPhoneInput: document.getElementById("supPhoneInput"),
     supNameInput: document.getElementById("supNameInput"),
-    supStageInput: document.getElementById("supStageInput"),
+    supStagesBox: document.getElementById("supStagesBox"),
+    supStageAll: document.getElementById("supStageAll"),
     supAddBtn: document.getElementById("supAddBtn"),
+    supClearBtn: document.getElementById("supClearBtn"),
     supervisorsError: document.getElementById("supervisorsError"),
     supervisorsCloseBtn: document.getElementById("supervisorsCloseBtn"),
     f_date: document.getElementById("f_date"),
@@ -679,9 +700,47 @@
     el.boardStageFilter.appendChild(o4);
     var o5 = document.createElement("option"); o5.value=s; o5.textContent=s;
     el.deviceStageSelect.appendChild(o5);
-    var o6 = document.createElement("option"); o6.value=s; o6.textContent=s;
-    el.supStageInput.appendChild(o6);
   });
+
+  // populate the "Manage Supervisors" stage checkbox list (All stages + one checkbox per stage)
+  STAGES.forEach(function(s, i){
+    var label = document.createElement("label");
+    label.className = "supStageChk";
+    var chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.value = s;
+    chk.id = "supStageChk_" + i;
+    label.appendChild(chk);
+    label.appendChild(document.createTextNode(" " + s));
+    el.supStagesBox.appendChild(label);
+  });
+  function supStageCheckboxes(){
+    return Array.prototype.slice.call(el.supStagesBox.querySelectorAll('input[type="checkbox"]:not(#supStageAll)'));
+  }
+  el.supStageAll.addEventListener("change", function(){
+    var checked = el.supStageAll.checked;
+    supStageCheckboxes().forEach(function(cb){
+      cb.disabled = checked;
+      if(checked) cb.checked = false;
+      cb.closest("label").classList.toggle("disabled", checked);
+    });
+  });
+
+  // Populate the Stage filter dropdowns from a given stage list (used both at load time and
+  // when a device locks/unlocks). `allowed` is a stage array, or null/"ALL" for the full list.
+  function populateStageFilterOptions(selectEl, allowed, blankLabel){
+    var prevValue = selectEl.value;
+    selectEl.innerHTML = "";
+    var blankOpt = document.createElement("option");
+    blankOpt.value = ""; blankOpt.textContent = blankLabel;
+    selectEl.appendChild(blankOpt);
+    var stages = (allowed && allowed !== "ALL") ? allowed : STAGES;
+    stages.forEach(function(s){
+      var o = document.createElement("option"); o.value = s; o.textContent = s;
+      selectEl.appendChild(o);
+    });
+    selectEl.value = stages.indexOf(prevValue) !== -1 ? prevValue : "";
+  }
 
   var ALL_FORM_FIELDS = [
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_qty,
@@ -697,25 +756,47 @@
   }
 
   var deviceSupervisorName = "";
-  function applyDeviceStage(stage, supervisorName){
-    state.deviceStage = stage;
+  function stagesLabel(stages){
+    if(stages === "ALL") return "All stages";
+    if(!stages || !stages.length) return "No stages";
+    if(stages.length <= 2) return stages.join(", ");
+    return stages.length + " stages";
+  }
+  function stagesFullList(stages){
+    if(stages === "ALL") return "all stages";
+    if(!stages || !stages.length) return "no stages";
+    return stages.join(", ");
+  }
+
+  function applyDeviceStage(stages, supervisorName){
+    // `stages` is "ALL" (full access) or an array of one or more stage names.
+    state.deviceStages = stages;
+    state.deviceStage = stages === "ALL" ? "ALL" : (stages[0] || "ALL"); // legacy field, kept in sync
     deviceSupervisorName = supervisorName || "";
     try{
-      localStorage.setItem("visipakDeviceStage", stage);
+      localStorage.setItem("visipakDeviceStages", JSON.stringify(stages));
       localStorage.setItem("visipakDeviceSupervisor", deviceSupervisorName);
+      localStorage.removeItem("visipakDeviceStage");
     }catch(e){}
-    el.deviceTagLabel.textContent = stage === "ALL" ? "All stages" :
-      (stage + (deviceSupervisorName ? " (" + deviceSupervisorName + ")" : ""));
-    el.manageSupervisorsBtn.hidden = stage !== "ALL";
+    el.deviceTagLabel.textContent = stagesLabel(stages) + (deviceSupervisorName ? " (" + deviceSupervisorName + ")" : "");
+    el.manageSupervisorsBtn.hidden = stages !== "ALL";
 
-    // When locked to one stage, only that stage is shown anywhere in the app —
-    // the Stage filters are forced to it and locked so the operator can't switch away.
-    var locked = stage !== "ALL";
-    state.boardStage = locked ? stage : "";
-    el.boardStageFilter.value = locked ? stage : "";
-    el.boardStageFilter.disabled = locked;
-    el.logStageFilter.value = locked ? stage : "";
-    el.logStageFilter.disabled = locked;
+    // When locked to one or more stages, only those stages are shown anywhere in the app —
+    // the Stage filters only offer the permitted stages, so the operator can't switch away.
+    var locked = stages !== "ALL";
+    state.boardStage = "";
+    populateStageFilterOptions(el.boardStageFilter, locked ? stages : "ALL", "All");
+    populateStageFilterOptions(el.logStageFilter, locked ? stages : "ALL", "All stages");
+
+    // Restrict the Add/Edit Entry "Stage" field to the device's permitted stages.
+    var stageOptionsFor = locked ? stages : STAGES;
+    var prevFStage = el.f_stage.value;
+    el.f_stage.innerHTML = "";
+    stageOptionsFor.forEach(function(s){
+      var o = document.createElement("option"); o.value = s; o.textContent = s;
+      el.f_stage.appendChild(o);
+    });
+    el.f_stage.value = stageOptionsFor.indexOf(prevFStage) !== -1 ? prevFStage : stageOptionsFor[0];
 
     renderBoard();
     renderLog();
@@ -745,7 +826,8 @@
   el.deviceSetupSaveBtn.addEventListener("click", function(){
     var manualMode = !el.deviceSetupManualMode.hidden;
     if(manualMode){
-      applyDeviceStage(el.deviceStageSelect.value, "");
+      var manualValue = el.deviceStageSelect.value;
+      applyDeviceStage(manualValue === "ALL" ? "ALL" : [manualValue], "");
       el.deviceSetupOverlay.hidden = true;
       return;
     }
@@ -760,7 +842,13 @@
       el.deviceSetupSaveBtn.disabled = false;
       if(doc && doc.exists){
         var data = doc.data();
-        applyDeviceStage(data.stage, data.name || "");
+        var stages = data.stages || (data.stage ? [data.stage] : []);
+        if(stages !== "ALL" && (!stages || !stages.length)){
+          el.deviceSetupPhoneError.textContent = "That number has no stage access assigned yet. Ask admin to fix it under \"Manage Supervisors\".";
+          el.deviceSetupPhoneError.hidden = false;
+          return;
+        }
+        applyDeviceStage(stages, data.name || "");
         el.deviceSetupOverlay.hidden = true;
       } else {
         el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Supervisors\", or set up this device manually.";
@@ -773,13 +861,18 @@
     });
   });
   (function initDeviceStage(){
-    var stored = null, storedName = "";
+    var storedStages = null, storedLegacy = null, storedName = "";
     try{
-      stored = localStorage.getItem("visipakDeviceStage");
+      storedStages = localStorage.getItem("visipakDeviceStages");
+      storedLegacy = localStorage.getItem("visipakDeviceStage");
       storedName = localStorage.getItem("visipakDeviceSupervisor") || "";
     }catch(e){}
-    if(stored){
-      applyDeviceStage(stored, storedName);
+    if(storedStages){
+      var parsed = null;
+      try{ parsed = JSON.parse(storedStages); }catch(e){}
+      applyDeviceStage(parsed || "ALL", storedName);
+    } else if(storedLegacy){
+      applyDeviceStage(storedLegacy === "ALL" ? "ALL" : [storedLegacy], storedName);
     } else {
       applyDeviceStage("ALL", "");
       showDeviceSetupMode("phone");
@@ -788,7 +881,49 @@
   })();
 
   // ---------- Manage supervisors (admin only, shown when this device = All stages) ----------
+  var supervisorsCache = [];
+  var editingSupervisorPhone = null;
+
+  function supervisorStages(s){
+    return s.stages || (s.stage ? [s.stage] : []);
+  }
+
+  function resetSupervisorForm(){
+    editingSupervisorPhone = null;
+    el.supPhoneInput.value = "";
+    el.supPhoneInput.disabled = false;
+    el.supNameInput.value = "";
+    el.supStageAll.checked = false;
+    supStageCheckboxes().forEach(function(cb){
+      cb.checked = false; cb.disabled = false;
+      cb.closest("label").classList.remove("disabled");
+    });
+    el.supAddBtn.textContent = "Add supervisor";
+    el.supAddBtn.classList.remove("editing");
+    el.supClearBtn.hidden = true;
+  }
+
+  function fillSupervisorForm(s){
+    editingSupervisorPhone = s.phone;
+    el.supPhoneInput.value = s.phone;
+    el.supPhoneInput.disabled = true; // editing keeps the same phone (the document id)
+    el.supNameInput.value = s.name || "";
+    var stages = supervisorStages(s);
+    var isAll = stages === "ALL";
+    el.supStageAll.checked = isAll;
+    supStageCheckboxes().forEach(function(cb){
+      cb.disabled = isAll;
+      cb.checked = !isAll && stages.indexOf(cb.value) !== -1;
+      cb.closest("label").classList.toggle("disabled", isAll);
+    });
+    el.supAddBtn.textContent = "Save changes";
+    el.supAddBtn.classList.add("editing");
+    el.supClearBtn.hidden = false;
+    el.supNameInput.focus();
+  }
+
   function renderSupervisors(list){
+    supervisorsCache = list;
     el.supervisorsBody.innerHTML = "";
     el.supervisorsEmpty.hidden = list.length > 0;
     list.forEach(function(s){
@@ -796,15 +931,26 @@
       tr.innerHTML =
         "<td>" + esc(s.phone) + "</td>" +
         "<td>" + esc(s.name || "") + "</td>" +
-        "<td>" + esc(s.stage) + "</td>" +
-        "<td><button type=\"button\" class=\"btn danger small\" data-phone=\"" + esc(s.phone) + "\">Remove</button></td>";
+        "<td>" + esc(stagesLabel(supervisorStages(s))) + "</td>" +
+        '<td style="white-space:nowrap;">' +
+          "<button type=\"button\" class=\"btn ghost small\" data-edit-phone=\"" + esc(s.phone) + "\">Edit</button> " +
+          "<button type=\"button\" class=\"btn danger small\" data-phone=\"" + esc(s.phone) + "\">Remove</button>" +
+        "</td>";
       el.supervisorsBody.appendChild(tr);
+    });
+    el.supervisorsBody.querySelectorAll("button[data-edit-phone]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var phone = btn.getAttribute("data-edit-phone");
+        var s = supervisorsCache.filter(function(x){ return x.phone === phone; })[0];
+        if(s) fillSupervisorForm(s);
+      });
     });
     el.supervisorsBody.querySelectorAll("button[data-phone]").forEach(function(btn){
       btn.addEventListener("click", function(){
         var phone = btn.getAttribute("data-phone");
         btn.disabled = true;
         state.db.collection("supervisors").doc(phone).delete().then(function(){
+          if(editingSupervisorPhone === phone) resetSupervisorForm();
           loadSupervisors();
         }).catch(function(){
           btn.disabled = false;
@@ -816,9 +962,10 @@
   }
   function loadSupervisors(){
     el.supervisorsError.hidden = true;
-    state.db.collection("supervisors").orderBy("stage").get().then(function(snap){
+    state.db.collection("supervisors").get().then(function(snap){
       var list = [];
       snap.forEach(function(doc){ list.push(doc.data()); });
+      list.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
       renderSupervisors(list);
     }).catch(function(){
       el.supervisorsError.textContent = "Couldn't load supervisors. Check your connection.";
@@ -827,6 +974,7 @@
   }
   el.manageSupervisorsBtn.addEventListener("click", function(){
     el.supervisorsOverlay.hidden = false;
+    resetSupervisorForm();
     loadSupervisors();
   });
   el.supervisorsCloseBtn.addEventListener("click", function(){
@@ -835,29 +983,29 @@
   el.supervisorsOverlay.addEventListener("click", function(ev){
     if(ev.target === el.supervisorsOverlay) el.supervisorsOverlay.hidden = true;
   });
+  el.supClearBtn.addEventListener("click", resetSupervisorForm);
   el.supAddBtn.addEventListener("click", function(){
-    var phone = normalizePhone(el.supPhoneInput.value);
+    var phone = editingSupervisorPhone || normalizePhone(el.supPhoneInput.value);
     var name = el.supNameInput.value.trim();
-    var stage = el.supStageInput.value;
+    var isAll = el.supStageAll.checked;
+    var chosenStages = isAll ? "ALL" : supStageCheckboxes().filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
     el.supervisorsError.hidden = true;
     if(phone.length < 10){
       el.supervisorsError.textContent = "Enter a valid 10-digit phone number.";
       el.supervisorsError.hidden = false;
       return;
     }
-    if(!stage){
-      el.supervisorsError.textContent = "Choose a stage.";
+    if(!isAll && chosenStages.length === 0){
+      el.supervisorsError.textContent = "Choose at least one stage, or check \"All stages\".";
       el.supervisorsError.hidden = false;
       return;
     }
     el.supAddBtn.disabled = true;
     state.db.collection("supervisors").doc(phone).set({
-      phone: phone, name: name, stage: stage, updatedAt: Date.now()
+      phone: phone, name: name, stages: chosenStages, updatedAt: Date.now()
     }).then(function(){
       el.supAddBtn.disabled = false;
-      el.supPhoneInput.value = "";
-      el.supNameInput.value = "";
-      el.supStageInput.value = "";
+      resetSupervisorForm();
       loadSupervisors();
     }).catch(function(){
       el.supAddBtn.disabled = false;
@@ -916,7 +1064,9 @@
   function renderBoard(){
     var byStage = {};
     STAGES.forEach(function(s){ byStage[s]=[]; });
+    var locked = state.deviceStages !== "ALL";
     var filtered = state.boardEntries.filter(function(e){
+      if(locked && state.deviceStages.indexOf(e.stage) === -1) return false;
       if(state.shift && (e.shift||"").toLowerCase() !== state.shift.toLowerCase()) return false;
       if(state.boardStage && e.stage !== state.boardStage) return false;
       if(state.boardStatus && statusLabel(e.status) !== state.boardStatus) return false;
@@ -929,7 +1079,7 @@
     renderSummary(filtered);
 
     el.boardView.innerHTML = "";
-    var stagesToShow = state.boardStage ? [state.boardStage] : STAGES;
+    var stagesToShow = state.boardStage ? [state.boardStage] : (locked ? state.deviceStages : STAGES);
     stagesToShow.forEach(function(stage){
       var entries = byStage[stage] || [];
       entries.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
@@ -1002,7 +1152,9 @@
     var q = (el.logSearch.value || "").trim().toLowerCase();
     var stageFilter = el.logStageFilter.value;
     var statusFilter = el.logStatusFilter.value;
+    var locked = state.deviceStages !== "ALL";
     var rows = state.logEntries.filter(function(e){
+      if(locked && state.deviceStages.indexOf(e.stage) === -1) return false;
       if(stageFilter && e.stage !== stageFilter) return false;
       if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
       if(q){
@@ -1077,7 +1229,9 @@
     var q = (el.logSearch.value || "").trim().toLowerCase();
     var stageFilter = el.logStageFilter.value;
     var statusFilter = el.logStatusFilter.value;
+    var locked = state.deviceStages !== "ALL";
     var rows = state.logEntries.filter(function(e){
+      if(locked && state.deviceStages.indexOf(e.stage) === -1) return false;
       if(stageFilter && e.stage !== stageFilter) return false;
       if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
       if(q){
@@ -1094,9 +1248,10 @@
   // ---------- Modal ----------
   function openModal(entry){
     state.editingId = entry ? entry.id : null;
-    var deviceLocked = state.deviceStage !== "ALL";
-    var targetStage = entry ? entry.stage : (deviceLocked ? state.deviceStage : STAGES[0]);
-    var readOnly = !!entry && deviceLocked && entry.stage !== state.deviceStage;
+    var deviceLocked = state.deviceStages !== "ALL";
+    var allowedStages = deviceLocked ? state.deviceStages : STAGES;
+    var targetStage = entry ? entry.stage : (deviceLocked ? allowedStages[0] : STAGES[0]);
+    var readOnly = !!entry && deviceLocked && allowedStages.indexOf(entry.stage) === -1;
     state.modalReadOnly = readOnly;
 
     el.modalTitle.textContent = entry ? (readOnly ? "View Entry" : "Edit Entry") : "Add Entry";
@@ -1107,7 +1262,7 @@
     el.f_date.value = entry ? entry.date : state.date;
     el.f_shift.value = entry ? entry.shift : state.shift;
     el.f_stage.value = targetStage;
-    el.f_stage.disabled = deviceLocked;
+    el.f_stage.disabled = deviceLocked && allowedStages.length <= 1;
     el.f_product.value = entry ? (entry.productName||"") : "";
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
     el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
@@ -1124,8 +1279,8 @@
 
     if(readOnly){
       el.readOnlyNote.hidden = false;
-      el.readOnlyNote.textContent = "This entry belongs to " + entry.stage + " — this device is set up for " +
-        state.deviceStage + ". Switch this device's stage (top right, \"Change\") to edit it.";
+      el.readOnlyNote.textContent = "This entry belongs to " + entry.stage + " — this device only has access to " +
+        stagesFullList(allowedStages) + ". Switch this device's stage access (top right, \"Change\") to edit it.";
     } else {
       el.readOnlyNote.hidden = true;
     }
