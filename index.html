@@ -121,6 +121,24 @@
     border-radius:7px;padding:7px 10px;font-size:13px;min-width:120px;
   }
   .field select:disabled{opacity:.6;cursor:not-allowed;}
+  /* Native <input type="date"> always displays in the browser/OS locale format, which on many
+     devices is mm/dd/yyyy — confusing here. We keep the real date input (so the native calendar
+     picker still works) but make its own text invisible and draw a dd/mm/yyyy label on top of it. */
+  .dateFieldWrap{position:relative;display:block;}
+  .dateFieldWrap input[type="date"]{width:100%;color:transparent;}
+  .dateFieldWrap input[type="date"]::-webkit-datetime-edit,
+  .dateFieldWrap input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  .dateFieldWrap input[type="date"]::-webkit-datetime-edit-text,
+  .dateFieldWrap input[type="date"]::-webkit-datetime-edit-month-field,
+  .dateFieldWrap input[type="date"]::-webkit-datetime-edit-day-field,
+  .dateFieldWrap input[type="date"]::-webkit-datetime-edit-year-field{color:transparent;}
+  .dateFieldLabel{
+    position:absolute;left:0;top:0;right:24px;bottom:0;
+    display:flex;align-items:center;padding-left:10px;
+    font-size:13px;color:var(--ink);pointer-events:none;white-space:nowrap;overflow:hidden;
+    font-family:inherit;text-transform:none;letter-spacing:normal;
+  }
+  .dateFieldLabel.placeholder{color:var(--ink-faint);}
   .deviceTag{
     display:flex;align-items:center;gap:8px;padding:8px 12px;align-self:center;
     border:1px solid var(--line-strong);border-radius:8px;background:var(--surface-2);
@@ -264,6 +282,7 @@
     padding:20px;z-index:20;
   }
   .modalOverlay[hidden]{display:none;}
+  #deleteConfirmOverlay{z-index:30;}
   .modal{
     background:var(--surface);border-radius:12px;padding:22px 24px;width:100%;max-width:480px;
     box-shadow:0 12px 32px rgba(0,0,0,.25);border:1px solid var(--line);
@@ -280,10 +299,21 @@
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
   .modal.wide{max-width:720px;}
-  .supTable{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
-  .supTable th{text-align:left;padding:6px 8px;color:var(--ink-soft);text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;border-bottom:1px solid var(--line-strong);}
+  .supSearchInput{width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;margin-top:4px;}
+  .supTableWrap{max-height:280px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px;}
+  .supTable{width:100%;min-width:0;border-collapse:collapse;font-size:13px;}
+  .supTable th{text-align:left;padding:6px 8px;color:var(--ink-soft);text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;border-bottom:1px solid var(--line-strong);position:sticky;top:0;background:var(--surface);z-index:1;}
   .supTable td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
   .supTable tr:last-child td{border-bottom:none;}
+  #activityOverlay .supTable{table-layout:fixed;}
+  #activityOverlay .supTable th,#activityOverlay .supTable td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #activityOverlay .supTable th:nth-child(1),#activityOverlay .supTable td:nth-child(1){width:17%;}
+  #activityOverlay .supTable th:nth-child(2),#activityOverlay .supTable td:nth-child(2){width:12%;}
+  #activityOverlay .supTable th:nth-child(3),#activityOverlay .supTable td:nth-child(3){width:18%;}
+  #activityOverlay .supTable th:nth-child(4),#activityOverlay .supTable td:nth-child(4){width:23%;}
+  #activityOverlay .supTable th:nth-child(5),#activityOverlay .supTable td:nth-child(5){width:17%;}
+  #activityOverlay .supTable th:nth-child(6),#activityOverlay .supTable td:nth-child(6){width:13%;}
+  .supCount{font-size:11.5px;color:var(--ink-faint);margin-top:6px;}
   .btn.small{padding:5px 10px;font-size:12px;}
   .supAddRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;align-items:end;}
   .supAddRow label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
@@ -297,7 +327,7 @@
   .supStageChk input{margin:0;}
   .supStageChk.allStages{grid-column:1 / -1;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:2px;}
   .supStageChk.disabled{opacity:.45;cursor:not-allowed;}
-  .btn.editing{border-color:var(--accent);color:var(--accent);}
+  .btn.editing{box-shadow:0 0 0 3px var(--accent-soft);}
 
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
   [hidden]{display:none !important;}
@@ -316,7 +346,10 @@
     </div>
     <div class="controls">
       <label class="field">Date
-        <input type="date" id="dateInput">
+        <span class="dateFieldWrap">
+          <input type="date" id="dateInput">
+          <span class="dateFieldLabel" id="dateInputLabel" aria-hidden="true"></span>
+        </span>
       </label>
       <label class="field">Shift
         <select id="boardShiftFilter">
@@ -344,11 +377,12 @@
           <option value="Completed">Completed</option>
         </select>
       </label>
-      <div class="deviceTag">
+      <div class="deviceTag" id="deviceTagWrap">
         This device: <strong id="deviceTagLabel">All stages</strong>
         <button type="button" id="changeDeviceBtn">Change</button>
       </div>
       <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden>Manage Users</button>
+      <button class="btn ghost" id="activityLogBtn" type="button" hidden>Activity Log</button>
       <div class="viewToggle" role="tablist">
         <button class="toggleBtn active" data-view="board" type="button">Board</button>
         <button class="toggleBtn" data-view="log" type="button">Log</button>
@@ -446,13 +480,19 @@
     <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
       Add each user's phone number and the stage(s) they should have access to. When they enter their number
       on a device during setup, that device locks to just those stages. Re-adding (or clicking Edit on) a number
-      that's already listed updates their details. Give someone like a shift in-charge "All stages" for full access.
+      that's already listed updates their details. Give someone like a shift in-charge "All stages" so they can add
+      and edit job cards anywhere — that alone doesn't give them Manage Users or Activity Log; only the admin
+      phone number gets those.
     </p>
-    <table class="supTable">
-      <thead><tr><th>Phone</th><th>Name</th><th>Role</th><th>Stage access</th><th></th></tr></thead>
-      <tbody id="supervisorsBody"></tbody>
-    </table>
-    <div class="supEmpty" id="supervisorsEmpty" hidden>No users added yet.</div>
+    <input type="text" id="supSearchInput" class="supSearchInput" placeholder="Search by name, phone, or role…">
+    <div class="supTableWrap">
+      <table class="supTable">
+        <thead><tr><th>Phone</th><th>Name</th><th>Role</th><th>Stage access</th><th></th></tr></thead>
+        <tbody id="supervisorsBody"></tbody>
+      </table>
+    </div>
+    <div class="supEmpty" id="supervisorsEmpty" hidden>No users found.</div>
+    <div class="supCount" id="supervisorsCount"></div>
     <div class="supAddRow">
       <label>Name
         <input type="text" id="supNameInput" placeholder="e.g. Raju">
@@ -487,12 +527,59 @@
   </div>
 </div>
 
+<div class="modalOverlay" id="activityOverlay" hidden>
+  <div class="modal wide">
+    <h2>Activity Log</h2>
+    <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      Every job card added, edited, or deleted, with who did it and when. A deleted job card stays listed here
+      even though it's gone from the board and log.
+    </p>
+    <input type="text" id="activitySearchInput" class="supSearchInput" placeholder="Search by job card, product, stage, or name…">
+    <div class="supTableWrap" style="max-height:340px;">
+      <table class="supTable">
+        <thead><tr><th>Time</th><th>Action</th><th>Job Card</th><th>Product</th><th>Stage</th><th>By</th></tr></thead>
+        <tbody id="activityBody"></tbody>
+      </table>
+    </div>
+    <div class="supEmpty" id="activityEmpty" hidden>No activity recorded yet.</div>
+    <div class="supCount" id="activityCount"></div>
+    <div class="readOnlyNote" id="activityError" hidden style="margin-top:12px;"></div>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="activityExportBtn">Export CSV</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="activityCloseBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="deleteConfirmOverlay" hidden>
+  <div class="modal">
+    <h2>Delete Job Card?</h2>
+    <p id="deleteConfirmSummary" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;"></p>
+    <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
+      Your name
+      <input type="text" id="deleteConfirmName" placeholder="e.g. Raju" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+    </label>
+    <div class="readOnlyNote" id="deleteConfirmError" hidden style="margin-top:12px;"></div>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="deleteConfirmCancelBtn">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn danger" id="deleteConfirmYesBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="modalOverlay" id="modalOverlay" hidden>
   <form class="modal" id="entryForm">
     <h2 id="modalTitle">Add Entry</h2>
     <div class="readOnlyNote" id="readOnlyNote" hidden></div>
     <div class="formGrid">
-      <label>Date <input type="date" id="f_date" required></label>
+      <label>Date
+        <span class="dateFieldWrap">
+          <input type="date" id="f_date" required>
+          <span class="dateFieldLabel" id="f_dateLabel" aria-hidden="true"></span>
+        </span>
+      </label>
       <label>Shift <input type="text" id="f_shift" list="shiftOptions" required></label>
       <label class="span2">Stage
         <select id="f_stage" required></select>
@@ -563,6 +650,10 @@
     "Dispatch"
   ];
   var SLOTS = 10;
+  // The one phone number that unlocks admin-only UI (Manage Users, Activity Log, the device tag).
+  // Any other device — even one manually set to "All stages" for full add/edit access — never
+  // gets these, regardless of what's stored for it in the "supervisors" collection.
+  var ADMIN_PHONE = "9703426919";
 
   function todayStr(){
     var d = new Date();
@@ -576,6 +667,32 @@
     if(parts.length!==3) return iso;
     var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     return parts[2]+"-"+months[parseInt(parts[1],10)-1]+"-"+parts[0];
+  }
+  function fmtDateDDMMYYYY(iso){
+    if(!iso) return "";
+    var parts = iso.split("-");
+    if(parts.length!==3) return "";
+    return parts[2]+"/"+parts[1]+"/"+parts[0];
+  }
+  // Native <input type="date"> shows its value in the browser/OS locale format, which we can't
+  // reliably force to dd/mm/yyyy. So the input stays fully functional (native calendar picker,
+  // real value) but visually invisible, and this label — sitting on top of it — always shows
+  // dd/mm/yyyy. Call the returned function again after any programmatic `.value =` assignment,
+  // since that doesn't fire input/change events for us to catch automatically.
+  function bindDateDisplay(inputEl, labelEl){
+    function sync(){
+      if(inputEl.value){
+        labelEl.textContent = fmtDateDDMMYYYY(inputEl.value);
+        labelEl.classList.remove("placeholder");
+      } else {
+        labelEl.textContent = "dd/mm/yyyy";
+        labelEl.classList.add("placeholder");
+      }
+    }
+    inputEl.addEventListener("input", sync);
+    inputEl.addEventListener("change", sync);
+    sync();
+    return sync;
   }
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   function fmtDateTime(ms){
@@ -621,12 +738,14 @@
     unsubLog: null,
     deviceStage: "ALL",    // legacy single-stage field, kept for older saved devices; "ALL" = full access
     deviceStages: "ALL",   // "ALL", or an array of one or more stage names this device is locked to
+    isAdminDevice: false,  // true only on the device set up with the admin phone number
     modalReadOnly: false
   };
 
   // ---------- DOM refs ----------
   var el = {
     dateInput: document.getElementById("dateInput"),
+    dateInputLabel: document.getElementById("dateInputLabel"),
     boardShiftFilter: document.getElementById("boardShiftFilter"),
     boardStageFilter: document.getElementById("boardStageFilter"),
     addBtn: document.getElementById("addBtn"),
@@ -662,6 +781,8 @@
     supervisorsOverlay: document.getElementById("supervisorsOverlay"),
     supervisorsBody: document.getElementById("supervisorsBody"),
     supervisorsEmpty: document.getElementById("supervisorsEmpty"),
+    supervisorsCount: document.getElementById("supervisorsCount"),
+    supSearchInput: document.getElementById("supSearchInput"),
     supPhoneInput: document.getElementById("supPhoneInput"),
     supNameInput: document.getElementById("supNameInput"),
     supRoleInput: document.getElementById("supRoleInput"),
@@ -671,7 +792,24 @@
     supClearBtn: document.getElementById("supClearBtn"),
     supervisorsError: document.getElementById("supervisorsError"),
     supervisorsCloseBtn: document.getElementById("supervisorsCloseBtn"),
+    deviceTagWrap: document.getElementById("deviceTagWrap"),
+    activityLogBtn: document.getElementById("activityLogBtn"),
+    activityOverlay: document.getElementById("activityOverlay"),
+    activitySearchInput: document.getElementById("activitySearchInput"),
+    activityBody: document.getElementById("activityBody"),
+    activityEmpty: document.getElementById("activityEmpty"),
+    activityCount: document.getElementById("activityCount"),
+    activityError: document.getElementById("activityError"),
+    activityExportBtn: document.getElementById("activityExportBtn"),
+    activityCloseBtn: document.getElementById("activityCloseBtn"),
+    deleteConfirmOverlay: document.getElementById("deleteConfirmOverlay"),
+    deleteConfirmSummary: document.getElementById("deleteConfirmSummary"),
+    deleteConfirmName: document.getElementById("deleteConfirmName"),
+    deleteConfirmError: document.getElementById("deleteConfirmError"),
+    deleteConfirmCancelBtn: document.getElementById("deleteConfirmCancelBtn"),
+    deleteConfirmYesBtn: document.getElementById("deleteConfirmYesBtn"),
     f_date: document.getElementById("f_date"),
+    f_dateLabel: document.getElementById("f_dateLabel"),
     f_shift: document.getElementById("f_shift"),
     f_stage: document.getElementById("f_stage"),
     f_product: document.getElementById("f_product"),
@@ -692,7 +830,11 @@
   };
   var lastUpdatedBy = "";
 
+  var syncDateInputLabel = bindDateDisplay(el.dateInput, el.dateInputLabel);
+  var syncFDateLabel = bindDateDisplay(el.f_date, el.f_dateLabel);
+
   el.dateInput.value = state.date;
+  syncDateInputLabel();
 
   // populate stage selects
   STAGES.forEach(function(s){
@@ -774,18 +916,27 @@
     return stages.join(", ");
   }
 
-  function applyDeviceStage(stages, supervisorName){
+  function applyDeviceStage(stages, supervisorName, isAdmin){
     // `stages` is "ALL" (full access) or an array of one or more stage names.
     state.deviceStages = stages;
     state.deviceStage = stages === "ALL" ? "ALL" : (stages[0] || "ALL"); // legacy field, kept in sync
     deviceSupervisorName = supervisorName || "";
+    state.isAdminDevice = !!isAdmin;
     try{
       localStorage.setItem("visipakDeviceStages", JSON.stringify(stages));
       localStorage.setItem("visipakDeviceSupervisor", deviceSupervisorName);
+      localStorage.setItem("visipakDeviceIsAdmin", state.isAdminDevice ? "1" : "0");
       localStorage.removeItem("visipakDeviceStage");
     }catch(e){}
     el.deviceTagLabel.textContent = stagesLabel(stages);
-    el.manageSupervisorsBtn.hidden = stages !== "ALL";
+    // The device tag, Manage Users, and Activity Log are admin-only — visible only on the one
+    // device set up with the admin phone number, hidden everywhere else (including other
+    // devices manually or otherwise set to "All stages" for full add/edit access). An admin can
+    // still reconfigure a locked device by opening it with ?setup=1 in the address bar.
+    var forceSetupVisible = /(^|[?&])setup=1(&|$)/.test(window.location.search);
+    el.deviceTagWrap.hidden = !state.isAdminDevice && !forceSetupVisible;
+    el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
+    el.activityLogBtn.hidden = !state.isAdminDevice;
 
     // When locked to one or more stages, only those stages are shown anywhere in the app —
     // the Stage filters only offer the permitted stages, so the operator can't switch away.
@@ -833,7 +984,9 @@
     var manualMode = !el.deviceSetupManualMode.hidden;
     if(manualMode){
       var manualValue = el.deviceStageSelect.value;
-      applyDeviceStage(manualValue === "ALL" ? "ALL" : [manualValue], "");
+      // Manual setup never grants admin — it's not phone-verified, so it can't unlock
+      // Manage Users / Activity Log even if "All stages" is picked.
+      applyDeviceStage(manualValue === "ALL" ? "ALL" : [manualValue], "", false);
       el.deviceSetupOverlay.hidden = true;
       return;
     }
@@ -841,6 +994,13 @@
     if(phone.length < 10){
       el.deviceSetupPhoneError.textContent = "Enter a valid 10-digit phone number.";
       el.deviceSetupPhoneError.hidden = false;
+      return;
+    }
+    if(phone === ADMIN_PHONE){
+      // The admin number is hard-coded — it always gets full access and admin UI, with no
+      // dependency on a "supervisors" record that could be edited or removed.
+      applyDeviceStage("ALL", "Admin", true);
+      el.deviceSetupOverlay.hidden = true;
       return;
     }
     el.deviceSetupSaveBtn.disabled = true;
@@ -854,7 +1014,7 @@
           el.deviceSetupPhoneError.hidden = false;
           return;
         }
-        applyDeviceStage(stages, data.name || "");
+        applyDeviceStage(stages, data.name || "", false);
         el.deviceSetupOverlay.hidden = true;
       } else {
         el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Users\", or set up this device manually.";
@@ -867,20 +1027,23 @@
     });
   });
   (function initDeviceStage(){
-    var storedStages = null, storedLegacy = null, storedName = "";
+    var storedStages = null, storedLegacy = null, storedName = "", storedIsAdmin = false;
     try{
       storedStages = localStorage.getItem("visipakDeviceStages");
       storedLegacy = localStorage.getItem("visipakDeviceStage");
       storedName = localStorage.getItem("visipakDeviceSupervisor") || "";
+      storedIsAdmin = localStorage.getItem("visipakDeviceIsAdmin") === "1";
     }catch(e){}
     if(storedStages){
       var parsed = null;
       try{ parsed = JSON.parse(storedStages); }catch(e){}
-      applyDeviceStage(parsed || "ALL", storedName);
+      applyDeviceStage(parsed || "ALL", storedName, storedIsAdmin);
     } else if(storedLegacy){
-      applyDeviceStage(storedLegacy === "ALL" ? "ALL" : [storedLegacy], storedName);
+      // Pre-existing device from before admin-phone gating — never treated as admin until
+      // it's explicitly reconfigured with the admin phone number.
+      applyDeviceStage(storedLegacy === "ALL" ? "ALL" : [storedLegacy], storedName, false);
     } else {
-      applyDeviceStage("ALL", "");
+      applyDeviceStage("ALL", "", false);
       showDeviceSetupMode("phone");
       el.deviceSetupOverlay.hidden = false;
     }
@@ -930,8 +1093,9 @@
     el.supNameInput.focus();
   }
 
+  // Renders whatever list it's given (already filtered) — does not touch the cache or re-query Firestore,
+  // so typing in the search box stays instant even with 100+ users loaded.
   function renderSupervisors(list){
-    supervisorsCache = list;
     el.supervisorsBody.innerHTML = "";
     el.supervisorsEmpty.hidden = list.length > 0;
     list.forEach(function(s){
@@ -968,21 +1132,39 @@
         });
       });
     });
+    el.supervisorsCount.textContent = supervisorsCache.length === 0 ? "" :
+      (list.length === supervisorsCache.length ?
+        supervisorsCache.length + " user" + (supervisorsCache.length === 1 ? "" : "s") :
+        "Showing " + list.length + " of " + supervisorsCache.length + " users");
   }
+
+  // Filters the already-loaded cache by the search box (client-side, no network round-trip) and re-renders.
+  function applySupervisorFilter(){
+    var q = (el.supSearchInput.value || "").trim().toLowerCase();
+    var list = !q ? supervisorsCache : supervisorsCache.filter(function(s){
+      var hay = ((s.name||"") + " " + (s.phone||"") + " " + (s.role||"") + " " + stagesLabel(supervisorStages(s))).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+    renderSupervisors(list);
+  }
+  el.supSearchInput.addEventListener("input", applySupervisorFilter);
+
   function loadSupervisors(){
     el.supervisorsError.hidden = true;
     state.db.collection("supervisors").get().then(function(snap){
       var list = [];
       snap.forEach(function(doc){ list.push(doc.data()); });
       list.sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
-      renderSupervisors(list);
+      supervisorsCache = list;
+      applySupervisorFilter();
     }).catch(function(){
-      el.supervisorsError.textContent = "Couldn't load supervisors. Check your connection.";
+      el.supervisorsError.textContent = "Couldn't load users. Check your connection.";
       el.supervisorsError.hidden = false;
     });
   }
   el.manageSupervisorsBtn.addEventListener("click", function(){
     el.supervisorsOverlay.hidden = false;
+    el.supSearchInput.value = "";
     resetSupervisorForm();
     loadSupervisors();
   });
@@ -1255,6 +1437,88 @@
     downloadCsv("visipak-daily-job-track-log.csv", csv);
   });
 
+  // ---------- Activity log ----------
+  // Records who added, edited, or deleted a job card, and when. This is UI-level bookkeeping
+  // only (Firestore rules are open), but it gives a readable trail for day-to-day accountability.
+  function logActivity(action, entry, actorName){
+    var record = {
+      action: action, // "add" | "edit" | "delete"
+      entryId: (entry && entry.id) || null,
+      jobCardNo: (entry && entry.jobCardNo) || "",
+      productName: (entry && entry.productName) || "",
+      stage: (entry && entry.stage) || "",
+      date: (entry && entry.date) || "",
+      shift: (entry && entry.shift) || "",
+      by: (actorName || "").trim(),
+      at: Date.now()
+    };
+    state.db.collection("activityLog").add(record).catch(function(err){
+      if(window.console) console.error("Activity log write failed:", err);
+    });
+  }
+
+  var activityCache = [];
+  function renderActivityRows(list){
+    el.activityBody.innerHTML = list.map(function(a){
+      var actionLabel = a.action === "add" ? "Added" : a.action === "edit" ? "Edited" : a.action === "delete" ? "Deleted" : (a.action || "");
+      return "<tr>" +
+        "<td>" + esc(fmtDateTime(a.at)) + "</td>" +
+        "<td>" + esc(actionLabel) + "</td>" +
+        "<td>" + esc(a.jobCardNo || "") + "</td>" +
+        "<td>" + esc(a.productName || "") + "</td>" +
+        "<td>" + esc(a.stage || "") + "</td>" +
+        "<td>" + esc(a.by || "") + "</td>" +
+        "</tr>";
+    }).join("");
+    el.activityEmpty.hidden = list.length !== 0;
+    el.activityCount.textContent = list.length === activityCache.length ?
+      (list.length + (list.length === 1 ? " event" : " events")) :
+      ("Showing " + list.length + " of " + activityCache.length + " events");
+  }
+  function applyActivityFilter(){
+    var q = (el.activitySearchInput.value || "").trim().toLowerCase();
+    var filtered = !q ? activityCache : activityCache.filter(function(a){
+      return (a.jobCardNo||"").toLowerCase().indexOf(q) !== -1 ||
+        (a.productName||"").toLowerCase().indexOf(q) !== -1 ||
+        (a.stage||"").toLowerCase().indexOf(q) !== -1 ||
+        (a.by||"").toLowerCase().indexOf(q) !== -1 ||
+        (a.action||"").toLowerCase().indexOf(q) !== -1;
+    });
+    renderActivityRows(filtered);
+  }
+  el.activitySearchInput.addEventListener("input", applyActivityFilter);
+  function loadActivity(){
+    el.activityError.hidden = true;
+    state.db.collection("activityLog").orderBy("at", "desc").limit(500).get().then(function(snap){
+      activityCache = snap.docs.map(function(d){ return d.data() || {}; });
+      applyActivityFilter();
+    }).catch(function(err){
+      el.activityError.textContent = "Couldn't load activity log: " + (err && err.message ? err.message : "unknown error");
+      el.activityError.hidden = false;
+    });
+  }
+  el.activityLogBtn.addEventListener("click", function(){
+    el.activitySearchInput.value = "";
+    el.activityOverlay.hidden = false;
+    loadActivity();
+  });
+  el.activityCloseBtn.addEventListener("click", function(){ el.activityOverlay.hidden = true; });
+  el.activityOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.activityOverlay) el.activityOverlay.hidden = true;
+  });
+  el.activityExportBtn.addEventListener("click", function(){
+    if(activityCache.length === 0){ return; }
+    var header = ["Time","Action","Job Card No","Product Name","Stage","Date","Shift","By"];
+    var lines = [header.map(csvEscape).join(",")];
+    activityCache.forEach(function(a){
+      var actionLabel = a.action === "add" ? "Added" : a.action === "edit" ? "Edited" : a.action === "delete" ? "Deleted" : (a.action || "");
+      lines.push([
+        fmtDateTime(a.at), actionLabel, a.jobCardNo || "", a.productName || "", a.stage || "", a.date || "", a.shift || "", a.by || ""
+      ].map(csvEscape).join(","));
+    });
+    downloadCsv("visipak-daily-job-track-activity-log.csv", lines.join("\r\n"));
+  });
+
   // ---------- Modal ----------
   function openModal(entry){
     state.editingId = entry ? entry.id : null;
@@ -1270,6 +1534,7 @@
     el.cancelBtn.textContent = readOnly ? "Close" : "Cancel";
 
     el.f_date.value = entry ? entry.date : state.date;
+    syncFDateLabel();
     el.f_shift.value = entry ? entry.shift : state.shift;
     el.f_stage.value = targetStage;
     el.f_stage.disabled = deviceLocked && allowedStages.length <= 1;
@@ -1302,6 +1567,7 @@
     el.modalOverlay.hidden = true;
     state.editingId = null;
     el.entryForm.reset();
+    syncFDateLabel();
   }
   el.addBtn.addEventListener("click", function(){ openModal(null); });
   el.cancelBtn.addEventListener("click", closeModal);
@@ -1309,7 +1575,10 @@
     if(ev.target === el.modalOverlay) closeModal();
   });
   document.addEventListener("keydown", function(ev){
-    if(ev.key === "Escape" && !el.modalOverlay.hidden) closeModal();
+    if(ev.key !== "Escape") return;
+    if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
+    else if(!el.activityOverlay.hidden) el.activityOverlay.hidden = true;
+    else if(!el.modalOverlay.hidden) closeModal();
   });
 
   el.entryForm.addEventListener("submit", function(ev){
@@ -1345,6 +1614,8 @@
     };
     lastUpdatedBy = payload.updatedBy;
 
+    var isNewEntry = !state.editingId;
+    var logEntryId = state.editingId;
     var promise;
     if(state.editingId){
       promise = state.db.doc("entries/" + state.editingId).update(payload);
@@ -1352,8 +1623,10 @@
       payload.createdAt = Date.now();
       promise = state.db.collection("entries").add(payload);
     }
-    promise.then(function(){
+    promise.then(function(res){
+      if(isNewEntry && res && res.id) logEntryId = res.id;
       saveBtn.disabled = false;
+      logActivity(isNewEntry ? "add" : "edit", Object.assign({ id: logEntryId }, payload), payload.updatedBy);
       closeModal();
       if(movedTo){
         showBanner("Job Card " + (payload.jobCardNo || "") + " completed at " + chosenStage + " — moved to " + movedTo + ".");
@@ -1364,15 +1637,52 @@
     });
   });
 
+  var pendingDeleteEntry = null;
   el.deleteBtn.addEventListener("click", function(){
     if(!state.editingId || state.modalReadOnly) return;
-    el.deleteBtn.disabled = true;
-    state.db.doc("entries/" + state.editingId).delete().then(function(){
-      el.deleteBtn.disabled = false;
+    var entry = state.boardEntries.concat(state.logEntries).find(function(e){ return e.id === state.editingId; });
+    pendingDeleteEntry = entry || {
+      id: state.editingId,
+      jobCardNo: el.f_jobcard.value.trim(),
+      productName: el.f_product.value.trim(),
+      stage: el.f_stage.value,
+      date: el.f_date.value,
+      shift: el.f_shift.value.trim()
+    };
+    el.deleteConfirmSummary.textContent = "Job Card " + (pendingDeleteEntry.jobCardNo || "—") +
+      (pendingDeleteEntry.productName ? " (" + pendingDeleteEntry.productName + ")" : "") +
+      " at " + (pendingDeleteEntry.stage || "") + " will be permanently removed. This can't be undone.";
+    el.deleteConfirmName.value = deviceSupervisorName || lastUpdatedBy || "";
+    el.deleteConfirmError.hidden = true;
+    el.deleteConfirmYesBtn.disabled = false;
+    el.deleteConfirmOverlay.hidden = false;
+  });
+  function closeDeleteConfirm(){
+    el.deleteConfirmOverlay.hidden = true;
+    pendingDeleteEntry = null;
+  }
+  el.deleteConfirmCancelBtn.addEventListener("click", closeDeleteConfirm);
+  el.deleteConfirmOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.deleteConfirmOverlay) closeDeleteConfirm();
+  });
+  el.deleteConfirmYesBtn.addEventListener("click", function(){
+    if(!pendingDeleteEntry) return;
+    var actorName = el.deleteConfirmName.value.trim();
+    if(!actorName){
+      el.deleteConfirmError.textContent = "Enter your name to confirm the delete.";
+      el.deleteConfirmError.hidden = false;
+      return;
+    }
+    el.deleteConfirmYesBtn.disabled = true;
+    state.db.doc("entries/" + pendingDeleteEntry.id).delete().then(function(){
+      logActivity("delete", pendingDeleteEntry, actorName);
+      el.deleteConfirmYesBtn.disabled = false;
+      closeDeleteConfirm();
       closeModal();
     }).catch(function(err){
-      el.deleteBtn.disabled = false;
-      showBanner("Delete failed: " + (err && err.message ? err.message : "unknown error"));
+      el.deleteConfirmYesBtn.disabled = false;
+      el.deleteConfirmError.textContent = "Delete failed: " + (err && err.message ? err.message : "unknown error");
+      el.deleteConfirmError.hidden = false;
     });
   });
 
