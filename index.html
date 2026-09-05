@@ -101,8 +101,10 @@
 
   /* ---------- Top bar ---------- */
   .topbar{
-    display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
     padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line);
+  }
+  .topbarTop{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;
   }
   .brand{display:flex;align-items:center;gap:12px;}
   .brand-mark{
@@ -362,11 +364,23 @@
 
 <div class="app">
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">VP</span>
-      <div class="brand-text">
-        <h1>Visipak Daily Job Track</h1>
-        <p>Which product is running in which stage, live</p>
+    <div class="topbarTop">
+      <div class="brand">
+        <span class="brand-mark">VP</span>
+        <div class="brand-text">
+          <h1>Visipak Daily Job Track</h1>
+          <p>Which product is running in which stage, live</p>
+        </div>
+      </div>
+      <div class="profileWrap" id="userTagWrap" hidden>
+        <button type="button" class="profileBtn" id="profileBtn" aria-haspopup="true" aria-expanded="false" title="Account">
+          <span id="profileInitial"></span>
+        </button>
+        <div class="profileMenu" id="profileMenu" hidden>
+          <div class="profileMenuName">Signed in as <strong id="userTagName"></strong></div>
+          <div class="profileMenuStages" id="profileMenuStages"></div>
+          <button type="button" class="profileMenuLogout" id="logOutBtn">Log Out</button>
+        </div>
       </div>
     </div>
     <div class="controls">
@@ -402,16 +416,6 @@
           <option value="Completed">Completed</option>
         </select>
       </label>
-      <div class="profileWrap" id="userTagWrap" hidden>
-        <button type="button" class="profileBtn" id="profileBtn" aria-haspopup="true" aria-expanded="false" title="Account">
-          <span id="profileInitial"></span>
-        </button>
-        <div class="profileMenu" id="profileMenu" hidden>
-          <div class="profileMenuName">Signed in as <strong id="userTagName"></strong></div>
-          <div class="profileMenuStages" id="profileMenuStages"></div>
-          <button type="button" class="profileMenuLogout" id="logOutBtn">Log Out</button>
-        </div>
-      </div>
       <div class="deviceTag" id="deviceTagWrap">
         This device: <strong id="deviceTagLabel">All stages</strong>
         <button type="button" id="changeDeviceBtn">Change</button>
