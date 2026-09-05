@@ -377,6 +377,10 @@
           <option value="Completed">Completed</option>
         </select>
       </label>
+      <div class="deviceTag" id="userTagWrap" hidden>
+        Logged in as <strong id="userTagName"></strong>
+        <button type="button" id="logOutBtn">Log Out</button>
+      </div>
       <div class="deviceTag" id="deviceTagWrap">
         This device: <strong id="deviceTagLabel">All stages</strong>
         <button type="button" id="changeDeviceBtn">Change</button>
@@ -444,11 +448,12 @@
 
 <div class="modalOverlay" id="deviceSetupOverlay" hidden>
   <div class="modal">
-    <h2>Set Up This Device</h2>
+    <h2 id="deviceSetupTitle">Log In to This Device</h2>
     <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
-      Enter your phone number and this device will automatically be set up for your assigned stage(s).
-      It will then only be able to add or edit job cards for those stages — entries from other stages will show
-      read-only. You can change this anytime from the header.
+      Enter your phone number to log in. This device will automatically be set up for your assigned stage(s), and
+      job cards you add or edit will be tagged with your name. It'll only be able to touch those stages — entries
+      from other stages show read-only. Sharing this device with someone else? Log out when you're done so the
+      next person logs in with their own number.
     </p>
     <div id="deviceSetupPhoneMode">
       <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
@@ -739,6 +744,7 @@
     deviceStage: "ALL",    // legacy single-stage field, kept for older saved devices; "ALL" = full access
     deviceStages: "ALL",   // "ALL", or an array of one or more stage names this device is locked to
     isAdminDevice: false,  // true only on the device set up with the admin phone number
+    loggedInViaPhone: false, // true whenever this device was logged in with a phone number (admin or not)
     modalReadOnly: false
   };
 
@@ -768,6 +774,10 @@
     cancelBtn: document.getElementById("cancelBtn"),
     deviceTagLabel: document.getElementById("deviceTagLabel"),
     changeDeviceBtn: document.getElementById("changeDeviceBtn"),
+    userTagWrap: document.getElementById("userTagWrap"),
+    userTagName: document.getElementById("userTagName"),
+    logOutBtn: document.getElementById("logOutBtn"),
+    deviceSetupTitle: document.getElementById("deviceSetupTitle"),
     manageSupervisorsBtn: document.getElementById("manageSupervisorsBtn"),
     deviceSetupOverlay: document.getElementById("deviceSetupOverlay"),
     deviceStageSelect: document.getElementById("deviceStageSelect"),
@@ -916,16 +926,18 @@
     return stages.join(", ");
   }
 
-  function applyDeviceStage(stages, supervisorName, isAdmin){
+  function applyDeviceStage(stages, supervisorName, isAdmin, loggedInViaPhone){
     // `stages` is "ALL" (full access) or an array of one or more stage names.
     state.deviceStages = stages;
     state.deviceStage = stages === "ALL" ? "ALL" : (stages[0] || "ALL"); // legacy field, kept in sync
     deviceSupervisorName = supervisorName || "";
     state.isAdminDevice = !!isAdmin;
+    state.loggedInViaPhone = !!loggedInViaPhone;
     try{
       localStorage.setItem("visipakDeviceStages", JSON.stringify(stages));
       localStorage.setItem("visipakDeviceSupervisor", deviceSupervisorName);
       localStorage.setItem("visipakDeviceIsAdmin", state.isAdminDevice ? "1" : "0");
+      localStorage.setItem("visipakDeviceLoggedInPhone", state.loggedInViaPhone ? "1" : "0");
       localStorage.removeItem("visipakDeviceStage");
     }catch(e){}
     el.deviceTagLabel.textContent = stagesLabel(stages);
@@ -937,6 +949,11 @@
     el.deviceTagWrap.hidden = !state.isAdminDevice && !forceSetupVisible;
     el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
     el.activityLogBtn.hidden = !state.isAdminDevice;
+    // Anyone who logged in with a phone number (admin or regular user, shared device or their
+    // own) sees who's logged in and can log out — independent of the admin-only device tag above.
+    // Manual (no-phone) setups have no personal session, so there's nothing to log out of.
+    el.userTagWrap.hidden = !state.loggedInViaPhone;
+    el.userTagName.textContent = deviceSupervisorName || "User";
 
     // When locked to one or more stages, only those stages are shown anywhere in the app —
     // the Stage filters only offer the permitted stages, so the operator can't switch away.
@@ -964,6 +981,7 @@
     el.deviceSetupManualMode.hidden = mode !== "manual";
     el.deviceSetupToggleLink.textContent = mode === "phone" ? "Set up manually instead" : "Use phone number instead";
     el.deviceSetupToggleLink.dataset.mode = mode === "phone" ? "manual" : "phone";
+    el.deviceSetupSaveBtn.textContent = mode === "phone" ? "Log In" : "Continue";
     el.deviceSetupPhoneError.hidden = true;
   }
   el.deviceSetupToggleLink.addEventListener("click", function(){
@@ -971,6 +989,7 @@
   });
 
   el.changeDeviceBtn.addEventListener("click", function(){
+    el.deviceSetupTitle.textContent = "Change Device Setup";
     el.deviceStageSelect.value = state.deviceStage;
     el.deviceSetupPhoneInput.value = "";
     el.deviceSetupCancelBtn.hidden = false;
@@ -980,13 +999,33 @@
   el.deviceSetupCancelBtn.addEventListener("click", function(){
     el.deviceSetupOverlay.hidden = true;
   });
+  function logOutDevice(){
+    // Ends this device's personal session entirely — clears the stored phone identity, stage
+    // access, and admin flag, and shows the login screen so the next person (on a shared device)
+    // or the same person re-logging in (on their own phone) starts fresh.
+    try{
+      localStorage.removeItem("visipakDeviceStages");
+      localStorage.removeItem("visipakDeviceSupervisor");
+      localStorage.removeItem("visipakDeviceIsAdmin");
+      localStorage.removeItem("visipakDeviceLoggedInPhone");
+      localStorage.removeItem("visipakDeviceStage");
+    }catch(e){}
+    applyDeviceStage("ALL", "", false, false);
+    el.deviceSetupTitle.textContent = "Log In to This Device";
+    el.deviceSetupPhoneInput.value = "";
+    el.deviceSetupCancelBtn.hidden = true;
+    showDeviceSetupMode("phone");
+    el.deviceSetupOverlay.hidden = false;
+  }
+  el.logOutBtn.addEventListener("click", logOutDevice);
   el.deviceSetupSaveBtn.addEventListener("click", function(){
     var manualMode = !el.deviceSetupManualMode.hidden;
     if(manualMode){
       var manualValue = el.deviceStageSelect.value;
-      // Manual setup never grants admin — it's not phone-verified, so it can't unlock
-      // Manage Users / Activity Log even if "All stages" is picked.
-      applyDeviceStage(manualValue === "ALL" ? "ALL" : [manualValue], "", false);
+      // Manual setup never grants admin, and there's no phone identity to log out of — it's not
+      // phone-verified, so it can't unlock Manage Users / Activity Log even if "All stages" is
+      // picked, and no "Logged in as..." tag appears for it.
+      applyDeviceStage(manualValue === "ALL" ? "ALL" : [manualValue], "", false, false);
       el.deviceSetupOverlay.hidden = true;
       return;
     }
@@ -999,7 +1038,7 @@
     if(phone === ADMIN_PHONE){
       // The admin number is hard-coded — it always gets full access and admin UI, with no
       // dependency on a "supervisors" record that could be edited or removed.
-      applyDeviceStage("ALL", "Admin", true);
+      applyDeviceStage("ALL", "Admin", true, true);
       el.deviceSetupOverlay.hidden = true;
       return;
     }
@@ -1014,7 +1053,7 @@
           el.deviceSetupPhoneError.hidden = false;
           return;
         }
-        applyDeviceStage(stages, data.name || "", false);
+        applyDeviceStage(stages, data.name || "", false, true);
         el.deviceSetupOverlay.hidden = true;
       } else {
         el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Users\", or set up this device manually.";
@@ -1027,23 +1066,28 @@
     });
   });
   (function initDeviceStage(){
-    var storedStages = null, storedLegacy = null, storedName = "", storedIsAdmin = false;
+    var storedStages = null, storedLegacy = null, storedName = "", storedIsAdmin = false, storedLoggedInRaw = null;
     try{
       storedStages = localStorage.getItem("visipakDeviceStages");
       storedLegacy = localStorage.getItem("visipakDeviceStage");
       storedName = localStorage.getItem("visipakDeviceSupervisor") || "";
       storedIsAdmin = localStorage.getItem("visipakDeviceIsAdmin") === "1";
+      storedLoggedInRaw = localStorage.getItem("visipakDeviceLoggedInPhone");
     }catch(e){}
+    // Devices saved before the login/logout feature existed don't have visipakDeviceLoggedInPhone
+    // at all — infer it from what we do have: only a phone-based setup could produce an admin
+    // flag or a stored name (manual setup always leaves the name blank).
+    var storedLoggedIn = storedLoggedInRaw !== null ? storedLoggedInRaw === "1" : (storedIsAdmin || !!storedName);
     if(storedStages){
       var parsed = null;
       try{ parsed = JSON.parse(storedStages); }catch(e){}
-      applyDeviceStage(parsed || "ALL", storedName, storedIsAdmin);
+      applyDeviceStage(parsed || "ALL", storedName, storedIsAdmin, storedLoggedIn);
     } else if(storedLegacy){
       // Pre-existing device from before admin-phone gating — never treated as admin until
       // it's explicitly reconfigured with the admin phone number.
-      applyDeviceStage(storedLegacy === "ALL" ? "ALL" : [storedLegacy], storedName, false);
+      applyDeviceStage(storedLegacy === "ALL" ? "ALL" : [storedLegacy], storedName, false, storedLoggedIn);
     } else {
-      applyDeviceStage("ALL", "", false);
+      applyDeviceStage("ALL", "", false, false);
       showDeviceSetupMode("phone");
       el.deviceSetupOverlay.hidden = false;
     }
