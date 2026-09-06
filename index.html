@@ -161,7 +161,7 @@
   }
   .profileBtn:hover{filter:brightness(1.08);}
   .profileMenu{
-    position:absolute;top:calc(100% + 8px);right:0;min-width:200px;z-index:30;
+    position:absolute;top:calc(100% + 8px);right:0;min-width:220px;z-index:30;
     background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;
     box-shadow:var(--shadow);padding:12px;
   }
@@ -169,8 +169,16 @@
   .profileMenuName strong{font-weight:600;}
   .profileMenuRole{font-size:11.5px;color:var(--ink-soft);margin-top:2px;white-space:nowrap;}
   .profileMenuStages{
-    font-size:11.5px;color:var(--ink-faint);margin:4px 0 10px;padding-bottom:10px;
-    border-bottom:1px solid var(--line);white-space:nowrap;
+    font-size:11.5px;color:var(--ink-faint);margin:4px 0 0;white-space:nowrap;
+  }
+  .profileMenuLangRow{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    margin:10px 0 8px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .profileMenuLangLabel{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+  .profileMenuLangRow select{
+    border:1px solid var(--line-strong);border-radius:7px;padding:5px 8px;background:var(--surface);
+    color:var(--ink);font-size:12.5px;
   }
   .profileMenuLogout{
     display:block;width:100%;text-align:left;border:none;background:transparent;
@@ -376,14 +384,22 @@
           <p>Which product is running in which stage, live</p>
         </div>
       </div>
-      <div class="profileWrap" id="userTagWrap" hidden>
+      <div class="profileWrap" id="userTagWrap">
         <button type="button" class="profileBtn" id="profileBtn" aria-haspopup="true" aria-expanded="false" title="Account">
           <span id="profileInitial"></span>
         </button>
         <div class="profileMenu" id="profileMenu" hidden>
-          <div class="profileMenuName"><span data-i18n="profile_signed_in_as">Signed in as</span> <strong id="userTagName"></strong></div>
+          <div class="profileMenuName" id="profileMenuNameRow"><span data-i18n="profile_signed_in_as">Signed in as</span> <strong id="userTagName"></strong></div>
           <div class="profileMenuRole" id="profileMenuRole" hidden></div>
           <div class="profileMenuStages" id="profileMenuStages"></div>
+          <div class="profileMenuLangRow">
+            <span class="profileMenuLangLabel" data-i18n="filter_language">Language</span>
+            <select id="langSelect">
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="te">తెలుగు</option>
+            </select>
+          </div>
           <button type="button" class="profileMenuLogout" id="logOutBtn" data-i18n="profile_log_out">Log Out</button>
         </div>
       </div>
@@ -419,13 +435,6 @@
           <option value="Not Started" data-i18n="status_not_started">Not Started</option>
           <option value="In Progress" data-i18n="status_in_progress">In Progress</option>
           <option value="Completed" data-i18n="status_completed">Completed</option>
-        </select>
-      </label>
-      <label class="field"><span data-i18n="filter_language">Language</span>
-        <select id="langSelect">
-          <option value="en">English</option>
-          <option value="hi">हिन्दी</option>
-          <option value="te">తెలుగు</option>
         </select>
       </label>
       <div class="deviceTag" id="deviceTagWrap">
@@ -707,6 +716,7 @@
   // Any other device — even one manually set to "All stages" for full add/edit access — never
   // gets these, regardless of what's stored for it in the "supervisors" collection.
   var ADMIN_PHONE = "9703426919";
+  var ADMIN_NAME = "Manu";
 
   // ---------- Translations ----------
   // Simple key -> string lookup, three languages. Dynamic sentences (banner messages, counts,
@@ -1092,6 +1102,7 @@
     profileBtn: document.getElementById("profileBtn"),
     profileInitial: document.getElementById("profileInitial"),
     profileMenu: document.getElementById("profileMenu"),
+    profileMenuNameRow: document.getElementById("profileMenuNameRow"),
     profileMenuRole: document.getElementById("profileMenuRole"),
     profileMenuStages: document.getElementById("profileMenuStages"),
     userTagName: document.getElementById("userTagName"),
@@ -1277,15 +1288,17 @@
     el.deviceTagWrap.hidden = !state.isAdminDevice && !forceSetupVisible;
     el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
     el.activityLogBtn.hidden = !state.isAdminDevice;
-    // Anyone who logged in with a phone number (admin or regular user, shared device or their
-    // own) gets a small profile icon with their initial — click it for a "Signed in as / Log
-    // Out" menu — independent of the admin-only device tag above. Manual (no-phone) setups have
-    // no personal session, so there's nothing to log out of and no icon appears.
-    el.userTagWrap.hidden = !state.loggedInViaPhone;
+    // The profile icon is always available (it's also where Language lives now), independent of
+    // the admin-only device tag above. Anyone who logged in with a phone number (admin or regular
+    // user, shared device or their own) additionally gets their name, role, and a Log Out option
+    // in the dropdown; manual (no-phone) setups have no personal session, so those rows are
+    // hidden and the icon shows a generic gear instead of an initial.
     var displayName = deviceSupervisorName || "User";
     el.userTagName.textContent = displayName;
-    el.profileInitial.textContent = displayName.trim().charAt(0).toUpperCase() || "U";
-    if(deviceSupervisorRole){
+    el.profileInitial.textContent = state.loggedInViaPhone ? (displayName.trim().charAt(0).toUpperCase() || "U") : "⚙";
+    el.profileMenuNameRow.hidden = !state.loggedInViaPhone;
+    el.logOutBtn.hidden = !state.loggedInViaPhone;
+    if(deviceSupervisorRole && state.loggedInViaPhone){
       el.profileMenuRole.textContent = deviceSupervisorRole;
       el.profileMenuRole.hidden = false;
     } else {
@@ -1396,7 +1409,7 @@
     if(phone === ADMIN_PHONE){
       // The admin number is hard-coded — it always gets full access and admin UI, with no
       // dependency on a "supervisors" record that could be edited or removed.
-      applyDeviceStage("ALL", "Admin", true, true, "Admin");
+      applyDeviceStage("ALL", ADMIN_NAME, true, true, "Admin");
       el.deviceSetupOverlay.hidden = true;
       return;
     }
