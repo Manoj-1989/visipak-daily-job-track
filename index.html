@@ -346,7 +346,7 @@
   /* QC's Client Specs vs Visipak Specs comparison table — spans the full form width. */
   .qcSpecsBlock{grid-column:1 / -1;}
   .qcSpecsHead{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
-  .qcSpecsTable{width:100%;border-collapse:collapse;}
+  .qcSpecsTable{width:100%;min-width:0;border-collapse:collapse;}
   .qcSpecsTable th, .qcSpecsTable td{padding:5px 6px;text-align:left;}
   .qcSpecsTable thead th{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;font-weight:600;border-bottom:1px solid var(--line);}
   .qcSpecsTable tbody td:first-child{font-size:13px;color:var(--ink);white-space:nowrap;}
@@ -354,6 +354,32 @@
     width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);
     font-size:13px;box-sizing:border-box;
   }
+  /* HR Man Power's daily headcount table — one row per stage plus a few fixed staffing
+     categories, an auto-summed "Total Man power" line, and a manually-entered "As per HR_MP"
+     line (HR's own report) so a mismatch between the two is easy to spot. */
+  .hrManpowerBlock{grid-column:1 / -1;}
+  .hrManpowerWrap{max-height:280px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
+  .hrManpowerTable{width:100%;min-width:0;border-collapse:collapse;}
+  .hrManpowerTable th, .hrManpowerTable td{padding:5px 6px;text-align:left;font-size:12px;}
+  .hrManpowerTable thead th{
+    font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;font-weight:600;
+    border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);
+  }
+  .hrManpowerTable th:not(:first-child), .hrManpowerTable td:not(:first-child){text-align:center;}
+  .hrManpowerTable tbody td:first-child{color:var(--ink);white-space:nowrap;}
+  .hrManpowerTable tbody tr{border-bottom:1px solid var(--line);}
+  .hrManpowerTable input{
+    width:100%;border:1px solid var(--line-strong);border-radius:6px;padding:4px 6px;background:var(--surface);color:var(--ink);
+    font-size:12px;box-sizing:border-box;text-align:center;
+  }
+  .hrManpowerTable tfoot td{font-weight:600;background:var(--surface-2);}
+  .hrManpowerTable .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+  .hrManpowerGrandRow td{border-top:1px solid var(--line-strong);}
+  .hrManpowerAsPerRow td:first-child{background:var(--surface-2);}
+  .hrManpowerMatch{margin-top:8px;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;text-align:center;}
+  .hrManpowerMatch:empty{display:none;padding:0;margin-top:0;}
+  .hrManpowerMatchOk{background:var(--good-soft);color:var(--good);}
+  .hrManpowerMatchBad{background:var(--crit-soft);color:var(--crit);}
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
   .modal.wide{max-width:720px;}
@@ -668,8 +694,8 @@
       <label class="span2"><span data-i18n="filter_stage">Stage</span>
         <select id="f_stage" required></select>
       </label>
-      <label><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
-      <label><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
+      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
+      <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
       <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
       <label id="fld_type"><span data-i18n="form_type_label">Type</span>
@@ -748,6 +774,45 @@
           </tbody>
         </table>
       </div>
+      <div class="span2 hrManpowerBlock" id="fld_hrmanpower">
+        <div class="qcSpecsHead" data-i18n="hrmp_heading">Daily Manpower Count</div>
+        <div class="hrManpowerWrap">
+          <table class="hrManpowerTable">
+            <thead>
+              <tr>
+                <th data-i18n="hrmp_th_dev">Dev</th>
+                <th data-i18n="hrmp_th_operator">Operator</th>
+                <th data-i18n="hrmp_th_mh">MH</th>
+                <th data-i18n="hrmp_th_fh">FH</th>
+              </tr>
+            </thead>
+            <tbody id="hrManpowerBody"></tbody>
+            <tfoot>
+              <tr class="hrManpowerTotalRow">
+                <td data-i18n="hrmp_total_label">Total Man power</td>
+                <td class="num"><span id="hrmpTotalOperator">0</span></td>
+                <td class="num"><span id="hrmpTotalMh">0</span></td>
+                <td class="num"><span id="hrmpTotalFh">0</span></td>
+              </tr>
+              <tr class="hrManpowerTotalRow hrManpowerGrandRow">
+                <td data-i18n="hrmp_grand_label">Grand Total</td>
+                <td class="num" colspan="3"><span id="hrmpTotalGrand">0</span></td>
+              </tr>
+              <tr class="hrManpowerAsPerRow">
+                <td data-i18n="hrmp_asper_label">As per HR_MP</td>
+                <td><input type="number" id="f_hrmp_asper_operator" min="0" step="1"></td>
+                <td><input type="number" id="f_hrmp_asper_mh" min="0" step="1"></td>
+                <td><input type="number" id="f_hrmp_asper_fh" min="0" step="1"></td>
+              </tr>
+              <tr class="hrManpowerAsPerRow hrManpowerGrandRow">
+                <td data-i18n="hrmp_grand_label">Grand Total</td>
+                <td class="num" colspan="3"><span id="hrmpAsperGrand">—</span></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="hrManpowerMatch" id="hrManpowerMatch"></div>
+      </div>
     </div>
     <div class="modalActions">
       <button type="button" class="btn danger" id="deleteBtn" hidden data-i18n="generic_delete">Delete</button>
@@ -800,7 +865,7 @@
     "Ready to Dispatch",
     "Dispatch",
     "House keeping",
-    "HR_MP"
+    "HR_Man Power"
   ];
   var SLOTS = 10;
   // The one phone number that unlocks admin-only UI (Manage Users, Activity Log, the device tag).
@@ -890,6 +955,12 @@
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
+      hrmp_heading: "Daily Manpower Count", hrmp_th_dev: "Dev",
+      hrmp_th_operator: "Operator", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
+      hrmp_total_label: "Total Man power", hrmp_grand_label: "Grand Total",
+      hrmp_asper_label: "As per HR_MP",
+      hrmp_match_ok: "✓ Matches As per HR_MP", hrmp_match_bad: "✗ Does not match As per HR_MP",
+      hrmp_report_title: "Daily Manpower Report",
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
@@ -985,6 +1056,12 @@
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
+      hrmp_heading: "दैनिक मैनपावर गिनती", hrmp_th_dev: "स्टेज",
+      hrmp_th_operator: "ऑपरेटर", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
+      hrmp_total_label: "कुल मैनपावर", hrmp_grand_label: "ग्रैंड टोटल",
+      hrmp_asper_label: "As per HR_MP",
+      hrmp_match_ok: "✓ As per HR_MP से मेल खाता है", hrmp_match_bad: "✗ As per HR_MP से मेल नहीं खाता",
+      hrmp_report_title: "दैनिक मैनपावर रिपोर्ट",
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
@@ -1080,6 +1157,12 @@
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
+      hrmp_heading: "రోజువారీ మ్యాన్‌పవర్ లెక్క", hrmp_th_dev: "స్టేజ్",
+      hrmp_th_operator: "ఆపరేటర్", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
+      hrmp_total_label: "మొత్తం మ్యాన్‌పవర్", hrmp_grand_label: "గ్రాండ్ టోటల్",
+      hrmp_asper_label: "As per HR_MP",
+      hrmp_match_ok: "✓ As per HR_MP తో సరిపోలుతుంది", hrmp_match_bad: "✗ As per HR_MP తో సరిపోలలేదు",
+      hrmp_report_title: "రోజువారీ మ్యాన్‌పవర్ రిపోర్ట్",
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
@@ -1356,6 +1439,19 @@
     f_qc_weight_visipak: document.getElementById("f_qc_weight_visipak"),
     f_qc_bct_client: document.getElementById("f_qc_bct_client"),
     f_qc_bct_visipak: document.getElementById("f_qc_bct_visipak"),
+    fld_product: document.getElementById("fld_product"),
+    fld_jobcard: document.getElementById("fld_jobcard"),
+    fld_hrmanpower: document.getElementById("fld_hrmanpower"),
+    hrManpowerBody: document.getElementById("hrManpowerBody"),
+    hrmpTotalOperator: document.getElementById("hrmpTotalOperator"),
+    hrmpTotalMh: document.getElementById("hrmpTotalMh"),
+    hrmpTotalFh: document.getElementById("hrmpTotalFh"),
+    hrmpTotalGrand: document.getElementById("hrmpTotalGrand"),
+    f_hrmp_asper_operator: document.getElementById("f_hrmp_asper_operator"),
+    f_hrmp_asper_mh: document.getElementById("f_hrmp_asper_mh"),
+    f_hrmp_asper_fh: document.getElementById("f_hrmp_asper_fh"),
+    hrmpAsperGrand: document.getElementById("hrmpAsperGrand"),
+    hrManpowerMatch: document.getElementById("hrManpowerMatch"),
     statManpower: document.getElementById("statManpower"),
     statCompleted: document.getElementById("statCompleted"),
     statInProgress: document.getElementById("statInProgress"),
@@ -1434,7 +1530,8 @@
     el.f_qc_bustingstrength_client, el.f_qc_bustingstrength_visipak,
     el.f_qc_moisture_client, el.f_qc_moisture_visipak,
     el.f_qc_weight_client, el.f_qc_weight_visipak,
-    el.f_qc_bct_client, el.f_qc_bct_visipak
+    el.f_qc_bct_client, el.f_qc_bct_visipak,
+    el.f_hrmp_asper_operator, el.f_hrmp_asper_mh, el.f_hrmp_asper_fh
   ];
 
   // ---------- Stage-specific entry form fields ----------
@@ -1450,23 +1547,126 @@
   function isReadyToDispatchStage(stage){ return stage === "Ready to Dispatch"; }
   function isFGStage(stage){ return stage === "Finished Goods (FG)"; }
   function isQCStage(stage){ return stage === "QC"; }
+  function isHRManpowerStage(stage){ return stage === "HR_Man Power"; }
   // PLY (board thickness: 3/5/7 Ply) applies to production stages, but not to the stages at the
   // tail end of the flow that aren't really "making" anything — dispatch handling, QC/FG's own
   // specialized fields, and the two manpower/housekeeping bookkeeping stages.
-  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Finished Goods (FG)", "QC", "HR_MP", "House keeping"];
+  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Finished Goods (FG)", "QC", "HR_Man Power", "House keeping"];
   function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // Artwork No only applies to the printing/die-cut stages where a job is tied to a specific
   // artwork/plate — it's meaningless once the job has moved past those into gluing, punching, etc.
   var ARTWORKNO_STAGES = ["RD-1CP", "RS-2CP", "RS+RD-4CP"];
   function stageHasArtworkNo(stage){ return ARTWORKNO_STAGES.indexOf(stage) !== -1; }
+
+  // ---------- HR Man Power's daily headcount table ----------
+  // HR files one entry per day listing Operator/MH (Man Helper)/FH (Female Helper) counts against
+  // every process stage plus three fixed staffing rows that aren't real production stages
+  // (Production Sup, Maint Sup, Dispatch/Sec). The table auto-sums into "Total Man power"; HR also
+  // types in "As per HR_MP" (their own separate headcount report) so the two can be checked
+  // against each other right there in the form.
+  var HR_MANPOWER_EXTRA_ROWS = ["Production Sup", "Maint Sup", "Dispatch/Sec"];
+  var HR_MANPOWER_DEV_ROWS = STAGES.filter(function(s){ return !isHRManpowerStage(s); }).concat(HR_MANPOWER_EXTRA_ROWS);
+
+  function buildHRManpowerTable(){
+    el.hrManpowerBody.innerHTML = HR_MANPOWER_DEV_ROWS.map(function(dev, i){
+      return '<tr data-dev="' + esc(dev) + '">' +
+        '<td>' + esc(dev) + '</td>' +
+        '<td><input type="number" class="hrmpOperatorInput" min="0" step="1" id="f_hrmp_operator_' + i + '"></td>' +
+        '<td><input type="number" class="hrmpMhInput" min="0" step="1" id="f_hrmp_mh_' + i + '"></td>' +
+        '<td><input type="number" class="hrmpFhInput" min="0" step="1" id="f_hrmp_fh_' + i + '"></td>' +
+        '</tr>';
+    }).join("");
+    // The row inputs are built dynamically (there's one per current stage), so fold them into
+    // ALL_FORM_FIELDS after the fact rather than listing them by id up front — that keeps the
+    // read-only toggle (openModal) covering them too.
+    Array.prototype.push.apply(ALL_FORM_FIELDS, Array.prototype.slice.call(el.hrManpowerBody.querySelectorAll("input")));
+  }
+  buildHRManpowerTable();
+
+  function numOrZero(v){ return v === "" || v == null ? 0 : Number(v); }
+  function numOrNull(v){ return v === "" || v == null ? null : Number(v); }
+
+  // Reads the live form inputs and returns the row data, the auto-summed total, the manually
+  // entered "As per HR_MP" figures, and whether the two sides match. Used both to refresh the
+  // on-screen totals as HR types, and to build the saved payload at submit time.
+  function computeHRManpowerData(){
+    var rows = [];
+    var totalOperator = 0, totalMh = 0, totalFh = 0;
+    Array.prototype.forEach.call(el.hrManpowerBody.querySelectorAll("tr"), function(tr){
+      var opEl = tr.querySelector(".hrmpOperatorInput");
+      var mhEl = tr.querySelector(".hrmpMhInput");
+      var fhEl = tr.querySelector(".hrmpFhInput");
+      var op = numOrZero(opEl.value), mh = numOrZero(mhEl.value), fh = numOrZero(fhEl.value);
+      rows.push({ dev: tr.getAttribute("data-dev"), operator: numOrNull(opEl.value), mh: numOrNull(mhEl.value), fh: numOrNull(fhEl.value) });
+      totalOperator += op; totalMh += mh; totalFh += fh;
+    });
+    var asOp = numOrNull(el.f_hrmp_asper_operator.value);
+    var asMh = numOrNull(el.f_hrmp_asper_mh.value);
+    var asFh = numOrNull(el.f_hrmp_asper_fh.value);
+    var hasAsPer = asOp !== null || asMh !== null || asFh !== null;
+    var asGrand = numOrZero(asOp) + numOrZero(asMh) + numOrZero(asFh);
+    var matches = hasAsPer && numOrZero(asOp) === totalOperator && numOrZero(asMh) === totalMh && numOrZero(asFh) === totalFh;
+    return {
+      rows: rows,
+      total: { operator: totalOperator, mh: totalMh, fh: totalFh, grand: totalOperator + totalMh + totalFh },
+      asPer: { operator: asOp, mh: asMh, fh: asFh, grand: hasAsPer ? asGrand : null },
+      hasAsPer: hasAsPer,
+      matches: matches
+    };
+  }
+
+  function recalcHRManpowerTotals(){
+    var data = computeHRManpowerData();
+    el.hrmpTotalOperator.textContent = data.total.operator;
+    el.hrmpTotalMh.textContent = data.total.mh;
+    el.hrmpTotalFh.textContent = data.total.fh;
+    el.hrmpTotalGrand.textContent = data.total.grand;
+    el.hrmpAsperGrand.textContent = data.hasAsPer ? data.asPer.grand : "—";
+    if(!data.hasAsPer){
+      el.hrManpowerMatch.textContent = "";
+      el.hrManpowerMatch.className = "hrManpowerMatch";
+    } else if(data.matches){
+      el.hrManpowerMatch.textContent = t("hrmp_match_ok");
+      el.hrManpowerMatch.className = "hrManpowerMatch hrManpowerMatchOk";
+    } else {
+      el.hrManpowerMatch.textContent = t("hrmp_match_bad");
+      el.hrManpowerMatch.className = "hrManpowerMatch hrManpowerMatchBad";
+    }
+  }
+  el.hrManpowerBody.addEventListener("input", recalcHRManpowerTotals);
+  el.f_hrmp_asper_operator.addEventListener("input", recalcHRManpowerTotals);
+  el.f_hrmp_asper_mh.addEventListener("input", recalcHRManpowerTotals);
+  el.f_hrmp_asper_fh.addEventListener("input", recalcHRManpowerTotals);
+
+  // Blanks every table/As-per-HR_MP input (used for a fresh Add Entry), or fills them from a
+  // saved entry's hrManpowerRows/hrManpowerAsPer (used when reopening one), then refreshes totals.
+  function populateHRManpowerTable(entry){
+    var savedRows = (entry && entry.hrManpowerRows) || [];
+    var byDev = {};
+    savedRows.forEach(function(r){ byDev[r.dev] = r; });
+    Array.prototype.forEach.call(el.hrManpowerBody.querySelectorAll("tr"), function(tr){
+      var dev = tr.getAttribute("data-dev");
+      var saved = byDev[dev];
+      tr.querySelector(".hrmpOperatorInput").value = saved && saved.operator != null ? saved.operator : "";
+      tr.querySelector(".hrmpMhInput").value = saved && saved.mh != null ? saved.mh : "";
+      tr.querySelector(".hrmpFhInput").value = saved && saved.fh != null ? saved.fh : "";
+    });
+    var asPer = (entry && entry.hrManpowerAsPer) || {};
+    el.f_hrmp_asper_operator.value = asPer.operator != null ? asPer.operator : "";
+    el.f_hrmp_asper_mh.value = asPer.mh != null ? asPer.mh : "";
+    el.f_hrmp_asper_fh.value = asPer.fh != null ? asPer.fh : "";
+    recalcHRManpowerTotals();
+  }
+
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
     var readyToDispatch = isReadyToDispatchStage(stage);
     var fg = isFGStage(stage);
     var qc = isQCStage(stage);
-    // These four stages all swap out the standard shift/timing/workflow fields for their own
+    var hr = isHRManpowerStage(stage);
+    // These five stages all swap out the standard shift/timing/workflow fields for their own
     // specialized field set, and are always treated as a finished, terminal entry on save.
-    var special = dispatch || readyToDispatch || fg || qc;
+    var special = dispatch || readyToDispatch || fg || qc || hr;
 
     el.fld_shift.hidden = special;
     // A hidden field can still block native form submission if left "required" (an invisible
@@ -1497,10 +1697,18 @@
     el.fld_qtyinstock.hidden = !fg;
     el.fld_totalbundle.hidden = !fg;
     el.fld_availablestock.hidden = !fg;
-    // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field.
-    el.fld_qty.hidden = fg;
+    // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field; HR Man Power
+    // has no single quantity at all (its table is the whole entry).
+    el.fld_qty.hidden = fg || hr;
     // QC's Client Specs vs Visipak Specs comparison table.
     el.fld_qcspecs.hidden = !qc;
+    // HR Man Power has no product/job-card of its own — it's a whole-factory daily headcount,
+    // not tied to a job — so it swaps those out for the manpower table instead.
+    el.fld_product.hidden = hr;
+    el.fld_jobcard.hidden = hr;
+    el.f_jobcard.required = !hr;
+    el.fld_hrmanpower.hidden = !hr;
+    el.entryForm.classList.toggle("wide", hr);
 
     el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
     el.fld_ply.hidden = !stageHasPly(stage);
@@ -2010,6 +2218,7 @@
     var isReadyToDispatch = e.stage === "Ready to Dispatch";
     var isFG = e.stage === "Finished Goods (FG)";
     var isQC = e.stage === "QC";
+    var isHR = e.stage === "HR_Man Power";
     // These stages don't carry start/end time, run time, or manpower — show the fields that
     // actually apply to each of them instead.
     var statsHtml;
@@ -2043,6 +2252,15 @@
           '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
           '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
         '</div>';
+    } else if(isHR){
+      var hrTotal = e.hrManpowerTotal || {};
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("hrmp_th_operator")) + ' ' + esc(hrTotal.operator != null ? hrTotal.operator : "—") + '</span>' +
+          '<span>' + esc(t("hrmp_th_mh")) + ' ' + esc(hrTotal.mh != null ? hrTotal.mh : "—") + '</span>' +
+          '<span>' + esc(t("hrmp_th_fh")) + ' ' + esc(hrTotal.fh != null ? hrTotal.fh : "—") + '</span>' +
+          '<span>' + esc(t("hrmp_grand_label")) + ' ' + esc(hrTotal.grand != null ? hrTotal.grand : "—") + '</span>' +
+        '</div>';
     } else {
       statsHtml =
         '<div class="cardStats">' +
@@ -2055,8 +2273,10 @@
     }
     var dispatchNote = [e.clientName, e.driver].filter(Boolean).join(" · ");
     var fgNote = e.clientName || "";
+    var hrNote = e.hrManpowerMatch === true ? t("hrmp_match_ok") : e.hrManpowerMatch === false ? t("hrmp_match_bad") : "";
     var noteHtml = isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "")
       : isFG ? (fgNote ? '<div class="cardRemarks">' + esc(fgNote) + '</div>' : "")
+      : isHR ? (hrNote ? '<div class="cardRemarks">' + esc(hrNote) + '</div>' : "")
       : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "");
     // PLY (board thickness) sits right next to the product name — it's a property of what's
     // being made, not a run stat, so it belongs beside the product rather than in the stats row.
@@ -2067,7 +2287,7 @@
         '<span class="shiftTag">' + esc(e.shift || "") + '</span>' +
       '</div>' +
       '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span></div>' +
-      '<div class="productName">' + esc(e.productName || "(no product name)") + plyHtml + '</div>' +
+      '<div class="productName">' + esc(isHR ? t("hrmp_report_title") : (e.productName || "(no product name)")) + plyHtml + '</div>' +
       statsHtml +
       noteHtml +
       '<div class="cardMeta">' +
@@ -2103,11 +2323,12 @@
 
     rows.forEach(function(e){
       var tr = document.createElement("tr");
+      var displayName = e.productName || (isHRManpowerStage(e.stage) ? t("hrmp_report_title") : "");
       tr.innerHTML =
         "<td>" + esc(fmtDateForDisplay(e.date)) + "</td>" +
         "<td>" + esc(e.shift) + "</td>" +
         "<td>" + esc(e.stage) + "</td>" +
-        "<td>" + esc(e.productName) + "</td>" +
+        "<td>" + esc(displayName) + "</td>" +
         '<td class="mono">' + esc(e.jobCardNo) + "</td>" +
         '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(t_status(statusLabel(e.status))) + '</span></td>' +
         '<td class="num">' + esc(e.quantity != null ? e.quantity : "") + "</td>" +
@@ -2204,11 +2425,12 @@
   function renderActivityRows(list){
     el.activityBody.innerHTML = list.map(function(a){
       var plyHtml = (stageHasPly(a.stage) && a.ply) ? ' <span class="plyTag">' + esc(a.ply) + '</span>' : "";
+      var displayName = a.productName || (isHRManpowerStage(a.stage) ? t("hrmp_report_title") : "");
       return "<tr>" +
         "<td>" + esc(fmtDateTime(a.at)) + "</td>" +
         "<td>" + esc(actionLabel(a.action)) + "</td>" +
         "<td>" + esc(a.jobCardNo || "") + "</td>" +
-        "<td>" + esc(a.productName || "") + plyHtml + "</td>" +
+        "<td>" + esc(displayName) + plyHtml + "</td>" +
         "<td>" + esc(a.stage || "") + "</td>" +
         "<td>" + esc(a.by || "") + "</td>" +
         "</tr>";
@@ -2314,6 +2536,7 @@
     el.f_qc_weight_visipak.value = entry ? (entry.qcWeightVisipak || "") : "";
     el.f_qc_bct_client.value = entry ? (entry.qcBctClient || "") : "";
     el.f_qc_bct_visipak.value = entry ? (entry.qcBctVisipak || "") : "";
+    populateHRManpowerTable(entry);
     updateFormFieldsForStage(targetStage);
 
     ALL_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
@@ -2359,9 +2582,10 @@
     var isReadyToDispatch = isReadyToDispatchStage(chosenStage);
     var isFG = isFGStage(chosenStage);
     var isQC = isQCStage(chosenStage);
-    // These four stages have no Status/Next Stage fields of their own — a saved entry there is
+    var isHR = isHRManpowerStage(chosenStage);
+    // These five stages have no Status/Next Stage fields of their own — a saved entry there is
     // always treated as a finished, terminal record rather than something that advances further.
-    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC;
+    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC || isHR;
     var chosenStatus = isSpecial ? "Completed" : el.f_status.value;
     var chosenNextStage = isSpecial ? "" : el.f_nextstage.value;
     var movedTo = null;
@@ -2372,15 +2596,16 @@
     var hasQtyPerBundle = isDispatch || isReadyToDispatch || isFG;
     var hasNoOfBundles = isDispatch || isReadyToDispatch;
     var hasType = isReadyToDispatch || isFG || isQC;
+    var hrManpowerData = isHR ? computeHRManpowerData() : null;
 
     var payload = {
       date: el.f_date.value,
       shift: isSpecial ? "" : el.f_shift.value.trim(),
       stage: movedTo || chosenStage,
-      productName: el.f_product.value.trim(),
-      jobCardNo: el.f_jobcard.value.trim(),
+      productName: isHR ? "" : el.f_product.value.trim(),
+      jobCardNo: isHR ? "" : el.f_jobcard.value.trim(),
       artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
-      quantity: isFG ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
+      quantity: (isFG || isHR) ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       type: hasType ? el.f_type.value : "",
       startTime: isSpecial ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
@@ -2410,6 +2635,10 @@
       qcWeightVisipak: isQC ? el.f_qc_weight_visipak.value.trim() : "",
       qcBctClient: isQC ? el.f_qc_bct_client.value.trim() : "",
       qcBctVisipak: isQC ? el.f_qc_bct_visipak.value.trim() : "",
+      hrManpowerRows: isHR ? hrManpowerData.rows : null,
+      hrManpowerTotal: isHR ? hrManpowerData.total : null,
+      hrManpowerAsPer: isHR ? { operator: hrManpowerData.asPer.operator, mh: hrManpowerData.asPer.mh, fh: hrManpowerData.asPer.fh, grand: hrManpowerData.asPer.grand } : null,
+      hrManpowerMatch: isHR ? (hrManpowerData.hasAsPer ? hrManpowerData.matches : null) : null,
       updatedAt: Date.now()
     };
     lastUpdatedBy = payload.updatedBy;
