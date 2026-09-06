@@ -649,6 +649,7 @@
       </label>
       <label><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
       <label><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
+      <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
       <label><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
       <label id="fld_ply"><span data-i18n="form_ply_label">PLY</span>
         <select id="f_ply">
@@ -812,6 +813,7 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
+      form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
@@ -897,6 +899,7 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
+      form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
@@ -982,6 +985,7 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
+      form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
@@ -1204,6 +1208,8 @@
     f_stage: document.getElementById("f_stage"),
     f_product: document.getElementById("f_product"),
     f_jobcard: document.getElementById("f_jobcard"),
+    f_artworkno: document.getElementById("f_artworkno"),
+    fld_artworkno: document.getElementById("fld_artworkno"),
     f_qty: document.getElementById("f_qty"),
     f_ply: document.getElementById("f_ply"),
     fld_ply: document.getElementById("fld_ply"),
@@ -1304,7 +1310,7 @@
   }
 
   var ALL_FORM_FIELDS = [
-    el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_qty, el.f_ply,
+    el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
@@ -1325,6 +1331,10 @@
   // manpower/housekeeping bookkeeping stages.
   var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "HR_MP", "House keeping"];
   function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
+  // Artwork No only applies to the printing/die-cut stages where a job is tied to a specific
+  // artwork/plate — it's meaningless once the job has moved past those into gluing, punching, etc.
+  var ARTWORKNO_STAGES = ["RD-1CP", "RS-2CP", "RS+RD-4CP"];
+  function stageHasArtworkNo(stage){ return ARTWORKNO_STAGES.indexOf(stage) !== -1; }
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
     el.fld_shift.hidden = dispatch;
@@ -1346,6 +1356,7 @@
     el.fld_noofbundles.hidden = !dispatch;
     el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
     el.fld_ply.hidden = !stageHasPly(stage);
+    el.fld_artworkno.hidden = !stageHasArtworkNo(stage);
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -2086,6 +2097,7 @@
     el.f_stage.disabled = deviceLocked && allowedStages.length <= 1;
     el.f_product.value = entry ? (entry.productName||"") : "";
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
+    el.f_artworkno.value = entry ? (entry.artworkNo||"") : "";
     el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
     el.f_ply.value = entry ? (entry.ply || "") : "";
     el.f_starttime.value = entry ? (entry.startTime || "") : "";
@@ -2159,6 +2171,7 @@
       stage: movedTo || chosenStage,
       productName: el.f_product.value.trim(),
       jobCardNo: el.f_jobcard.value.trim(),
+      artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
       quantity: el.f_qty.value === "" ? null : Number(el.f_qty.value),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       startTime: isDispatch ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
