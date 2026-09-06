@@ -327,6 +327,7 @@
   .modal h2{font-size:18px;margin-bottom:16px;}
   .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .formGrid label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .formGrid label[hidden]{display:none;}
   .formGrid label.span2{grid-column:1 / -1;}
   .formGrid input, .formGrid select, .formGrid textarea{
     border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);
@@ -642,29 +643,35 @@
           <span class="dateFieldLabel" id="f_dateLabel" aria-hidden="true"></span>
         </span>
       </label>
-      <label><span data-i18n="filter_shift">Shift</span> <input type="text" id="f_shift" list="shiftOptions" required></label>
+      <label id="fld_shift"><span data-i18n="filter_shift">Shift</span> <input type="text" id="f_shift" list="shiftOptions" required></label>
       <label class="span2"><span data-i18n="filter_stage">Stage</span>
         <select id="f_stage" required></select>
       </label>
       <label><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
       <label><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <label><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
-      <label><span data-i18n="form_starttime_label">Start Time</span> <input type="time" id="f_starttime"></label>
-      <label><span data-i18n="form_endtime_label">End Time</span> <input type="time" id="f_endtime"></label>
-      <label><span data-i18n="form_runtime_label">Run Time (Hrs)</span> <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5" data-i18n-placeholder="form_runtime_placeholder"></label>
-      <label><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
-      <label><span data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
-      <label><span data-i18n="filter_status">Status</span>
+      <label id="fld_clientname"><span data-i18n="form_clientname_label">Client Name</span> <input type="text" id="f_clientname" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
+      <label id="fld_invoiceno"><span data-i18n="form_invoiceno_label">Invoice No</span> <input type="text" id="f_invoiceno" placeholder="e.g. INV-1042" data-i18n-placeholder="form_invoiceno_placeholder"></label>
+      <label id="fld_vehicleno"><span data-i18n="form_vehicleno_label">Vehicle Number</span> <input type="text" id="f_vehicleno" placeholder="e.g. TS09AB1234" data-i18n-placeholder="form_vehicleno_placeholder"></label>
+      <label id="fld_driver"><span data-i18n="form_driver_label">Driver</span> <input type="text" id="f_driver" placeholder="Driver's name" data-i18n-placeholder="form_driver_placeholder"></label>
+      <label id="fld_qtyperbundle"><span data-i18n="form_qtyperbundle_label">Quantity Per Bundle</span> <input type="number" id="f_qtyperbundle" min="0" step="1" placeholder="50" data-i18n-placeholder="form_qtyperbundle_placeholder"></label>
+      <label id="fld_noofbundles"><span data-i18n="form_noofbundles_label">No of Bundles</span> <input type="number" id="f_noofbundles" min="0" step="1" placeholder="10" data-i18n-placeholder="form_noofbundles_placeholder"></label>
+      <label id="fld_starttime"><span data-i18n="form_starttime_label">Start Time</span> <input type="time" id="f_starttime"></label>
+      <label id="fld_endtime"><span data-i18n="form_endtime_label">End Time</span> <input type="time" id="f_endtime"></label>
+      <label id="fld_runtime"><span data-i18n="form_runtime_label">Run Time (Hrs)</span> <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5" data-i18n-placeholder="form_runtime_placeholder"></label>
+      <label id="fld_manpower"><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
+      <label><span id="f_updatedbyLabel" data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
+      <label id="fld_status"><span data-i18n="filter_status">Status</span>
         <select id="f_status">
           <option value="Not Started" data-i18n="status_not_started">Not Started</option>
           <option value="In Progress" data-i18n="status_in_progress">In Progress</option>
           <option value="Completed" data-i18n="status_completed">Completed</option>
         </select>
       </label>
-      <label><span data-i18n="form_nextstage_label">Next Stage</span>
+      <label id="fld_nextstage"><span data-i18n="form_nextstage_label">Next Stage</span>
         <select id="f_nextstage"><option value="" data-i18n="form_stays_here">— stays here —</option></select>
       </label>
-      <label class="span2"><span data-i18n="th_remarks">Remarks</span> <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule" data-i18n-placeholder="form_remarks_placeholder"></textarea></label>
+      <label class="span2" id="fld_remarks"><span data-i18n="th_remarks">Remarks</span> <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule" data-i18n-placeholder="form_remarks_placeholder"></textarea></label>
     </div>
     <div class="modalActions">
       <button type="button" class="btn danger" id="deleteBtn" hidden data-i18n="generic_delete">Delete</button>
@@ -756,6 +763,7 @@
       th_updatedby: "Updated By", th_lastupdated: "Last Updated",
       card_qty_label: "Qty", card_start_label: "Start", card_end_label: "End",
       card_hrs_label: "hrs", card_mp_label: "MP",
+      card_invoice_label: "Invoice", card_vehicle_label: "Vehicle", card_bundles_label: "Bundles",
       board_empty_hint: "No job cards logged here yet for this date.",
       stages_all: "All stages", stages_none: "No stages", stages_count: "{n} stages",
       profile_signed_in_as: "Signed in as", profile_stage_access_line: "Stage access: {stages}",
@@ -801,6 +809,13 @@
       form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "Your name", form_remarks_placeholder: "Running smoothly, on schedule",
+      form_clientname_label: "Client Name", form_invoiceno_label: "Invoice No",
+      form_vehicleno_label: "Vehicle Number", form_driver_label: "Driver",
+      form_qtyperbundle_label: "Quantity Per Bundle", form_noofbundles_label: "No of Bundles",
+      form_checkedby_label: "Checked By",
+      form_clientname_placeholder: "e.g. ABC Traders", form_invoiceno_placeholder: "e.g. INV-1042",
+      form_vehicleno_placeholder: "e.g. TS09AB1234", form_driver_placeholder: "Driver's name",
+      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
       form_readonly_prefix: "This entry belongs to {stage} — this device only has access to ",
       form_readonly_suffix: ". Switch this device's stage access (top right, \"Change\") to edit it.",
       banner_no_rows_export: "No rows to export.", banner_save_failed_prefix: "Save failed:",
@@ -832,6 +847,7 @@
       th_updatedby: "अपडेट किया", th_lastupdated: "अंतिम अपडेट",
       card_qty_label: "मात्रा", card_start_label: "शुरू", card_end_label: "समाप्ति",
       card_hrs_label: "घंटे", card_mp_label: "MP",
+      card_invoice_label: "इनवॉइस", card_vehicle_label: "वाहन", card_bundles_label: "बंडल",
       board_empty_hint: "इस तारीख के लिए यहां अभी तक कोई जॉब कार्ड दर्ज नहीं है।",
       stages_all: "सभी स्टेज", stages_none: "कोई स्टेज नहीं", stages_count: "{n} स्टेज",
       profile_signed_in_as: "इस रूप में साइन इन:", profile_stage_access_line: "स्टेज एक्सेस: {stages}",
@@ -877,6 +893,13 @@
       form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "आपका नाम", form_remarks_placeholder: "सुचारू रूप से चल रहा है, समय पर",
+      form_clientname_label: "क्लाइंट का नाम", form_invoiceno_label: "इनवॉइस नंबर",
+      form_vehicleno_label: "वाहन नंबर", form_driver_label: "ड्राइवर",
+      form_qtyperbundle_label: "प्रति बंडल मात्रा", form_noofbundles_label: "बंडलों की संख्या",
+      form_checkedby_label: "जांचकर्ता",
+      form_clientname_placeholder: "जैसे ABC Traders", form_invoiceno_placeholder: "जैसे INV-1042",
+      form_vehicleno_placeholder: "जैसे TS09AB1234", form_driver_placeholder: "ड्राइवर का नाम",
+      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
       form_readonly_prefix: "यह एंट्री {stage} की है — इस डिवाइस को केवल इसका एक्सेस है: ",
       form_readonly_suffix: "। इसे बदलने के लिए ऊपर दाईं ओर \"बदलें\" से डिवाइस की स्टेज एक्सेस बदलें।",
       banner_no_rows_export: "एक्सपोर्ट के लिए कोई पंक्ति नहीं।", banner_save_failed_prefix: "सेव विफल:",
@@ -908,6 +931,7 @@
       th_updatedby: "నవీకరించినవారు", th_lastupdated: "చివరిగా నవీకరించబడింది",
       card_qty_label: "పరిమాణం", card_start_label: "ప్రారంభం", card_end_label: "ముగింపు",
       card_hrs_label: "గంటలు", card_mp_label: "MP",
+      card_invoice_label: "ఇన్వాయిస్", card_vehicle_label: "వాహనం", card_bundles_label: "బండిళ్లు",
       board_empty_hint: "ఈ తేదీ కోసం ఇక్కడ ఇంకా జాబ్ కార్డులు నమోదు కాలేదు।",
       stages_all: "అన్ని దశలు", stages_none: "దశలు లేవు", stages_count: "{n} దశలు",
       profile_signed_in_as: "ఇలా సైన్ ఇన్ అయ్యారు:", profile_stage_access_line: "దశ యాక్సెస్: {stages}",
@@ -953,6 +977,13 @@
       form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "మీ పేరు", form_remarks_placeholder: "సాఫీగా జరుగుతోంది, షెడ్యూల్ ప్రకారం",
+      form_clientname_label: "క్లయింట్ పేరు", form_invoiceno_label: "ఇన్వాయిస్ నంబర్",
+      form_vehicleno_label: "వాహన నంబర్", form_driver_label: "డ్రైవర్",
+      form_qtyperbundle_label: "బండిల్‌కు పరిమాణం", form_noofbundles_label: "బండిళ్ల సంఖ్య",
+      form_checkedby_label: "తనిఖీ చేసినవారు",
+      form_clientname_placeholder: "ఉదా. ABC Traders", form_invoiceno_placeholder: "ఉదా. INV-1042",
+      form_vehicleno_placeholder: "ఉదా. TS09AB1234", form_driver_placeholder: "డ్రైవర్ పేరు",
+      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
       form_readonly_prefix: "ఈ ఎంట్రీ {stage}కి చెందింది — ఈ పరికరానికి ఈ కింది వాటికి మాత్రమే యాక్సెస్ ఉంది: ",
       form_readonly_suffix: "। దీన్ని సవరించడానికి పైన కుడివైపున \"మార్చండి\" ద్వారా పరికర దశ యాక్సెస్‌ను మార్చండి.",
       banner_no_rows_export: "ఎగుమతి చేయడానికి వరుసలు లేవు.", banner_save_failed_prefix: "సేవ్ విఫలమైంది:",
@@ -1168,9 +1199,30 @@
     f_runtime: document.getElementById("f_runtime"),
     f_manpower: document.getElementById("f_manpower"),
     f_updatedby: document.getElementById("f_updatedby"),
+    f_updatedbyLabel: document.getElementById("f_updatedbyLabel"),
     f_status: document.getElementById("f_status"),
     f_nextstage: document.getElementById("f_nextstage"),
     f_remarks: document.getElementById("f_remarks"),
+    f_clientname: document.getElementById("f_clientname"),
+    f_invoiceno: document.getElementById("f_invoiceno"),
+    f_vehicleno: document.getElementById("f_vehicleno"),
+    f_driver: document.getElementById("f_driver"),
+    f_qtyperbundle: document.getElementById("f_qtyperbundle"),
+    f_noofbundles: document.getElementById("f_noofbundles"),
+    fld_shift: document.getElementById("fld_shift"),
+    fld_starttime: document.getElementById("fld_starttime"),
+    fld_endtime: document.getElementById("fld_endtime"),
+    fld_runtime: document.getElementById("fld_runtime"),
+    fld_manpower: document.getElementById("fld_manpower"),
+    fld_status: document.getElementById("fld_status"),
+    fld_nextstage: document.getElementById("fld_nextstage"),
+    fld_remarks: document.getElementById("fld_remarks"),
+    fld_clientname: document.getElementById("fld_clientname"),
+    fld_invoiceno: document.getElementById("fld_invoiceno"),
+    fld_vehicleno: document.getElementById("fld_vehicleno"),
+    fld_driver: document.getElementById("fld_driver"),
+    fld_qtyperbundle: document.getElementById("fld_qtyperbundle"),
+    fld_noofbundles: document.getElementById("fld_noofbundles"),
     statManpower: document.getElementById("statManpower"),
     statCompleted: document.getElementById("statCompleted"),
     statInProgress: document.getElementById("statInProgress"),
@@ -1241,8 +1293,39 @@
   var ALL_FORM_FIELDS = [
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_qty,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
-    el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks
+    el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
+    el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
+    el.f_qtyperbundle, el.f_noofbundles
   ];
+
+  // ---------- Dispatch stage: swapped-out entry form fields ----------
+  // The Dispatch stage tracks different information than a production stage (who it's going to,
+  // the invoice/vehicle it left on) rather than run time/manpower. Rather than a second modal,
+  // the same Add/Edit Entry form shows a different subset of fields depending on the chosen
+  // stage — hidden fields are excluded from HTML5 required-field validation automatically.
+  function isDispatchStage(stage){ return stage === "Dispatch"; }
+  function updateFormFieldsForStage(stage){
+    var dispatch = isDispatchStage(stage);
+    el.fld_shift.hidden = dispatch;
+    // A hidden field can still block native form submission if left "required" (an invisible
+    // required field silently fails validation with no visible error), so toggle it explicitly.
+    el.f_shift.required = !dispatch;
+    el.fld_starttime.hidden = dispatch;
+    el.fld_endtime.hidden = dispatch;
+    el.fld_runtime.hidden = dispatch;
+    el.fld_manpower.hidden = dispatch;
+    el.fld_status.hidden = dispatch;
+    el.fld_nextstage.hidden = dispatch;
+    el.fld_remarks.hidden = dispatch;
+    el.fld_clientname.hidden = !dispatch;
+    el.fld_invoiceno.hidden = !dispatch;
+    el.fld_vehicleno.hidden = !dispatch;
+    el.fld_driver.hidden = !dispatch;
+    el.fld_qtyperbundle.hidden = !dispatch;
+    el.fld_noofbundles.hidden = !dispatch;
+    el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
+  }
+  el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
   // ---------- Device stage lock ----------
   function normalizePhone(raw){
@@ -1742,6 +1825,25 @@
     var sClass = statusClass(e.status);
     card.className = "card status-" + sClass;
     card.tabIndex = 0;
+    var isDispatch = e.stage === "Dispatch";
+    // Dispatch entries don't carry start/end time, run time, or manpower — show the fields
+    // that actually apply to a dispatched job (invoice, vehicle, bundle count) instead.
+    var statsHtml = isDispatch ?
+      '<div class="cardStats">' +
+        '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+        '<span>' + esc(t("card_invoice_label")) + ' ' + esc(e.invoiceNo || "—") + '</span>' +
+        '<span>' + esc(t("card_vehicle_label")) + ' ' + esc(e.vehicleNumber || "—") + '</span>' +
+        '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+      '</div>'
+      :
+      '<div class="cardStats">' +
+        '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+        '<span>' + esc(t("card_start_label")) + ' ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
+        '<span>' + esc(t("card_end_label")) + ' ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
+        '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' ' + esc(t("card_hrs_label")) + '</span>' +
+        '<span>' + esc(t("card_mp_label")) + ' ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
+      '</div>';
+    var dispatchNote = [e.clientName, e.driver].filter(Boolean).join(" · ");
     card.innerHTML =
       '<div class="cardTop">' +
         '<span class="jobCard">' + esc(e.jobCardNo || "—") + '</span>' +
@@ -1749,14 +1851,8 @@
       '</div>' +
       '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span></div>' +
       '<div class="productName">' + esc(e.productName || "(no product name)") + '</div>' +
-      '<div class="cardStats">' +
-        '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
-        '<span>' + esc(t("card_start_label")) + ' ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
-        '<span>' + esc(t("card_end_label")) + ' ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
-        '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' ' + esc(t("card_hrs_label")) + '</span>' +
-        '<span>' + esc(t("card_mp_label")) + ' ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
-      '</div>' +
-      (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "") +
+      statsHtml +
+      (isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "") : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "")) +
       '<div class="cardMeta">' +
         '<span class="who">' + esc(e.updatedBy || "—") + '</span>' +
         '<span>' + esc(fmtDateTime(e.updatedAt)) + '</span>' +
@@ -1977,6 +2073,13 @@
     el.f_status.value = entry ? statusLabel(entry.status) : "In Progress";
     el.f_nextstage.value = entry ? (entry.nextStage || "") : "";
     el.f_remarks.value = entry ? (entry.remarks||"") : "";
+    el.f_clientname.value = entry ? (entry.clientName || "") : "";
+    el.f_invoiceno.value = entry ? (entry.invoiceNo || "") : "";
+    el.f_vehicleno.value = entry ? (entry.vehicleNumber || "") : "";
+    el.f_driver.value = entry ? (entry.driver || "") : "";
+    el.f_qtyperbundle.value = entry && entry.qtyPerBundle != null ? entry.qtyPerBundle : "";
+    el.f_noofbundles.value = entry && entry.noOfBundles != null ? entry.noOfBundles : "";
+    updateFormFieldsForStage(targetStage);
 
     ALL_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
 
@@ -2017,8 +2120,11 @@
     saveBtn.disabled = true;
 
     var chosenStage = el.f_stage.value;
-    var chosenStatus = el.f_status.value;
-    var chosenNextStage = el.f_nextstage.value;
+    var isDispatch = isDispatchStage(chosenStage);
+    // Dispatch has no Status/Next Stage fields of its own — a saved dispatch record is always
+    // treated as a finished, terminal entry rather than something that advances further.
+    var chosenStatus = isDispatch ? "Completed" : el.f_status.value;
+    var chosenNextStage = isDispatch ? "" : el.f_nextstage.value;
     var movedTo = null;
     if(chosenStatus === "Completed" && chosenNextStage && chosenNextStage !== chosenStage){
       movedTo = chosenNextStage;
@@ -2026,19 +2132,25 @@
 
     var payload = {
       date: el.f_date.value,
-      shift: el.f_shift.value.trim(),
+      shift: isDispatch ? "" : el.f_shift.value.trim(),
       stage: movedTo || chosenStage,
       productName: el.f_product.value.trim(),
       jobCardNo: el.f_jobcard.value.trim(),
       quantity: el.f_qty.value === "" ? null : Number(el.f_qty.value),
-      startTime: el.f_starttime.value === "" ? null : el.f_starttime.value,
-      endTime: el.f_endtime.value === "" ? null : el.f_endtime.value,
-      runtimeHrs: el.f_runtime.value === "" ? null : Number(el.f_runtime.value),
-      manpower: el.f_manpower.value === "" ? null : Number(el.f_manpower.value),
+      startTime: isDispatch ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
+      endTime: isDispatch ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
+      runtimeHrs: isDispatch ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
+      manpower: isDispatch ? null : (el.f_manpower.value === "" ? null : Number(el.f_manpower.value)),
       updatedBy: el.f_updatedby.value.trim(),
       status: movedTo ? "Not Started" : chosenStatus,
       nextStage: movedTo ? "" : chosenNextStage,
-      remarks: el.f_remarks.value.trim(),
+      remarks: isDispatch ? "" : el.f_remarks.value.trim(),
+      clientName: isDispatch ? el.f_clientname.value.trim() : "",
+      invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
+      vehicleNumber: isDispatch ? el.f_vehicleno.value.trim() : "",
+      driver: isDispatch ? el.f_driver.value.trim() : "",
+      qtyPerBundle: isDispatch ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
+      noOfBundles: isDispatch ? (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)) : null,
       updatedAt: Date.now()
     };
     lastUpdatedBy = payload.updatedBy;
@@ -2185,6 +2297,7 @@
     populateStageFilterOptions(el.logStageFilter, locked ? state.deviceStages : "ALL", t("log_all_stages"));
     el.modalTitle.textContent = t(state.modalTitleKey);
     el.cancelBtn.textContent = state.modalReadOnly ? t("form_close") : t("generic_cancel");
+    updateFormFieldsForStage(el.f_stage.value);
     el.supAddBtn.textContent = editingSupervisorPhone ? t("sup_save_changes") : t("sup_add_user");
     if(!el.supervisorsOverlay.hidden) applySupervisorFilter();
     if(!el.activityOverlay.hidden) applyActivityFilter();
