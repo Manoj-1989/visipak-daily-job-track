@@ -283,6 +283,11 @@
   .jobCard{font-family:var(--font-mono);font-weight:600;font-size:13px;color:var(--accent);}
   .shiftTag{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;}
   .productName{font-size:13px;font-weight:500;margin-top:3px;color:var(--ink);}
+  .plyTag{
+    font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--accent);
+    background:var(--accent-soft);border:1px solid var(--line-strong);
+    border-radius:20px;padding:1px 7px;white-space:nowrap;vertical-align:middle;
+  }
   .cardStats{display:flex;gap:10px;margin-top:7px;font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex-wrap:wrap;}
   .cardStats span{font-family:var(--font-mono);}
   .cardRemarks{
@@ -1882,13 +1887,16 @@
         '<span>' + esc(t("card_mp_label")) + ' ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
       '</div>';
     var dispatchNote = [e.clientName, e.driver].filter(Boolean).join(" · ");
+    // PLY (board thickness) sits right next to the product name — it's a property of what's
+    // being made, not a run stat, so it belongs beside the product rather than in the stats row.
+    var plyHtml = (stageHasPly(e.stage) && e.ply) ? ' <span class="plyTag">' + esc(e.ply) + '</span>' : "";
     card.innerHTML =
       '<div class="cardTop">' +
         '<span class="jobCard">' + esc(e.jobCardNo || "—") + '</span>' +
         '<span class="shiftTag">' + esc(e.shift || "") + '</span>' +
       '</div>' +
       '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span></div>' +
-      '<div class="productName">' + esc(e.productName || "(no product name)") + '</div>' +
+      '<div class="productName">' + esc(e.productName || "(no product name)") + plyHtml + '</div>' +
       statsHtml +
       (isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "") : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "")) +
       '<div class="cardMeta">' +
