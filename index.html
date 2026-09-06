@@ -238,13 +238,16 @@
   .statusPill.not-started{background:var(--crit-soft);color:var(--crit);}
 
   /* ---------- Board ---------- */
+  /* Board: stages stack vertically down the page (one full-width row per stage, like a Jira
+     swimlane view) instead of side-by-side columns you had to scroll horizontally to see all
+     of — this reads much better once there are 20+ stages. Job cards within a single stage's
+     row still lay out left-to-right, with just that row scrolling horizontally if it's full. */
   .board{
-    display:grid;grid-auto-flow:column;grid-auto-columns:272px;gap:14px;
-    overflow-x:auto;padding-bottom:12px;
+    display:flex;flex-direction:column;gap:14px;
   }
   .stageCol{
     background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);
-    display:flex;flex-direction:column;min-height:140px;max-height:calc(100vh - 220px);
+    display:flex;flex-direction:column;min-height:0;
   }
   .stageColHead{
     padding:12px 14px 10px;border-bottom:1px solid var(--line);
@@ -259,8 +262,10 @@
   .capChip.good{background:var(--good-soft);color:var(--good);}
   .capChip.warn{background:var(--warn-soft);color:var(--warn);}
   .capChip.crit{background:var(--crit-soft);color:var(--crit);}
-  .stageColBody{padding:10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
+  .stageColBody{padding:10px;display:flex;flex-direction:row;gap:8px;overflow-x:auto;}
+  .stageColBody .card{flex:0 0 260px;}
   .emptyHint{
+    flex:1 0 auto;min-width:220px;
     border:1px dashed var(--line-strong);border-radius:8px;padding:14px 10px;
     text-align:center;color:var(--ink-faint);font-size:12px;line-height:1.5;
   }
