@@ -343,6 +343,17 @@
     border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);
     font-size:13px;resize:vertical;
   }
+  /* QC's Client Specs vs Visipak Specs comparison table — spans the full form width. */
+  .qcSpecsBlock{grid-column:1 / -1;}
+  .qcSpecsHead{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .qcSpecsTable{width:100%;border-collapse:collapse;}
+  .qcSpecsTable th, .qcSpecsTable td{padding:5px 6px;text-align:left;}
+  .qcSpecsTable thead th{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;font-weight:600;border-bottom:1px solid var(--line);}
+  .qcSpecsTable tbody td:first-child{font-size:13px;color:var(--ink);white-space:nowrap;}
+  .qcSpecsTable input{
+    width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);
+    font-size:13px;box-sizing:border-box;
+  }
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
   .modal.wide{max-width:720px;}
@@ -660,7 +671,18 @@
       <label><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
       <label><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
-      <label><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <label id="fld_type"><span data-i18n="form_type_label">Type</span>
+        <select id="f_type">
+          <option value="" data-i18n="form_type_select">— select —</option>
+          <option value="Boxes" data-i18n="type_boxes">Boxes</option>
+          <option value="Partition" data-i18n="type_partition">Partition</option>
+          <option value="Pads" data-i18n="type_pads">Pads</option>
+        </select>
+      </label>
+      <label id="fld_qtyinstock"><span data-i18n="form_qtyinstock_label">Quantity in Stock</span> <input type="number" id="f_qtyinstock" min="0" step="1"></label>
+      <label id="fld_totalbundle"><span data-i18n="form_totalbundle_label">Total Bundle</span> <input type="number" id="f_totalbundle" min="0" step="1"></label>
+      <label id="fld_availablestock"><span data-i18n="form_availablestock_label">Available Stock</span> <input type="number" id="f_availablestock" min="0" step="1"></label>
       <label id="fld_ply"><span data-i18n="form_ply_label">PLY</span>
         <select id="f_ply">
           <option value="" data-i18n="form_ply_select">— select —</option>
@@ -691,6 +713,41 @@
         <select id="f_nextstage"><option value="" data-i18n="form_stays_here">— stays here —</option></select>
       </label>
       <label class="span2" id="fld_remarks"><span data-i18n="th_remarks">Remarks</span> <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule" data-i18n-placeholder="form_remarks_placeholder"></textarea></label>
+      <div class="span2 qcSpecsBlock" id="fld_qcspecs">
+        <div class="qcSpecsHead" data-i18n="qc_specs_heading">Specifications</div>
+        <table class="qcSpecsTable">
+          <thead>
+            <tr><th></th><th data-i18n="qc_th_client">Client Specs</th><th data-i18n="qc_th_visipak">Visipak Specs</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-i18n="qc_spec_boardgsm">Board GSM</td>
+              <td><input type="text" id="f_qc_boardgsm_client"></td>
+              <td><input type="text" id="f_qc_boardgsm_visipak"></td>
+            </tr>
+            <tr>
+              <td data-i18n="qc_spec_bustingstrength">Busting Strength</td>
+              <td><input type="text" id="f_qc_bustingstrength_client"></td>
+              <td><input type="text" id="f_qc_bustingstrength_visipak"></td>
+            </tr>
+            <tr>
+              <td data-i18n="qc_spec_moisture">Moisture</td>
+              <td><input type="text" id="f_qc_moisture_client"></td>
+              <td><input type="text" id="f_qc_moisture_visipak"></td>
+            </tr>
+            <tr>
+              <td data-i18n="qc_spec_weight">Weight</td>
+              <td><input type="text" id="f_qc_weight_client"></td>
+              <td><input type="text" id="f_qc_weight_visipak"></td>
+            </tr>
+            <tr>
+              <td data-i18n="qc_spec_bct">BCT</td>
+              <td><input type="text" id="f_qc_bct_client"></td>
+              <td><input type="text" id="f_qc_bct_visipak"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <div class="modalActions">
       <button type="button" class="btn danger" id="deleteBtn" hidden data-i18n="generic_delete">Delete</button>
@@ -783,6 +840,7 @@
       card_qty_label: "Qty", card_start_label: "Start", card_end_label: "End",
       card_hrs_label: "hrs", card_mp_label: "MP",
       card_invoice_label: "Invoice", card_vehicle_label: "Vehicle", card_bundles_label: "Bundles",
+      card_type_label: "Type", card_stock_label: "In Stock", card_total_label: "Total", card_avail_label: "Avail",
       board_empty_hint: "No job cards logged here yet for this date.",
       stages_all: "All stages", stages_none: "No stages", stages_count: "{n} stages",
       profile_signed_in_as: "Signed in as", profile_stage_access_line: "Stage access: {stages}",
@@ -824,6 +882,14 @@
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
       form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
+      form_type_label: "Type", form_type_select: "— select —",
+      type_boxes: "Boxes", type_partition: "Partition", type_pads: "Pads",
+      form_qtyinstock_label: "Quantity in Stock", form_totalbundle_label: "Total Bundle",
+      form_availablestock_label: "Available Stock",
+      qc_specs_heading: "Specifications",
+      qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs",
+      qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
+      qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
@@ -869,6 +935,7 @@
       card_qty_label: "मात्रा", card_start_label: "शुरू", card_end_label: "समाप्ति",
       card_hrs_label: "घंटे", card_mp_label: "MP",
       card_invoice_label: "इनवॉइस", card_vehicle_label: "वाहन", card_bundles_label: "बंडल",
+      card_type_label: "टाइप", card_stock_label: "स्टॉक में", card_total_label: "कुल", card_avail_label: "उपलब्ध",
       board_empty_hint: "इस तारीख के लिए यहां अभी तक कोई जॉब कार्ड दर्ज नहीं है।",
       stages_all: "सभी स्टेज", stages_none: "कोई स्टेज नहीं", stages_count: "{n} स्टेज",
       profile_signed_in_as: "इस रूप में साइन इन:", profile_stage_access_line: "स्टेज एक्सेस: {stages}",
@@ -910,6 +977,14 @@
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
       form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
+      form_type_label: "टाइप", form_type_select: "— चुनें —",
+      type_boxes: "बॉक्स", type_partition: "पार्टीशन", type_pads: "पैड",
+      form_qtyinstock_label: "स्टॉक में मात्रा", form_totalbundle_label: "कुल बंडल",
+      form_availablestock_label: "उपलब्ध स्टॉक",
+      qc_specs_heading: "स्पेसिफिकेशन",
+      qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स",
+      qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
+      qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
@@ -955,6 +1030,7 @@
       card_qty_label: "పరిమాణం", card_start_label: "ప్రారంభం", card_end_label: "ముగింపు",
       card_hrs_label: "గంటలు", card_mp_label: "MP",
       card_invoice_label: "ఇన్వాయిస్", card_vehicle_label: "వాహనం", card_bundles_label: "బండిళ్లు",
+      card_type_label: "టైప్", card_stock_label: "స్టాక్‌లో", card_total_label: "మొత్తం", card_avail_label: "అందుబాటులో",
       board_empty_hint: "ఈ తేదీ కోసం ఇక్కడ ఇంకా జాబ్ కార్డులు నమోదు కాలేదు।",
       stages_all: "అన్ని దశలు", stages_none: "దశలు లేవు", stages_count: "{n} దశలు",
       profile_signed_in_as: "ఇలా సైన్ ఇన్ అయ్యారు:", profile_stage_access_line: "దశ యాక్సెస్: {stages}",
@@ -996,6 +1072,14 @@
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
       form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
+      form_type_label: "టైప్", form_type_select: "— ఎంచుకోండి —",
+      type_boxes: "బాక్సులు", type_partition: "పార్టిషన్", type_pads: "ప్యాడ్స్",
+      form_qtyinstock_label: "స్టాక్‌లో పరిమాణం", form_totalbundle_label: "మొత్తం బండిల్",
+      form_availablestock_label: "అందుబాటులో ఉన్న స్టాక్",
+      qc_specs_heading: "స్పెసిఫికేషన్లు",
+      qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్",
+      qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
+      qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
@@ -1252,6 +1336,26 @@
     fld_driver: document.getElementById("fld_driver"),
     fld_qtyperbundle: document.getElementById("fld_qtyperbundle"),
     fld_noofbundles: document.getElementById("fld_noofbundles"),
+    fld_qty: document.getElementById("fld_qty"),
+    f_type: document.getElementById("f_type"),
+    fld_type: document.getElementById("fld_type"),
+    f_qtyinstock: document.getElementById("f_qtyinstock"),
+    fld_qtyinstock: document.getElementById("fld_qtyinstock"),
+    f_totalbundle: document.getElementById("f_totalbundle"),
+    fld_totalbundle: document.getElementById("fld_totalbundle"),
+    f_availablestock: document.getElementById("f_availablestock"),
+    fld_availablestock: document.getElementById("fld_availablestock"),
+    fld_qcspecs: document.getElementById("fld_qcspecs"),
+    f_qc_boardgsm_client: document.getElementById("f_qc_boardgsm_client"),
+    f_qc_boardgsm_visipak: document.getElementById("f_qc_boardgsm_visipak"),
+    f_qc_bustingstrength_client: document.getElementById("f_qc_bustingstrength_client"),
+    f_qc_bustingstrength_visipak: document.getElementById("f_qc_bustingstrength_visipak"),
+    f_qc_moisture_client: document.getElementById("f_qc_moisture_client"),
+    f_qc_moisture_visipak: document.getElementById("f_qc_moisture_visipak"),
+    f_qc_weight_client: document.getElementById("f_qc_weight_client"),
+    f_qc_weight_visipak: document.getElementById("f_qc_weight_visipak"),
+    f_qc_bct_client: document.getElementById("f_qc_bct_client"),
+    f_qc_bct_visipak: document.getElementById("f_qc_bct_visipak"),
     statManpower: document.getElementById("statManpower"),
     statCompleted: document.getElementById("statCompleted"),
     statInProgress: document.getElementById("statInProgress"),
@@ -1321,25 +1425,35 @@
 
   var ALL_FORM_FIELDS = [
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
+    el.f_type, el.f_qtyinstock, el.f_totalbundle, el.f_availablestock,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
-    el.f_qtyperbundle, el.f_noofbundles
+    el.f_qtyperbundle, el.f_noofbundles,
+    el.f_qc_boardgsm_client, el.f_qc_boardgsm_visipak,
+    el.f_qc_bustingstrength_client, el.f_qc_bustingstrength_visipak,
+    el.f_qc_moisture_client, el.f_qc_moisture_visipak,
+    el.f_qc_weight_client, el.f_qc_weight_visipak,
+    el.f_qc_bct_client, el.f_qc_bct_visipak
   ];
 
-  // ---------- Dispatch stage: swapped-out entry form fields ----------
-  // The Dispatch stage tracks different information than a production stage (who it's going to,
-  // the invoice/vehicle it left on) rather than run time/manpower. Rather than a second modal,
-  // the same Add/Edit Entry form shows a different subset of fields depending on the chosen
-  // stage. Note: a "hidden" field is NOT automatically excluded from HTML5 required-field
-  // validation in every case here — the .formGrid CSS gives labels their own display rule that
-  // can outrank the browser's default [hidden]{display:none}, so any required field that gets
-  // hidden must also have its `required` flag toggled off explicitly (see f_shift below).
+  // ---------- Stage-specific entry form fields ----------
+  // A handful of stages track completely different information than a normal production stage
+  // (who it's going to, stock counts, QC spec comparisons) rather than run time/manpower/status.
+  // Rather than a second modal, the same Add/Edit Entry form shows a different subset of fields
+  // depending on the chosen stage. Note: a "hidden" field is NOT automatically excluded from
+  // HTML5 required-field validation in every case here — the .formGrid CSS gives labels their
+  // own display rule that can outrank the browser's default [hidden]{display:none}, so any
+  // required field that gets hidden must also have its `required` flag toggled off explicitly
+  // (see f_shift below).
   function isDispatchStage(stage){ return stage === "Dispatch"; }
+  function isReadyToDispatchStage(stage){ return stage === "Ready to Dispatch"; }
+  function isFGStage(stage){ return stage === "Finished Goods (FG)"; }
+  function isQCStage(stage){ return stage === "QC"; }
   // PLY (board thickness: 3/5/7 Ply) applies to production stages, but not to the stages at the
-  // tail end of the flow that aren't really "making" anything — dispatch handling and the two
-  // manpower/housekeeping bookkeeping stages.
-  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "HR_MP", "House keeping"];
+  // tail end of the flow that aren't really "making" anything — dispatch handling, QC/FG's own
+  // specialized fields, and the two manpower/housekeeping bookkeeping stages.
+  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Finished Goods (FG)", "QC", "HR_MP", "House keeping"];
   function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // Artwork No only applies to the printing/die-cut stages where a job is tied to a specific
   // artwork/plate — it's meaningless once the job has moved past those into gluing, punching, etc.
@@ -1347,23 +1461,47 @@
   function stageHasArtworkNo(stage){ return ARTWORKNO_STAGES.indexOf(stage) !== -1; }
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
-    el.fld_shift.hidden = dispatch;
+    var readyToDispatch = isReadyToDispatchStage(stage);
+    var fg = isFGStage(stage);
+    var qc = isQCStage(stage);
+    // These four stages all swap out the standard shift/timing/workflow fields for their own
+    // specialized field set, and are always treated as a finished, terminal entry on save.
+    var special = dispatch || readyToDispatch || fg || qc;
+
+    el.fld_shift.hidden = special;
     // A hidden field can still block native form submission if left "required" (an invisible
     // required field silently fails validation with no visible error), so toggle it explicitly.
-    el.f_shift.required = !dispatch;
-    el.fld_starttime.hidden = dispatch;
-    el.fld_endtime.hidden = dispatch;
-    el.fld_runtime.hidden = dispatch;
-    el.fld_manpower.hidden = dispatch;
-    el.fld_status.hidden = dispatch;
-    el.fld_nextstage.hidden = dispatch;
-    el.fld_remarks.hidden = dispatch;
-    el.fld_clientname.hidden = !dispatch;
+    el.f_shift.required = !special;
+    el.fld_starttime.hidden = special;
+    el.fld_endtime.hidden = special;
+    el.fld_runtime.hidden = special;
+    el.fld_manpower.hidden = special;
+    el.fld_status.hidden = special;
+    el.fld_nextstage.hidden = special;
+    el.fld_remarks.hidden = special;
+
+    // Dispatch-only fields.
     el.fld_invoiceno.hidden = !dispatch;
     el.fld_vehicleno.hidden = !dispatch;
     el.fld_driver.hidden = !dispatch;
-    el.fld_qtyperbundle.hidden = !dispatch;
-    el.fld_noofbundles.hidden = !dispatch;
+    // Client Name: Dispatch (who it's going to) and Finished Goods (whose stock this is).
+    el.fld_clientname.hidden = !(dispatch || fg);
+    // Quantity Per Bundle: Dispatch, Ready to Dispatch, and Finished Goods all track it.
+    el.fld_qtyperbundle.hidden = !(dispatch || readyToDispatch || fg);
+    // No of Bundles: only the two dispatch-flow stages — Finished Goods tracks "Total Bundle"
+    // (its overall stock count) instead, which is a different thing.
+    el.fld_noofbundles.hidden = !(dispatch || readyToDispatch);
+    // Type (Boxes / Partition / Pads): Ready to Dispatch, Finished Goods, and QC.
+    el.fld_type.hidden = !(readyToDispatch || fg || qc);
+    // Finished Goods-only stock fields.
+    el.fld_qtyinstock.hidden = !fg;
+    el.fld_totalbundle.hidden = !fg;
+    el.fld_availablestock.hidden = !fg;
+    // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field.
+    el.fld_qty.hidden = fg;
+    // QC's Client Specs vs Visipak Specs comparison table.
+    el.fld_qcspecs.hidden = !qc;
+
     el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
     el.fld_ply.hidden = !stageHasPly(stage);
     el.fld_artworkno.hidden = !stageHasArtworkNo(stage);
@@ -1869,24 +2007,57 @@
     card.className = "card status-" + sClass;
     card.tabIndex = 0;
     var isDispatch = e.stage === "Dispatch";
-    // Dispatch entries don't carry start/end time, run time, or manpower — show the fields
-    // that actually apply to a dispatched job (invoice, vehicle, bundle count) instead.
-    var statsHtml = isDispatch ?
-      '<div class="cardStats">' +
-        '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
-        '<span>' + esc(t("card_invoice_label")) + ' ' + esc(e.invoiceNo || "—") + '</span>' +
-        '<span>' + esc(t("card_vehicle_label")) + ' ' + esc(e.vehicleNumber || "—") + '</span>' +
-        '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
-      '</div>'
-      :
-      '<div class="cardStats">' +
-        '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
-        '<span>' + esc(t("card_start_label")) + ' ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
-        '<span>' + esc(t("card_end_label")) + ' ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
-        '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' ' + esc(t("card_hrs_label")) + '</span>' +
-        '<span>' + esc(t("card_mp_label")) + ' ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
-      '</div>';
+    var isReadyToDispatch = e.stage === "Ready to Dispatch";
+    var isFG = e.stage === "Finished Goods (FG)";
+    var isQC = e.stage === "QC";
+    // These stages don't carry start/end time, run time, or manpower — show the fields that
+    // actually apply to each of them instead.
+    var statsHtml;
+    if(isDispatch){
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+          '<span>' + esc(t("card_invoice_label")) + ' ' + esc(e.invoiceNo || "—") + '</span>' +
+          '<span>' + esc(t("card_vehicle_label")) + ' ' + esc(e.vehicleNumber || "—") + '</span>' +
+          '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+        '</div>';
+    } else if(isReadyToDispatch){
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+          '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
+          '<span>' + esc(t("form_qtyperbundle_label")) + ' ' + esc(e.qtyPerBundle != null ? e.qtyPerBundle : "—") + '</span>' +
+          '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+        '</div>';
+    } else if(isFG){
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
+          '<span>' + esc(t("card_stock_label")) + ' ' + esc(e.qtyInStock != null ? e.qtyInStock : "—") + '</span>' +
+          '<span>' + esc(t("card_total_label")) + ' ' + esc(e.totalBundle != null ? e.totalBundle : "—") + '</span>' +
+          '<span>' + esc(t("card_avail_label")) + ' ' + esc(e.availableStock != null ? e.availableStock : "—") + '</span>' +
+        '</div>';
+    } else if(isQC){
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+          '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
+        '</div>';
+    } else {
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+          '<span>' + esc(t("card_start_label")) + ' ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
+          '<span>' + esc(t("card_end_label")) + ' ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
+          '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' ' + esc(t("card_hrs_label")) + '</span>' +
+          '<span>' + esc(t("card_mp_label")) + ' ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
+        '</div>';
+    }
     var dispatchNote = [e.clientName, e.driver].filter(Boolean).join(" · ");
+    var fgNote = e.clientName || "";
+    var noteHtml = isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "")
+      : isFG ? (fgNote ? '<div class="cardRemarks">' + esc(fgNote) + '</div>' : "")
+      : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "");
     // PLY (board thickness) sits right next to the product name — it's a property of what's
     // being made, not a run stat, so it belongs beside the product rather than in the stats row.
     var plyHtml = (stageHasPly(e.stage) && e.ply) ? ' <span class="plyTag">' + esc(e.ply) + '</span>' : "";
@@ -1898,7 +2069,7 @@
       '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span></div>' +
       '<div class="productName">' + esc(e.productName || "(no product name)") + plyHtml + '</div>' +
       statsHtml +
-      (isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "") : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "")) +
+      noteHtml +
       '<div class="cardMeta">' +
         '<span class="who">' + esc(e.updatedBy || "—") + '</span>' +
         '<span>' + esc(fmtDateTime(e.updatedAt)) + '</span>' +
@@ -2020,6 +2191,7 @@
       stage: (entry && entry.stage) || "",
       date: (entry && entry.date) || "",
       shift: (entry && entry.shift) || "",
+      ply: (entry && entry.ply) || "",
       by: (actorName || "").trim(),
       at: Date.now()
     };
@@ -2031,11 +2203,12 @@
   var activityCache = [];
   function renderActivityRows(list){
     el.activityBody.innerHTML = list.map(function(a){
+      var plyHtml = (stageHasPly(a.stage) && a.ply) ? ' <span class="plyTag">' + esc(a.ply) + '</span>' : "";
       return "<tr>" +
         "<td>" + esc(fmtDateTime(a.at)) + "</td>" +
         "<td>" + esc(actionLabel(a.action)) + "</td>" +
         "<td>" + esc(a.jobCardNo || "") + "</td>" +
-        "<td>" + esc(a.productName || "") + "</td>" +
+        "<td>" + esc(a.productName || "") + plyHtml + "</td>" +
         "<td>" + esc(a.stage || "") + "</td>" +
         "<td>" + esc(a.by || "") + "</td>" +
         "</tr>";
@@ -2127,6 +2300,20 @@
     el.f_driver.value = entry ? (entry.driver || "") : "";
     el.f_qtyperbundle.value = entry && entry.qtyPerBundle != null ? entry.qtyPerBundle : "";
     el.f_noofbundles.value = entry && entry.noOfBundles != null ? entry.noOfBundles : "";
+    el.f_type.value = entry ? (entry.type || "") : "";
+    el.f_qtyinstock.value = entry && entry.qtyInStock != null ? entry.qtyInStock : "";
+    el.f_totalbundle.value = entry && entry.totalBundle != null ? entry.totalBundle : "";
+    el.f_availablestock.value = entry && entry.availableStock != null ? entry.availableStock : "";
+    el.f_qc_boardgsm_client.value = entry ? (entry.qcBoardGsmClient || "") : "";
+    el.f_qc_boardgsm_visipak.value = entry ? (entry.qcBoardGsmVisipak || "") : "";
+    el.f_qc_bustingstrength_client.value = entry ? (entry.qcBustingStrengthClient || "") : "";
+    el.f_qc_bustingstrength_visipak.value = entry ? (entry.qcBustingStrengthVisipak || "") : "";
+    el.f_qc_moisture_client.value = entry ? (entry.qcMoistureClient || "") : "";
+    el.f_qc_moisture_visipak.value = entry ? (entry.qcMoistureVisipak || "") : "";
+    el.f_qc_weight_client.value = entry ? (entry.qcWeightClient || "") : "";
+    el.f_qc_weight_visipak.value = entry ? (entry.qcWeightVisipak || "") : "";
+    el.f_qc_bct_client.value = entry ? (entry.qcBctClient || "") : "";
+    el.f_qc_bct_visipak.value = entry ? (entry.qcBctVisipak || "") : "";
     updateFormFieldsForStage(targetStage);
 
     ALL_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
@@ -2169,38 +2356,60 @@
 
     var chosenStage = el.f_stage.value;
     var isDispatch = isDispatchStage(chosenStage);
-    // Dispatch has no Status/Next Stage fields of its own — a saved dispatch record is always
-    // treated as a finished, terminal entry rather than something that advances further.
-    var chosenStatus = isDispatch ? "Completed" : el.f_status.value;
-    var chosenNextStage = isDispatch ? "" : el.f_nextstage.value;
+    var isReadyToDispatch = isReadyToDispatchStage(chosenStage);
+    var isFG = isFGStage(chosenStage);
+    var isQC = isQCStage(chosenStage);
+    // These four stages have no Status/Next Stage fields of their own — a saved entry there is
+    // always treated as a finished, terminal record rather than something that advances further.
+    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC;
+    var chosenStatus = isSpecial ? "Completed" : el.f_status.value;
+    var chosenNextStage = isSpecial ? "" : el.f_nextstage.value;
     var movedTo = null;
     if(chosenStatus === "Completed" && chosenNextStage && chosenNextStage !== chosenStage){
       movedTo = chosenNextStage;
     }
+    var hasClientName = isDispatch || isFG;
+    var hasQtyPerBundle = isDispatch || isReadyToDispatch || isFG;
+    var hasNoOfBundles = isDispatch || isReadyToDispatch;
+    var hasType = isReadyToDispatch || isFG || isQC;
 
     var payload = {
       date: el.f_date.value,
-      shift: isDispatch ? "" : el.f_shift.value.trim(),
+      shift: isSpecial ? "" : el.f_shift.value.trim(),
       stage: movedTo || chosenStage,
       productName: el.f_product.value.trim(),
       jobCardNo: el.f_jobcard.value.trim(),
       artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
-      quantity: el.f_qty.value === "" ? null : Number(el.f_qty.value),
+      quantity: isFG ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
-      startTime: isDispatch ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
-      endTime: isDispatch ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
-      runtimeHrs: isDispatch ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
-      manpower: isDispatch ? null : (el.f_manpower.value === "" ? null : Number(el.f_manpower.value)),
+      type: hasType ? el.f_type.value : "",
+      startTime: isSpecial ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
+      endTime: isSpecial ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
+      runtimeHrs: isSpecial ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
+      manpower: isSpecial ? null : (el.f_manpower.value === "" ? null : Number(el.f_manpower.value)),
       updatedBy: el.f_updatedby.value.trim(),
       status: movedTo ? "Not Started" : chosenStatus,
       nextStage: movedTo ? "" : chosenNextStage,
-      remarks: isDispatch ? "" : el.f_remarks.value.trim(),
-      clientName: isDispatch ? el.f_clientname.value.trim() : "",
+      remarks: isSpecial ? "" : el.f_remarks.value.trim(),
+      clientName: hasClientName ? el.f_clientname.value.trim() : "",
       invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
       vehicleNumber: isDispatch ? el.f_vehicleno.value.trim() : "",
       driver: isDispatch ? el.f_driver.value.trim() : "",
-      qtyPerBundle: isDispatch ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
-      noOfBundles: isDispatch ? (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)) : null,
+      qtyPerBundle: hasQtyPerBundle ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
+      noOfBundles: hasNoOfBundles ? (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)) : null,
+      qtyInStock: isFG ? (el.f_qtyinstock.value === "" ? null : Number(el.f_qtyinstock.value)) : null,
+      totalBundle: isFG ? (el.f_totalbundle.value === "" ? null : Number(el.f_totalbundle.value)) : null,
+      availableStock: isFG ? (el.f_availablestock.value === "" ? null : Number(el.f_availablestock.value)) : null,
+      qcBoardGsmClient: isQC ? el.f_qc_boardgsm_client.value.trim() : "",
+      qcBoardGsmVisipak: isQC ? el.f_qc_boardgsm_visipak.value.trim() : "",
+      qcBustingStrengthClient: isQC ? el.f_qc_bustingstrength_client.value.trim() : "",
+      qcBustingStrengthVisipak: isQC ? el.f_qc_bustingstrength_visipak.value.trim() : "",
+      qcMoistureClient: isQC ? el.f_qc_moisture_client.value.trim() : "",
+      qcMoistureVisipak: isQC ? el.f_qc_moisture_visipak.value.trim() : "",
+      qcWeightClient: isQC ? el.f_qc_weight_client.value.trim() : "",
+      qcWeightVisipak: isQC ? el.f_qc_weight_visipak.value.trim() : "",
+      qcBctClient: isQC ? el.f_qc_bct_client.value.trim() : "",
+      qcBctVisipak: isQC ? el.f_qc_bct_visipak.value.trim() : "",
       updatedAt: Date.now()
     };
     lastUpdatedBy = payload.updatedBy;
