@@ -355,8 +355,7 @@
     font-size:13px;box-sizing:border-box;
   }
   /* HR Man Power's daily headcount table — one row per stage plus a few fixed staffing
-     categories, an auto-summed "Total Man power" line, and a manually-entered "As per HR_MP"
-     line (HR's own report) so a mismatch between the two is easy to spot. */
+     categories, with an auto-summed "Total Man power" / "Grand Total" line at the bottom. */
   .hrManpowerBlock{grid-column:1 / -1;}
   .hrManpowerWrap{max-height:280px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
   .hrManpowerTable{width:100%;min-width:0;border-collapse:collapse;}
@@ -375,11 +374,6 @@
   .hrManpowerTable tfoot td{font-weight:600;background:var(--surface-2);}
   .hrManpowerTable .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
   .hrManpowerGrandRow td{border-top:1px solid var(--line-strong);}
-  .hrManpowerAsPerRow td:first-child{background:var(--surface-2);}
-  .hrManpowerMatch{margin-top:8px;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;text-align:center;}
-  .hrManpowerMatch:empty{display:none;padding:0;margin-top:0;}
-  .hrManpowerMatchOk{background:var(--good-soft);color:var(--good);}
-  .hrManpowerMatchBad{background:var(--crit-soft);color:var(--crit);}
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
   .modal.wide{max-width:720px;}
@@ -798,20 +792,9 @@
                 <td data-i18n="hrmp_grand_label">Grand Total</td>
                 <td class="num" colspan="3"><span id="hrmpTotalGrand">0</span></td>
               </tr>
-              <tr class="hrManpowerAsPerRow">
-                <td data-i18n="hrmp_asper_label">As per HR_MP</td>
-                <td><input type="number" id="f_hrmp_asper_operator" min="0" step="1"></td>
-                <td><input type="number" id="f_hrmp_asper_mh" min="0" step="1"></td>
-                <td><input type="number" id="f_hrmp_asper_fh" min="0" step="1"></td>
-              </tr>
-              <tr class="hrManpowerAsPerRow hrManpowerGrandRow">
-                <td data-i18n="hrmp_grand_label">Grand Total</td>
-                <td class="num" colspan="3"><span id="hrmpAsperGrand">—</span></td>
-              </tr>
             </tfoot>
           </table>
         </div>
-        <div class="hrManpowerMatch" id="hrManpowerMatch"></div>
       </div>
     </div>
     <div class="modalActions">
@@ -958,8 +941,6 @@
       hrmp_heading: "Daily Manpower Count", hrmp_th_dev: "Dev",
       hrmp_th_operator: "Operator", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "Total Man power", hrmp_grand_label: "Grand Total",
-      hrmp_asper_label: "As per HR_MP",
-      hrmp_match_ok: "✓ Matches As per HR_MP", hrmp_match_bad: "✗ Does not match As per HR_MP",
       hrmp_report_title: "Daily Manpower Report",
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
@@ -1059,8 +1040,6 @@
       hrmp_heading: "दैनिक मैनपावर गिनती", hrmp_th_dev: "स्टेज",
       hrmp_th_operator: "ऑपरेटर", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "कुल मैनपावर", hrmp_grand_label: "ग्रैंड टोटल",
-      hrmp_asper_label: "As per HR_MP",
-      hrmp_match_ok: "✓ As per HR_MP से मेल खाता है", hrmp_match_bad: "✗ As per HR_MP से मेल नहीं खाता",
       hrmp_report_title: "दैनिक मैनपावर रिपोर्ट",
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
@@ -1160,8 +1139,6 @@
       hrmp_heading: "రోజువారీ మ్యాన్‌పవర్ లెక్క", hrmp_th_dev: "స్టేజ్",
       hrmp_th_operator: "ఆపరేటర్", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "మొత్తం మ్యాన్‌పవర్", hrmp_grand_label: "గ్రాండ్ టోటల్",
-      hrmp_asper_label: "As per HR_MP",
-      hrmp_match_ok: "✓ As per HR_MP తో సరిపోలుతుంది", hrmp_match_bad: "✗ As per HR_MP తో సరిపోలలేదు",
       hrmp_report_title: "రోజువారీ మ్యాన్‌పవర్ రిపోర్ట్",
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
@@ -1447,11 +1424,6 @@
     hrmpTotalMh: document.getElementById("hrmpTotalMh"),
     hrmpTotalFh: document.getElementById("hrmpTotalFh"),
     hrmpTotalGrand: document.getElementById("hrmpTotalGrand"),
-    f_hrmp_asper_operator: document.getElementById("f_hrmp_asper_operator"),
-    f_hrmp_asper_mh: document.getElementById("f_hrmp_asper_mh"),
-    f_hrmp_asper_fh: document.getElementById("f_hrmp_asper_fh"),
-    hrmpAsperGrand: document.getElementById("hrmpAsperGrand"),
-    hrManpowerMatch: document.getElementById("hrManpowerMatch"),
     statManpower: document.getElementById("statManpower"),
     statCompleted: document.getElementById("statCompleted"),
     statInProgress: document.getElementById("statInProgress"),
@@ -1530,8 +1502,7 @@
     el.f_qc_bustingstrength_client, el.f_qc_bustingstrength_visipak,
     el.f_qc_moisture_client, el.f_qc_moisture_visipak,
     el.f_qc_weight_client, el.f_qc_weight_visipak,
-    el.f_qc_bct_client, el.f_qc_bct_visipak,
-    el.f_hrmp_asper_operator, el.f_hrmp_asper_mh, el.f_hrmp_asper_fh
+    el.f_qc_bct_client, el.f_qc_bct_visipak
   ];
 
   // ---------- Stage-specific entry form fields ----------
@@ -1600,18 +1571,9 @@
       rows.push({ dev: tr.getAttribute("data-dev"), operator: numOrNull(opEl.value), mh: numOrNull(mhEl.value), fh: numOrNull(fhEl.value) });
       totalOperator += op; totalMh += mh; totalFh += fh;
     });
-    var asOp = numOrNull(el.f_hrmp_asper_operator.value);
-    var asMh = numOrNull(el.f_hrmp_asper_mh.value);
-    var asFh = numOrNull(el.f_hrmp_asper_fh.value);
-    var hasAsPer = asOp !== null || asMh !== null || asFh !== null;
-    var asGrand = numOrZero(asOp) + numOrZero(asMh) + numOrZero(asFh);
-    var matches = hasAsPer && numOrZero(asOp) === totalOperator && numOrZero(asMh) === totalMh && numOrZero(asFh) === totalFh;
     return {
       rows: rows,
-      total: { operator: totalOperator, mh: totalMh, fh: totalFh, grand: totalOperator + totalMh + totalFh },
-      asPer: { operator: asOp, mh: asMh, fh: asFh, grand: hasAsPer ? asGrand : null },
-      hasAsPer: hasAsPer,
-      matches: matches
+      total: { operator: totalOperator, mh: totalMh, fh: totalFh, grand: totalOperator + totalMh + totalFh }
     };
   }
 
@@ -1621,25 +1583,11 @@
     el.hrmpTotalMh.textContent = data.total.mh;
     el.hrmpTotalFh.textContent = data.total.fh;
     el.hrmpTotalGrand.textContent = data.total.grand;
-    el.hrmpAsperGrand.textContent = data.hasAsPer ? data.asPer.grand : "—";
-    if(!data.hasAsPer){
-      el.hrManpowerMatch.textContent = "";
-      el.hrManpowerMatch.className = "hrManpowerMatch";
-    } else if(data.matches){
-      el.hrManpowerMatch.textContent = t("hrmp_match_ok");
-      el.hrManpowerMatch.className = "hrManpowerMatch hrManpowerMatchOk";
-    } else {
-      el.hrManpowerMatch.textContent = t("hrmp_match_bad");
-      el.hrManpowerMatch.className = "hrManpowerMatch hrManpowerMatchBad";
-    }
   }
   el.hrManpowerBody.addEventListener("input", recalcHRManpowerTotals);
-  el.f_hrmp_asper_operator.addEventListener("input", recalcHRManpowerTotals);
-  el.f_hrmp_asper_mh.addEventListener("input", recalcHRManpowerTotals);
-  el.f_hrmp_asper_fh.addEventListener("input", recalcHRManpowerTotals);
 
-  // Blanks every table/As-per-HR_MP input (used for a fresh Add Entry), or fills them from a
-  // saved entry's hrManpowerRows/hrManpowerAsPer (used when reopening one), then refreshes totals.
+  // Blanks every table input (used for a fresh Add Entry), or fills them from a saved entry's
+  // hrManpowerRows (used when reopening one), then refreshes the totals.
   function populateHRManpowerTable(entry){
     var savedRows = (entry && entry.hrManpowerRows) || [];
     var byDev = {};
@@ -1651,10 +1599,6 @@
       tr.querySelector(".hrmpMhInput").value = saved && saved.mh != null ? saved.mh : "";
       tr.querySelector(".hrmpFhInput").value = saved && saved.fh != null ? saved.fh : "";
     });
-    var asPer = (entry && entry.hrManpowerAsPer) || {};
-    el.f_hrmp_asper_operator.value = asPer.operator != null ? asPer.operator : "";
-    el.f_hrmp_asper_mh.value = asPer.mh != null ? asPer.mh : "";
-    el.f_hrmp_asper_fh.value = asPer.fh != null ? asPer.fh : "";
     recalcHRManpowerTotals();
   }
 
@@ -2273,10 +2217,8 @@
     }
     var dispatchNote = [e.clientName, e.driver].filter(Boolean).join(" · ");
     var fgNote = e.clientName || "";
-    var hrNote = e.hrManpowerMatch === true ? t("hrmp_match_ok") : e.hrManpowerMatch === false ? t("hrmp_match_bad") : "";
     var noteHtml = isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "")
       : isFG ? (fgNote ? '<div class="cardRemarks">' + esc(fgNote) + '</div>' : "")
-      : isHR ? (hrNote ? '<div class="cardRemarks">' + esc(hrNote) + '</div>' : "")
       : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "");
     // PLY (board thickness) sits right next to the product name — it's a property of what's
     // being made, not a run stat, so it belongs beside the product rather than in the stats row.
@@ -2637,8 +2579,6 @@
       qcBctVisipak: isQC ? el.f_qc_bct_visipak.value.trim() : "",
       hrManpowerRows: isHR ? hrManpowerData.rows : null,
       hrManpowerTotal: isHR ? hrManpowerData.total : null,
-      hrManpowerAsPer: isHR ? { operator: hrManpowerData.asPer.operator, mh: hrManpowerData.asPer.mh, fh: hrManpowerData.asPer.fh, grand: hrManpowerData.asPer.grand } : null,
-      hrManpowerMatch: isHR ? (hrManpowerData.hasAsPer ? hrManpowerData.matches : null) : null,
       updatedAt: Date.now()
     };
     lastUpdatedBy = payload.updatedBy;
