@@ -910,6 +910,7 @@
       card_type_label: "Type", card_stock_label: "In Stock", card_total_label: "Total", card_avail_label: "Avail",
       board_empty_hint: "No job cards logged here yet for this date.",
       board_section_production: "Production", board_section_departments: "Departments",
+      board_empty_hint_dept: "No entries logged here yet for this date.",
       stages_all: "All stages", stages_none: "No stages", stages_count: "{n} stages",
       profile_signed_in_as: "Signed in as", profile_stage_access_line: "Stage access: {stages}",
       profile_log_out: "Log Out",
@@ -1010,6 +1011,7 @@
       card_type_label: "टाइप", card_stock_label: "स्टॉक में", card_total_label: "कुल", card_avail_label: "उपलब्ध",
       board_empty_hint: "इस तारीख के लिए यहां अभी तक कोई जॉब कार्ड दर्ज नहीं है।",
       board_section_production: "प्रोडक्शन", board_section_departments: "डिपार्टमेंट्स",
+      board_empty_hint_dept: "इस तारीख के लिए यहां अभी तक कोई एंट्री दर्ज नहीं है।",
       stages_all: "सभी स्टेज", stages_none: "कोई स्टेज नहीं", stages_count: "{n} स्टेज",
       profile_signed_in_as: "इस रूप में साइन इन:", profile_stage_access_line: "स्टेज एक्सेस: {stages}",
       profile_log_out: "लॉग आउट",
@@ -1110,6 +1112,7 @@
       card_type_label: "టైప్", card_stock_label: "స్టాక్‌లో", card_total_label: "మొత్తం", card_avail_label: "అందుబాటులో",
       board_empty_hint: "ఈ తేదీ కోసం ఇక్కడ ఇంకా జాబ్ కార్డులు నమోదు కాలేదు।",
       board_section_production: "ప్రొడక్షన్", board_section_departments: "డిపార్ట్‌మెంట్లు",
+      board_empty_hint_dept: "ఈ తేదీ కోసం ఇక్కడ ఇంకా ఎంట్రీలు నమోదు కాలేదు.",
       stages_all: "అన్ని దశలు", stages_none: "దశలు లేవు", stages_count: "{n} దశలు",
       profile_signed_in_as: "ఇలా సైన్ ఇన్ అయ్యారు:", profile_stage_access_line: "దశ యాక్సెస్: {stages}",
       profile_log_out: "లాగ్ అవ్ట్",
@@ -2154,6 +2157,7 @@
 
       var entries = byStage[stage] || [];
       entries.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
+      var isDept = section === "departments";
 
       var col = document.createElement("div");
       col.className = "stageCol";
@@ -2162,11 +2166,15 @@
       head.className = "stageColHead";
       var h3 = document.createElement("h3");
       h3.textContent = stage;
-      var chip = document.createElement("span");
-      chip.className = "capChip " + capacityClass(entries.length);
-      chip.textContent = entries.length + "/" + SLOTS;
       head.appendChild(h3);
-      head.appendChild(chip);
+      // The X/10 capacity chip is a job-card-slots reading that doesn't mean anything for a
+      // department's daily entries, so it's skipped for House keeping / HR_Man Power.
+      if(!isDept){
+        var chip = document.createElement("span");
+        chip.className = "capChip " + capacityClass(entries.length);
+        chip.textContent = entries.length + "/" + SLOTS;
+        head.appendChild(chip);
+      }
       col.appendChild(head);
 
       var body = document.createElement("div");
@@ -2175,7 +2183,7 @@
       if(entries.length === 0){
         var hint = document.createElement("div");
         hint.className = "emptyHint";
-        hint.textContent = t("board_empty_hint");
+        hint.textContent = t(isDept ? "board_empty_hint_dept" : "board_empty_hint");
         body.appendChild(hint);
       } else {
         entries.forEach(function(e){
@@ -2344,6 +2352,38 @@
     return lines.join("\r\n");
   }
 
+  // HR_Man Power entries don't fit the generic per-entry CSV at all (they carry a whole table,
+  // not a handful of scalar fields), so exporting them uses this instead: one block per day,
+  // laid out just like the on-screen Dev/Operator/MH/FH table, stacked with a blank line between
+  // days when more than one is in the currently filtered list.
+  function buildHRManpowerCsv(rows){
+    var lines = [];
+    rows.forEach(function(e, idx){
+      if(idx > 0) lines.push("");
+      lines.push([t("th_date"), fmtDateForDisplay(e.date)].map(csvEscape).join(","));
+      lines.push([t("th_updatedby"), e.updatedBy || ""].map(csvEscape).join(","));
+      lines.push([t("hrmp_th_dev"), t("hrmp_th_operator"), t("hrmp_th_mh"), t("hrmp_th_fh")].map(csvEscape).join(","));
+      var devRows = e.hrManpowerRows || [];
+      devRows.forEach(function(r){
+        lines.push([
+          r.dev,
+          r.operator != null ? r.operator : "",
+          r.mh != null ? r.mh : "",
+          r.fh != null ? r.fh : ""
+        ].map(csvEscape).join(","));
+      });
+      var total = e.hrManpowerTotal || {};
+      lines.push([
+        t("hrmp_total_label"),
+        total.operator != null ? total.operator : "",
+        total.mh != null ? total.mh : "",
+        total.fh != null ? total.fh : ""
+      ].map(csvEscape).join(","));
+      lines.push([t("hrmp_grand_label"), total.grand != null ? total.grand : ""].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+
   function downloadCsv(filename, csv){
     var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     var url = URL.createObjectURL(blob);
@@ -2372,6 +2412,11 @@
       return true;
     });
     if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    if(stageFilter === "HR_Man Power"){
+      var hrCsv = buildHRManpowerCsv(rows);
+      downloadCsv("visipak-daily-job-track-hr-manpower.csv", hrCsv);
+      return;
+    }
     var csv = buildCsv(rows);
     downloadCsv("visipak-daily-job-track-log.csv", csv);
   });
