@@ -1453,7 +1453,12 @@
     if(storedStages){
       var parsed = null;
       try{ parsed = JSON.parse(storedStages); }catch(e){}
-      applyDeviceStage(parsed || "ALL", storedName, storedIsAdmin, storedLoggedIn, storedRole);
+      // A device that was verified as admin always shows the CURRENT admin name/role from code,
+      // not whatever was cached at login time — so renaming ADMIN_NAME takes effect on the next
+      // load everywhere, with no need to log out and back in on each admin's device.
+      var nameToUse = storedIsAdmin ? ADMIN_NAME : storedName;
+      var roleToUse = storedIsAdmin ? "Admin" : storedRole;
+      applyDeviceStage(parsed || "ALL", nameToUse, storedIsAdmin, storedLoggedIn, roleToUse);
     } else if(storedLegacy){
       // Pre-existing device from before admin-phone gating — never treated as admin until
       // it's explicitly reconfigured with the admin phone number.
