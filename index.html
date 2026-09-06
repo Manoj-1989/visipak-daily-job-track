@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visipak Daily Job Track</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+Telugu:wght@400;500;600&display=swap">
 <style>
   :root{
     --ground:#eef1f3;
@@ -28,9 +28,9 @@
     --orange-soft:#fce8d6;
     --shadow:0 1px 2px rgba(20,26,31,.06), 0 4px 12px rgba(20,26,31,.05);
     --radius:10px;
-    --font-display:"Oswald",system-ui,sans-serif;
-    --font-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
-    --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+    --font-display:"Oswald","Noto Sans Devanagari","Noto Sans Telugu",system-ui,sans-serif;
+    --font-body:"IBM Plex Sans","Noto Sans Devanagari","Noto Sans Telugu",system-ui,-apple-system,sans-serif;
+    --font-mono:"IBM Plex Mono","Noto Sans Devanagari","Noto Sans Telugu",ui-monospace,"SFMono-Regular",Menlo,monospace;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -356,6 +356,9 @@
   .supStageChk.allStages{grid-column:1 / -1;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:2px;}
   .supStageChk.disabled{opacity:.45;cursor:not-allowed;}
   .btn.editing{box-shadow:0 0 0 3px var(--accent-soft);}
+  .refreshIcon{display:inline-block;}
+  @keyframes vpSpin{ to{ transform:rotate(360deg); } }
+  #refreshBtn.spinning .refreshIcon{animation:vpSpin .5s linear;}
 
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
   [hidden]{display:none !important;}
@@ -378,23 +381,23 @@
           <span id="profileInitial"></span>
         </button>
         <div class="profileMenu" id="profileMenu" hidden>
-          <div class="profileMenuName">Signed in as <strong id="userTagName"></strong></div>
+          <div class="profileMenuName"><span data-i18n="profile_signed_in_as">Signed in as</span> <strong id="userTagName"></strong></div>
           <div class="profileMenuRole" id="profileMenuRole" hidden></div>
           <div class="profileMenuStages" id="profileMenuStages"></div>
-          <button type="button" class="profileMenuLogout" id="logOutBtn">Log Out</button>
+          <button type="button" class="profileMenuLogout" id="logOutBtn" data-i18n="profile_log_out">Log Out</button>
         </div>
       </div>
     </div>
     <div class="controls">
-      <label class="field">Date
+      <label class="field"><span data-i18n="filter_date">Date</span>
         <span class="dateFieldWrap">
           <input type="date" id="dateInput">
           <span class="dateFieldLabel" id="dateInputLabel" aria-hidden="true"></span>
         </span>
       </label>
-      <label class="field">Shift
+      <label class="field"><span data-i18n="filter_shift">Shift</span>
         <select id="boardShiftFilter">
-          <option value="">All</option>
+          <option value="" data-i18n="filter_all">All</option>
           <option value="A">A</option>
           <option value="B">B</option>
           <option value="C">C</option>
@@ -407,28 +410,36 @@
         <option value="C"></option>
         <option value="General"></option>
       </datalist>
-      <label class="field">Stage
-        <select id="boardStageFilter"><option value="">All</option></select>
+      <label class="field"><span data-i18n="filter_stage">Stage</span>
+        <select id="boardStageFilter"><option value="" data-i18n="filter_all">All</option></select>
       </label>
-      <label class="field">Status
+      <label class="field"><span data-i18n="filter_status">Status</span>
         <select id="boardStatusFilter">
-          <option value="">All</option>
-          <option value="Not Started">Not Started</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
+          <option value="" data-i18n="filter_all">All</option>
+          <option value="Not Started" data-i18n="status_not_started">Not Started</option>
+          <option value="In Progress" data-i18n="status_in_progress">In Progress</option>
+          <option value="Completed" data-i18n="status_completed">Completed</option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="filter_language">Language</span>
+        <select id="langSelect">
+          <option value="en">English</option>
+          <option value="hi">हिन्दी</option>
+          <option value="te">తెలుగు</option>
         </select>
       </label>
       <div class="deviceTag" id="deviceTagWrap">
-        This device: <strong id="deviceTagLabel">All stages</strong>
-        <button type="button" id="changeDeviceBtn">Change</button>
+        <span data-i18n="device_this_device">This device:</span> <strong id="deviceTagLabel">All stages</strong>
+        <button type="button" id="changeDeviceBtn" data-i18n="device_change">Change</button>
       </div>
-      <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden>Manage Users</button>
-      <button class="btn ghost" id="activityLogBtn" type="button" hidden>Activity Log</button>
+      <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden data-i18n="btn_manage_users">Manage Users</button>
+      <button class="btn ghost" id="activityLogBtn" type="button" hidden data-i18n="btn_activity_log">Activity Log</button>
       <div class="viewToggle" role="tablist">
-        <button class="toggleBtn active" data-view="board" type="button">Board</button>
-        <button class="toggleBtn" data-view="log" type="button">Log</button>
+        <button class="toggleBtn active" data-view="board" type="button" data-i18n="view_board">Board</button>
+        <button class="toggleBtn" data-view="log" type="button" data-i18n="view_log">Log</button>
       </div>
-      <button class="btn primary" id="addBtn" type="button">+ Add Entry</button>
+      <button class="btn ghost" id="refreshBtn" type="button" title="Refresh app to get the latest updates" data-i18n-title="btn_refresh_title"><span class="refreshIcon">↻</span> <span data-i18n="btn_refresh">Refresh</span></button>
+      <button class="btn primary" id="addBtn" type="button" data-i18n="btn_add_entry">+ Add Entry</button>
     </div>
   </header>
 
@@ -436,19 +447,19 @@
 
   <div class="summaryBar">
     <div class="statTile manpower">
-      <span class="statLabel">Total Manpower Today</span>
+      <span class="statLabel" data-i18n="summary_manpower">Total Manpower Today</span>
       <span class="statValue" id="statManpower">0</span>
     </div>
     <div class="statTile completed">
-      <span class="statLabel">Completed</span>
+      <span class="statLabel" data-i18n="summary_completed">Completed</span>
       <span class="statValue" id="statCompleted">0</span>
     </div>
     <div class="statTile inprogress">
-      <span class="statLabel">In Progress</span>
+      <span class="statLabel" data-i18n="summary_inprogress">In Progress</span>
       <span class="statValue" id="statInProgress">0</span>
     </div>
     <div class="statTile notstarted">
-      <span class="statLabel">Not Started</span>
+      <span class="statLabel" data-i18n="summary_notstarted">Not Started</span>
       <span class="statValue" id="statNotStarted">0</span>
     </div>
   </div>
@@ -457,28 +468,28 @@
 
   <main id="logView" class="logView" hidden>
     <div class="logControls">
-      <input type="text" id="logSearch" placeholder="Search job card or product name…">
-      <select id="logStageFilter"><option value="">All stages</option></select>
+      <input type="text" id="logSearch" placeholder="Search job card or product name…" data-i18n-placeholder="log_search_placeholder">
+      <select id="logStageFilter"><option value="" data-i18n="log_all_stages">All stages</option></select>
       <select id="logStatusFilter">
-        <option value="">All statuses</option>
-        <option value="Not Started">Not Started</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Completed">Completed</option>
+        <option value="" data-i18n="log_all_statuses">All statuses</option>
+        <option value="Not Started" data-i18n="status_not_started">Not Started</option>
+        <option value="In Progress" data-i18n="status_in_progress">In Progress</option>
+        <option value="Completed" data-i18n="status_completed">Completed</option>
       </select>
-      <button class="btn ghost" id="exportBtn" type="button">Export CSV</button>
+      <button class="btn ghost" id="exportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
     </div>
     <div class="tableWrap">
       <table>
         <thead>
           <tr>
-            <th>Date</th><th>Shift</th><th>Stage</th><th>Product Name</th><th>Job Card No</th><th>Status</th>
-            <th>Qty</th><th>Start Time</th><th>End Time</th><th>Run Time</th><th>Man&nbsp;power</th><th>Remarks</th>
-            <th>Updated&nbsp;By</th><th>Last&nbsp;Updated</th>
+            <th data-i18n="th_date">Date</th><th data-i18n="th_shift">Shift</th><th data-i18n="th_stage">Stage</th><th data-i18n="th_product">Product Name</th><th data-i18n="th_jobcard">Job Card No</th><th data-i18n="th_status">Status</th>
+            <th data-i18n="th_qty">Qty</th><th data-i18n="th_start">Start Time</th><th data-i18n="th_end">End Time</th><th data-i18n="th_runtime">Run Time</th><th data-i18n="th_manpower">Man&nbsp;power</th><th data-i18n="th_remarks">Remarks</th>
+            <th data-i18n="th_updatedby">Updated&nbsp;By</th><th data-i18n="th_lastupdated">Last&nbsp;Updated</th>
           </tr>
         </thead>
         <tbody id="logBody"></tbody>
       </table>
-      <div class="logEmpty" id="logEmpty" hidden>No entries match. Try clearing filters.</div>
+      <div class="logEmpty" id="logEmpty" hidden data-i18n="log_empty">No entries match. Try clearing filters.</div>
     </div>
   </main>
 </div>
@@ -486,7 +497,7 @@
 <div class="modalOverlay" id="deviceSetupOverlay" hidden>
   <div class="modal">
     <h2 id="deviceSetupTitle">Log In to This Device</h2>
-    <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+    <p id="deviceSetupDesc" data-i18n="setup_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
       Enter your phone number to log in. This device will automatically be set up for your assigned stage(s), and
       job cards you add or edit will be tagged with your name. It'll only be able to touch those stages — entries
       from other stages show read-only. Sharing this device with someone else? Log out when you're done so the
@@ -494,22 +505,22 @@
     </p>
     <div id="deviceSetupPhoneMode">
       <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
-        Phone number
-        <input type="tel" id="deviceSetupPhoneInput" placeholder="e.g. 9876543210" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+        <span data-i18n="setup_phone_label">Phone number</span>
+        <input type="tel" id="deviceSetupPhoneInput" placeholder="e.g. 9876543210" data-i18n-placeholder="setup_phone_placeholder" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
       </label>
     </div>
     <div id="deviceSetupManualMode" hidden>
       <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
-        This device is for
+        <span data-i18n="setup_manual_label">This device is for</span>
         <select id="deviceStageSelect" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
-          <option value="ALL">All stages (full access)</option>
+          <option value="ALL" data-i18n="setup_all_stages_full">All stages (full access)</option>
         </select>
       </label>
     </div>
     <div class="readOnlyNote" id="deviceSetupPhoneError" hidden style="margin-top:12px;"></div>
     <button type="button" id="deviceSetupToggleLink" class="setupToggleLink" data-mode="manual">Set up manually instead</button>
     <div class="modalActions">
-      <button type="button" class="btn ghost" id="deviceSetupCancelBtn" hidden>Cancel</button>
+      <button type="button" class="btn ghost" id="deviceSetupCancelBtn" hidden data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="deviceSetupSaveBtn">Continue</button>
     </div>
@@ -518,95 +529,95 @@
 
 <div class="modalOverlay" id="supervisorsOverlay" hidden>
   <div class="modal wide">
-    <h2>Manage Users</h2>
-    <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+    <h2 data-i18n="sup_title">Manage Users</h2>
+    <p data-i18n="sup_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
       Add each user's phone number and the stage(s) they should have access to. When they enter their number
       on a device during setup, that device locks to just those stages. Re-adding (or clicking Edit on) a number
       that's already listed updates their details. Give someone like a shift in-charge "All stages" so they can add
       and edit job cards anywhere — that alone doesn't give them Manage Users or Activity Log; only the admin
       phone number gets those.
     </p>
-    <input type="text" id="supSearchInput" class="supSearchInput" placeholder="Search by name, phone, or role…">
+    <input type="text" id="supSearchInput" class="supSearchInput" placeholder="Search by name, phone, or role…" data-i18n-placeholder="sup_search_placeholder">
     <div class="supTableWrap">
       <table class="supTable">
-        <thead><tr><th>Phone</th><th>Name</th><th>Role</th><th>Stage access</th><th></th></tr></thead>
+        <thead><tr><th data-i18n="sup_th_phone">Phone</th><th data-i18n="sup_th_name">Name</th><th data-i18n="sup_th_role">Role</th><th data-i18n="sup_th_stageaccess">Stage access</th><th></th></tr></thead>
         <tbody id="supervisorsBody"></tbody>
       </table>
     </div>
-    <div class="supEmpty" id="supervisorsEmpty" hidden>No users found.</div>
+    <div class="supEmpty" id="supervisorsEmpty" hidden data-i18n="sup_empty">No users found.</div>
     <div class="supCount" id="supervisorsCount"></div>
     <div class="supAddRow">
-      <label>Name
-        <input type="text" id="supNameInput" placeholder="e.g. Raju">
+      <label><span data-i18n="sup_th_name">Name</span>
+        <input type="text" id="supNameInput" placeholder="e.g. Raju" data-i18n-placeholder="sup_name_placeholder">
       </label>
-      <label>Role
-        <input type="text" id="supRoleInput" placeholder="e.g. Supervisor">
+      <label><span data-i18n="sup_th_role">Role</span>
+        <input type="text" id="supRoleInput" placeholder="e.g. Supervisor" data-i18n-placeholder="sup_role_placeholder">
       </label>
     </div>
     <div class="supStagesField">
-      <span class="supStagesLabel">Stage access</span>
+      <span class="supStagesLabel" data-i18n="sup_th_stageaccess">Stage access</span>
       <div class="supStagesBox" id="supStagesBox">
         <label class="supStageChk allStages">
-          <input type="checkbox" id="supStageAll" value="ALL"> All stages (full access)
+          <input type="checkbox" id="supStageAll" value="ALL"> <span data-i18n="setup_all_stages_full">All stages (full access)</span>
         </label>
       </div>
     </div>
     <div class="supAddRow" style="grid-template-columns:1fr;margin-top:10px;">
-      <label>Phone number
+      <label><span data-i18n="setup_phone_label">Phone number</span>
         <input type="tel" id="supPhoneInput" placeholder="9876543210">
       </label>
     </div>
     <div class="modalActions" style="margin-top:12px;">
-      <button type="button" class="btn ghost" id="supClearBtn" hidden>Cancel edit</button>
+      <button type="button" class="btn ghost" id="supClearBtn" hidden data-i18n="sup_cancel_edit">Cancel edit</button>
       <div class="spacer"></div>
       <button class="btn primary small" id="supAddBtn" type="button">Add user</button>
     </div>
     <div class="readOnlyNote" id="supervisorsError" hidden style="margin-top:12px;"></div>
     <div class="modalActions">
       <div class="spacer"></div>
-      <button type="button" class="btn primary" id="supervisorsCloseBtn">Done</button>
+      <button type="button" class="btn primary" id="supervisorsCloseBtn" data-i18n="generic_done">Done</button>
     </div>
   </div>
 </div>
 
 <div class="modalOverlay" id="activityOverlay" hidden>
   <div class="modal wide">
-    <h2>Activity Log</h2>
-    <p style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+    <h2 data-i18n="act_title">Activity Log</h2>
+    <p data-i18n="act_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
       Every job card added, edited, or deleted, with who did it and when. A deleted job card stays listed here
       even though it's gone from the board and log.
     </p>
-    <input type="text" id="activitySearchInput" class="supSearchInput" placeholder="Search by job card, product, stage, or name…">
+    <input type="text" id="activitySearchInput" class="supSearchInput" placeholder="Search by job card, product, stage, or name…" data-i18n-placeholder="act_search_placeholder">
     <div class="supTableWrap" style="max-height:340px;">
       <table class="supTable">
-        <thead><tr><th>Time</th><th>Action</th><th>Job Card</th><th>Product</th><th>Stage</th><th>By</th></tr></thead>
+        <thead><tr><th data-i18n="act_th_time">Time</th><th data-i18n="act_th_action">Action</th><th data-i18n="act_th_jobcard">Job Card</th><th data-i18n="act_th_product">Product</th><th data-i18n="act_th_stage">Stage</th><th data-i18n="act_th_by">By</th></tr></thead>
         <tbody id="activityBody"></tbody>
       </table>
     </div>
-    <div class="supEmpty" id="activityEmpty" hidden>No activity recorded yet.</div>
+    <div class="supEmpty" id="activityEmpty" hidden data-i18n="act_empty">No activity recorded yet.</div>
     <div class="supCount" id="activityCount"></div>
     <div class="readOnlyNote" id="activityError" hidden style="margin-top:12px;"></div>
     <div class="modalActions">
-      <button type="button" class="btn ghost" id="activityExportBtn">Export CSV</button>
+      <button type="button" class="btn ghost" id="activityExportBtn" data-i18n="btn_export_csv">Export CSV</button>
       <div class="spacer"></div>
-      <button type="button" class="btn primary" id="activityCloseBtn">Done</button>
+      <button type="button" class="btn primary" id="activityCloseBtn" data-i18n="generic_done">Done</button>
     </div>
   </div>
 </div>
 
 <div class="modalOverlay" id="deleteConfirmOverlay" hidden>
   <div class="modal">
-    <h2>Delete Job Card?</h2>
+    <h2 data-i18n="del_title">Delete Job Card?</h2>
     <p id="deleteConfirmSummary" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;"></p>
     <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
-      Your name
-      <input type="text" id="deleteConfirmName" placeholder="e.g. Raju" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+      <span data-i18n="del_name_label">Your name</span>
+      <input type="text" id="deleteConfirmName" placeholder="e.g. Raju" data-i18n-placeholder="sup_name_placeholder" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
     </label>
     <div class="readOnlyNote" id="deleteConfirmError" hidden style="margin-top:12px;"></div>
     <div class="modalActions">
-      <button type="button" class="btn ghost" id="deleteConfirmCancelBtn">Cancel</button>
+      <button type="button" class="btn ghost" id="deleteConfirmCancelBtn" data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
-      <button type="button" class="btn danger" id="deleteConfirmYesBtn">Delete</button>
+      <button type="button" class="btn danger" id="deleteConfirmYesBtn" data-i18n="generic_delete">Delete</button>
     </div>
   </div>
 </div>
@@ -616,41 +627,41 @@
     <h2 id="modalTitle">Add Entry</h2>
     <div class="readOnlyNote" id="readOnlyNote" hidden></div>
     <div class="formGrid">
-      <label>Date
+      <label><span data-i18n="filter_date">Date</span>
         <span class="dateFieldWrap">
           <input type="date" id="f_date" required>
           <span class="dateFieldLabel" id="f_dateLabel" aria-hidden="true"></span>
         </span>
       </label>
-      <label>Shift <input type="text" id="f_shift" list="shiftOptions" required></label>
-      <label class="span2">Stage
+      <label><span data-i18n="filter_shift">Shift</span> <input type="text" id="f_shift" list="shiftOptions" required></label>
+      <label class="span2"><span data-i18n="filter_stage">Stage</span>
         <select id="f_stage" required></select>
       </label>
-      <label>Product Name <input type="text" id="f_product" placeholder="e.g. Fevicol Carton"></label>
-      <label>Job Card No <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031"></label>
-      <label>Quantity <input type="number" id="f_qty" min="0" step="1" placeholder="500"></label>
-      <label>Start Time <input type="time" id="f_starttime"></label>
-      <label>End Time <input type="time" id="f_endtime"></label>
-      <label>Run Time (Hrs) <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5"></label>
-      <label>Man power <input type="number" id="f_manpower" min="0" step="1" placeholder="3"></label>
-      <label>Updated By <input type="text" id="f_updatedby" required placeholder="Your name"></label>
-      <label>Status
+      <label><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
+      <label><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
+      <label><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <label><span data-i18n="form_starttime_label">Start Time</span> <input type="time" id="f_starttime"></label>
+      <label><span data-i18n="form_endtime_label">End Time</span> <input type="time" id="f_endtime"></label>
+      <label><span data-i18n="form_runtime_label">Run Time (Hrs)</span> <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5" data-i18n-placeholder="form_runtime_placeholder"></label>
+      <label><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
+      <label><span data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
+      <label><span data-i18n="filter_status">Status</span>
         <select id="f_status">
-          <option value="Not Started">Not Started</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Completed">Completed</option>
+          <option value="Not Started" data-i18n="status_not_started">Not Started</option>
+          <option value="In Progress" data-i18n="status_in_progress">In Progress</option>
+          <option value="Completed" data-i18n="status_completed">Completed</option>
         </select>
       </label>
-      <label>Next Stage
-        <select id="f_nextstage"><option value="">— stays here —</option></select>
+      <label><span data-i18n="form_nextstage_label">Next Stage</span>
+        <select id="f_nextstage"><option value="" data-i18n="form_stays_here">— stays here —</option></select>
       </label>
-      <label class="span2">Remarks <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule"></textarea></label>
+      <label class="span2"><span data-i18n="th_remarks">Remarks</span> <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule" data-i18n-placeholder="form_remarks_placeholder"></textarea></label>
     </div>
     <div class="modalActions">
-      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+      <button type="button" class="btn danger" id="deleteBtn" hidden data-i18n="generic_delete">Delete</button>
       <div class="spacer"></div>
       <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
-      <button type="submit" class="btn primary" id="saveBtn">Save</button>
+      <button type="submit" class="btn primary" id="saveBtn" data-i18n="generic_save">Save</button>
     </div>
   </form>
 </div>
@@ -696,6 +707,268 @@
   // Any other device — even one manually set to "All stages" for full add/edit access — never
   // gets these, regardless of what's stored for it in the "supervisors" collection.
   var ADMIN_PHONE = "9703426919";
+
+  // ---------- Translations ----------
+  // Simple key -> string lookup, three languages. Dynamic sentences (banner messages, counts,
+  // the read-only note, the delete confirmation) are assembled with tf() from short templates
+  // rather than full grammatically-perfect sentences in each language — good enough for a
+  // factory floor app, not meant to be a professional localization.
+  var I18N = {
+    en: {
+      generic_cancel: "Cancel", generic_delete: "Delete", generic_save: "Save", generic_done: "Done",
+      generic_err_invalid_phone: "Enter a valid 10-digit phone number.",
+      generic_err_network: "Couldn't check that number right now. Check your connection and try again.",
+      filter_date: "Date", filter_shift: "Shift", filter_stage: "Stage", filter_status: "Status",
+      filter_all: "All", filter_language: "Language",
+      status_not_started: "Not Started", status_in_progress: "In Progress", status_completed: "Completed",
+      device_this_device: "This device:", device_change: "Change",
+      btn_manage_users: "Manage Users", btn_activity_log: "Activity Log",
+      view_board: "Board", view_log: "Log",
+      btn_add_entry: "+ Add Entry",
+      btn_refresh: "Refresh", btn_refresh_title: "Refresh app to get the latest updates",
+      btn_export_csv: "Export CSV",
+      summary_manpower: "Total Manpower Today", summary_completed: "Completed",
+      summary_inprogress: "In Progress", summary_notstarted: "Not Started",
+      log_search_placeholder: "Search job card or product name…",
+      log_all_stages: "All stages", log_all_statuses: "All statuses",
+      log_empty: "No entries match. Try clearing filters.",
+      th_date: "Date", th_shift: "Shift", th_stage: "Stage", th_product: "Product Name",
+      th_jobcard: "Job Card No", th_status: "Status", th_qty: "Qty", th_start: "Start Time",
+      th_end: "End Time", th_runtime: "Run Time", th_manpower: "Man power", th_remarks: "Remarks",
+      th_updatedby: "Updated By", th_lastupdated: "Last Updated",
+      card_qty_label: "Qty", card_start_label: "Start", card_end_label: "End",
+      card_hrs_label: "hrs", card_mp_label: "MP",
+      board_empty_hint: "No job cards logged here yet for this date.",
+      stages_all: "All stages", stages_none: "No stages", stages_count: "{n} stages",
+      profile_signed_in_as: "Signed in as", profile_stage_access_line: "Stage access: {stages}",
+      profile_log_out: "Log Out",
+      setup_title_login: "Log In to This Device", setup_title_change: "Change Device Setup",
+      setup_desc: "Enter your phone number to log in. This device will automatically be set up for your assigned stage(s), and job cards you add or edit will be tagged with your name. It'll only be able to touch those stages — entries from other stages show read-only. Sharing this device with someone else? Log out when you're done so the next person logs in with their own number.",
+      setup_phone_label: "Phone number", setup_phone_placeholder: "e.g. 9876543210",
+      setup_manual_label: "This device is for", setup_all_stages_full: "All stages (full access)",
+      setup_manual_link: "Set up manually instead", setup_phone_link: "Use phone number instead",
+      setup_continue: "Continue", setup_login: "Log In",
+      setup_err_no_stage: "That number has no stage access assigned yet. Ask admin to fix it under \"Manage Users\".",
+      setup_err_not_found: "That phone number isn't set up yet. Ask admin to add it under \"Manage Users\", or set up this device manually.",
+      sup_title: "Manage Users",
+      sup_desc: "Add each user's phone number and the stage(s) they should have access to. When they enter their number on a device during setup, that device locks to just those stages. Re-adding (or clicking Edit on) a number that's already listed updates their details. Give someone like a shift in-charge \"All stages\" so they can add and edit job cards anywhere — that alone doesn't give them Manage Users or Activity Log; only the admin phone number gets those.",
+      sup_search_placeholder: "Search by name, phone, or role…",
+      sup_th_phone: "Phone", sup_th_name: "Name", sup_th_role: "Role", sup_th_stageaccess: "Stage access",
+      sup_empty: "No users found.", sup_name_placeholder: "e.g. Raju", sup_role_placeholder: "e.g. Supervisor",
+      sup_cancel_edit: "Cancel edit", sup_add_user: "Add user", sup_save_changes: "Save changes",
+      sup_edit: "Edit", sup_remove: "Remove",
+      sup_err_choose_stage: "Choose at least one stage, or check \"All stages\".",
+      sup_err_save_failed: "Couldn't save. Try again.",
+      sup_err_load_failed: "Couldn't load users. Check your connection.",
+      sup_err_remove_failed: "Couldn't remove that entry. Try again.",
+      sup_count_all: "{n} users", sup_count_showing: "Showing {shown} of {total} users",
+      act_title: "Activity Log",
+      act_desc: "Every job card added, edited, or deleted, with who did it and when. A deleted job card stays listed here even though it's gone from the board and log.",
+      act_search_placeholder: "Search by job card, product, stage, or name…",
+      act_th_time: "Time", act_th_action: "Action", act_th_jobcard: "Job Card", act_th_product: "Product",
+      act_th_stage: "Stage", act_th_by: "By",
+      act_empty: "No activity recorded yet.",
+      act_added: "Added", act_edited: "Edited", act_deleted: "Deleted",
+      act_err_load_prefix: "Couldn't load activity log:",
+      act_count_all: "{n} events", act_count_showing: "Showing {shown} of {total} events",
+      del_title: "Delete Job Card?", del_name_label: "Your name",
+      del_err_name_required: "Enter your name to confirm the delete.",
+      del_err_failed_prefix: "Delete failed:",
+      del_summary_prefix: "Job Card {jc}{prod} at {stage} will be permanently removed. This can't be undone.",
+      form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
+      form_close: "Close",
+      form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
+      form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
+      form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
+      form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
+      form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
+      form_updatedby_placeholder: "Your name", form_remarks_placeholder: "Running smoothly, on schedule",
+      form_readonly_prefix: "This entry belongs to {stage} — this device only has access to ",
+      form_readonly_suffix: ". Switch this device's stage access (top right, \"Change\") to edit it.",
+      banner_no_rows_export: "No rows to export.", banner_save_failed_prefix: "Save failed:",
+      banner_live_updates_stopped_prefix: "Live updates stopped:",
+      banner_log_updates_stopped_prefix: "Log updates stopped:",
+      banner_moved: "Job Card {jc} completed at {from} — moved to {to}."
+    },
+    hi: {
+      generic_cancel: "रद्द करें", generic_delete: "हटाएं", generic_save: "सेव करें", generic_done: "हो गया",
+      generic_err_invalid_phone: "एक सही 10-अंकों का फ़ोन नंबर दर्ज करें।",
+      generic_err_network: "अभी उस नंबर की जांच नहीं हो सकी। अपना कनेक्शन जांचें और फिर कोशिश करें।",
+      filter_date: "तारीख", filter_shift: "शिफ्ट", filter_stage: "स्टेज", filter_status: "स्थिति",
+      filter_all: "सभी", filter_language: "भाषा",
+      status_not_started: "शुरू नहीं हुआ", status_in_progress: "जारी है", status_completed: "पूर्ण",
+      device_this_device: "यह डिवाइस:", device_change: "बदलें",
+      btn_manage_users: "उपयोगकर्ता प्रबंधित करें", btn_activity_log: "गतिविधि लॉग",
+      view_board: "बोर्ड", view_log: "लॉग",
+      btn_add_entry: "+ एंट्री जोड़ें",
+      btn_refresh: "रीफ्रेश करें", btn_refresh_title: "नवीनतम अपडेट पाने के लिए ऐप को रीफ्रेश करें",
+      btn_export_csv: "CSV एक्सपोर्ट करें",
+      summary_manpower: "आज कुल मैनपावर", summary_completed: "पूर्ण",
+      summary_inprogress: "जारी है", summary_notstarted: "शुरू नहीं हुआ",
+      log_search_placeholder: "जॉब कार्ड या प्रोडक्ट नाम खोजें…",
+      log_all_stages: "सभी स्टेज", log_all_statuses: "सभी स्थितियां",
+      log_empty: "कोई एंट्री मेल नहीं खाती। फ़िल्टर हटाकर देखें।",
+      th_date: "तारीख", th_shift: "शिफ्ट", th_stage: "स्टेज", th_product: "प्रोडक्ट नाम",
+      th_jobcard: "जॉब कार्ड नंबर", th_status: "स्थिति", th_qty: "मात्रा", th_start: "शुरू समय",
+      th_end: "समाप्ति समय", th_runtime: "रन टाइम", th_manpower: "मैन् पावर", th_remarks: "टिप्पणी",
+      th_updatedby: "अपडेट किया", th_lastupdated: "अंतिम अपडेट",
+      card_qty_label: "मात्रा", card_start_label: "शुरू", card_end_label: "समाप्ति",
+      card_hrs_label: "घंटे", card_mp_label: "MP",
+      board_empty_hint: "इस तारीख के लिए यहां अभी तक कोई जॉब कार्ड दर्ज नहीं है।",
+      stages_all: "सभी स्टेज", stages_none: "कोई स्टेज नहीं", stages_count: "{n} स्टेज",
+      profile_signed_in_as: "इस रूप में साइन इन:", profile_stage_access_line: "स्टेज एक्सेस: {stages}",
+      profile_log_out: "लॉग आउट",
+      setup_title_login: "इस डिवाइस में लॉग इन करें", setup_title_change: "डिवाइस सेटअप बदलें",
+      setup_desc: "लॉग इन करने के लिए अपना फ़ोन नंबर दर्ज करें। यह डिवाइस अपने आप तय स्टेज(स्टेजों) के लिए सेट हो जाएगा, और आपके द्वारा जोड़े या बदले गए जॉब कार्ड आपके नाम से टैग होंगे। यह केवल उन्हीं स्टेजों को छू पाएगा — बाकी स्टेजों की एंट्री केवल देखने के लिए दिखेंगी। इस डिवाइस को किसी और के साथ शेयर कर रहे हैं? काम पूरा होने पर लॉग आउट करें ताकि अगला व्यक्ति अपने नंबर से लॉग इन कर सके।",
+      setup_phone_label: "फ़ोन नंबर", setup_phone_placeholder: "जैसे 9876543210",
+      setup_manual_label: "यह डिवाइस किसके लिए है", setup_all_stages_full: "सभी स्टेज (पूरा एक्सेस)",
+      setup_manual_link: "मैन्युअल रूप से सेट करें", setup_phone_link: "फ़ोन नंबर का उपयोग करें",
+      setup_continue: "जारी रखें", setup_login: "लॉग इन करें",
+      setup_err_no_stage: "उस नंबर के लिए अभी तक कोई स्टेज एक्सेस तय नहीं है। एडमिन से \"उपयोगकर्ता प्रबंधित करें\" में ठीक करने को कहें।",
+      setup_err_not_found: "वह फ़ोन नंबर अभी सेट अप नहीं है। एडमिन से \"उपयोगकर्ता प्रबंधित करें\" में जोड़ने को कहें, या इस डिवाइस को मैन्युअल रूप से सेट करें।",
+      sup_title: "उपयोगकर्ता प्रबंधित करें",
+      sup_desc: "हर उपयोगकर्ता का फ़ोन नंबर और उन्हें जिन स्टेज का एक्सेस चाहिए वह जोड़ें। सेटअप के दौरान डिवाइस पर नंबर डालने पर वह डिवाइस उन्हीं स्टेजों पर लॉक हो जाएगा। पहले से सूचीबद्ध नंबर को फिर से जोड़ने (या उस पर एडिट पर क्लिक करने) से उसकी जानकारी अपडेट हो जाती है। शिफ्ट इंचार्ज जैसे किसी को \"सभी स्टेज\" दें ताकि वे कहीं भी जॉब कार्ड जोड़ और बदल सकें — इससे अकेले उन्हें उपयोगकर्ता प्रबंधन या गतिविधि लॉग नहीं मिलता; वह केवल एडमिन फ़ोन नंबर को मिलता है।",
+      sup_search_placeholder: "नाम, फ़ोन, या भूमिका से खोजें…",
+      sup_th_phone: "फ़ोन", sup_th_name: "नाम", sup_th_role: "भूमिका", sup_th_stageaccess: "स्टेज एक्सेस",
+      sup_empty: "कोई उपयोगकर्ता नहीं मिला।", sup_name_placeholder: "जैसे राजू", sup_role_placeholder: "जैसे सुपरवाइज़र",
+      sup_cancel_edit: "एडिट रद्द करें", sup_add_user: "उपयोगकर्ता जोड़ें", sup_save_changes: "बदलाव सेव करें",
+      sup_edit: "एडिट", sup_remove: "हटाओ",
+      sup_err_choose_stage: "कम से कम एक स्टेज चुनें, या \"सभी स्टेज\" पर टिक करें।",
+      sup_err_save_failed: "सेव नहीं हो सका। फिर कोशिश करें।",
+      sup_err_load_failed: "उपयोगकर्ता लोड नहीं हो सके। अपना कनेक्शन जांचें।",
+      sup_err_remove_failed: "वह एंट्री हटाई नहीं जा सकी। फिर कोशिश करें।",
+      sup_count_all: "{n} उपयोगकर्ता", sup_count_showing: "{total} में से {shown} उपयोगकर्ता दिखा रहे हैं",
+      act_title: "गतिविधि लॉग",
+      act_desc: "हर जोड़ा, बदला या हटाया गया जॉब कार्ड, किसने और कब किया इसके साथ। हटाया गया जॉब कार्ड बोर्ड और लॉग से हटने के बाद भी यहां सूचीबद्ध रहता है।",
+      act_search_placeholder: "जॉब कार्ड, प्रोडक्ट, स्टेज, या नाम से खोजें…",
+      act_th_time: "समय", act_th_action: "कार्य", act_th_jobcard: "जॉब कार्ड", act_th_product: "प्रोडक्ट",
+      act_th_stage: "स्टेज", act_th_by: "किसने",
+      act_empty: "अभी तक कोई गतिविधि दर्ज नहीं हुई।",
+      act_added: "जोड़ा गया", act_edited: "बदला गया", act_deleted: "हटाया गया",
+      act_err_load_prefix: "गतिविधि लॉग लोड नहीं हो सका:",
+      act_count_all: "{n} घटनाएं", act_count_showing: "{total} में से {shown} घटनाएं दिखा रहे हैं",
+      del_title: "जॉब कार्ड हटाएं?", del_name_label: "आपका नाम",
+      del_err_name_required: "हटाने की पुष्टि के लिए अपना नाम दर्ज करें।",
+      del_err_failed_prefix: "हटाना विफल:",
+      del_summary_prefix: "जॉब कार्ड {jc}{prod} को {stage} से स्थायी रूप से हटा दिया जाएगा। इसे वापस नहीं लाया जा सकता।",
+      form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
+      form_close: "बंद करें",
+      form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
+      form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
+      form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
+      form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
+      form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
+      form_updatedby_placeholder: "आपका नाम", form_remarks_placeholder: "सुचारू रूप से चल रहा है, समय पर",
+      form_readonly_prefix: "यह एंट्री {stage} की है — इस डिवाइस को केवल इसका एक्सेस है: ",
+      form_readonly_suffix: "। इसे बदलने के लिए ऊपर दाईं ओर \"बदलें\" से डिवाइस की स्टेज एक्सेस बदलें।",
+      banner_no_rows_export: "एक्सपोर्ट के लिए कोई पंक्ति नहीं।", banner_save_failed_prefix: "सेव विफल:",
+      banner_live_updates_stopped_prefix: "लाइव अपडेट रुक गए:",
+      banner_log_updates_stopped_prefix: "लॉग अपडेट रुक गए:",
+      banner_moved: "जॉब कार्ड {jc} {from} पर पूर्ण हुआ — {to} में भेजा गया।"
+    },
+    te: {
+      generic_cancel: "రద్దు చేయండి", generic_delete: "తొలగించండి", generic_save: "సేవ్ చేయండి", generic_done: "పూర్తయింది",
+      generic_err_invalid_phone: "సరైన 10-అంకెల ఫోన్ నంబర్ నమోదు చేయండి।",
+      generic_err_network: "ఆ నంబర్‌ను ఇప్పుడు తనిఖీ చేయలేకపోయాము. మీ కనెక్షన్‌ని తనిఖీ చేసి మళ్ళీ ప్రయత్నించండి।",
+      filter_date: "తేదీ", filter_shift: "షిఫ్ట్", filter_stage: "దశ", filter_status: "స్థితి",
+      filter_all: "అన్నీ", filter_language: "భాష",
+      status_not_started: "ప్రారంభం కాలేదు", status_in_progress: "జరుగుతోంది", status_completed: "పూర్తయింది",
+      device_this_device: "ఈ పరికరం:", device_change: "మార్చండి",
+      btn_manage_users: "వినియోగదారులను నిర్వహించండి", btn_activity_log: "కార్యాచరణ లాగ్",
+      view_board: "బోర్డు", view_log: "లాగ్",
+      btn_add_entry: "+ ఎంట్రీ జోడించండి",
+      btn_refresh: "రిఫ్రెష్ చేయండి", btn_refresh_title: "తాజా అప్‌డేట్ల కోసం యాప్‌ను రిఫ్రెష్ చేయండి",
+      btn_export_csv: "CSV ఎగుమతి చేయండి",
+      summary_manpower: "నేటి మొత్తం మ్యాన్‌పవర్", summary_completed: "పూర్తయింది",
+      summary_inprogress: "జరుగుతోంది", summary_notstarted: "ప్రారంభం కాలేదు",
+      log_search_placeholder: "జాబ్ కార్డ్ లేదా ప్రొడక్ట్ పేరు వెతకండి…",
+      log_all_stages: "అన్ని దశలు", log_all_statuses: "అన్ని స్థితులు",
+      log_empty: "ఎటువంటి ఎంట్రీ సరిపోలలేదు. ఫిల్టర్‌లను తీసివేసి ప్రయత్నించండి।",
+      th_date: "తేదీ", th_shift: "షిఫ్ట్", th_stage: "దశ", th_product: "ప్రొడక్ట్ పేరు",
+      th_jobcard: "జాబ్ కార్డ్ నంబర్", th_status: "స్థితి", th_qty: "పరిమాణం", th_start: "ప్రారంభ సమయం",
+      th_end: "ముగింపు సమయం", th_runtime: "రన్ టైమ్", th_manpower: "మ్యాన్‌ పవర్", th_remarks: "వ్యాఖ్యలు",
+      th_updatedby: "నవీకరించినవారు", th_lastupdated: "చివరిగా నవీకరించబడింది",
+      card_qty_label: "పరిమాణం", card_start_label: "ప్రారంభం", card_end_label: "ముగింపు",
+      card_hrs_label: "గంటలు", card_mp_label: "MP",
+      board_empty_hint: "ఈ తేదీ కోసం ఇక్కడ ఇంకా జాబ్ కార్డులు నమోదు కాలేదు।",
+      stages_all: "అన్ని దశలు", stages_none: "దశలు లేవు", stages_count: "{n} దశలు",
+      profile_signed_in_as: "ఇలా సైన్ ఇన్ అయ్యారు:", profile_stage_access_line: "దశ యాక్సెస్: {stages}",
+      profile_log_out: "లాగ్ అవ్ట్",
+      setup_title_login: "ఈ పరికరంలో లాగిన్ అవ్వండి", setup_title_change: "పరికర సెటప్‌ను మార్చండి",
+      setup_desc: "లాగిన్ అవ్వడానికి మీ ఫోన్ నంబర్ నమోదు చేయండి. ఈ పరికరం మీకు కేటాయించిన దశ(ల) కోసం స్వయంచాలకంగా సెటప్ అవుతుంది, మీరు జోడించే లేదా మార్చే జాబ్ కార్డులు మీ పేరుతో ట్యాగ్ చేయబడ్డాయి. ఇది ఆ దశలను మాత్రమే తాకగలదు — ఇతర దశల ఎంట్రీలు చదవడానికి మాత్రమే కనిపిస్తాయి. ఈ పరికరాన్ని వేరొకరుతో పంచుకుంటున్నారా? మీ పని పూర్తయ్యాక లాగ్ అవ్ట్ చేయండి, తద్వారా తర్వాతి వ్యక్తి తన నంబర్తో లాగిన్ అవ్వగలరు.",
+      setup_phone_label: "ఫోన్ నంబర్", setup_phone_placeholder: "ఉదా. 9876543210",
+      setup_manual_label: "ఈ పరికరం దేని కోసం", setup_all_stages_full: "అన్ని దశలు (పూర్తి యాక్సెస్)",
+      setup_manual_link: "మాన్యువల్‌గా సెటప్ చేయండి", setup_phone_link: "ఫోన్ నంబర్ ఉపయోగించండి",
+      setup_continue: "కొనసాగించండి", setup_login: "లాగిన్ అవ్వండి",
+      setup_err_no_stage: "ఆ నంబర్కు ఇంకా దశ యాక్సెస్ కేటాయించలేదు. \"వినియోగదారులను నిర్వహించండి\"లో సరిచేయమని అడ్మిన్‌ను అడగండి.",
+      setup_err_not_found: "ఆ ఫోన్ నంబర్ ఇంకా సెటప్ చేయలేదు. \"వినియోగదారులను నిర్వహించండి\"లో జోడించమని అడ్మిన్‌ను అడగండి, లేదా ఈ పరికరాన్ని మాన్యువల్‌గా సెటప్ చేయండి.",
+      sup_title: "వినియోగదారులను నిర్వహించండి",
+      sup_desc: "ప్రతి వినియోగదారు ఫోన్ నంబర్ను, వారికి ఉండాల్సిన దశ(ల) యాక్సెస్ను జోడించండి. సెటప్ సమయంలో పరికరంలో వారి నంబర్ నమోదు చేస్తే, ఆ పరికరం ఆ దశలకే లాక్ అవుతుంది. ఇప్పటికే జాబితాలో ఉన్న నంబర్ను మళ్ళీ జోడించడం (లేదా దానిపై ఎడిట్ నొక్కడం) వివరాలను నవీకరిస్తుంది. షిఫ్ట్ ఇన్చార్జ్ వంటి వారికి \"అన్ని దశలు\" ఇవ్వండి, తద్వారా వారు ఎక్కడైనా జాబ్ కార్డులను జోడించగలరు, మార్చగలరు — ఇది మాత్రమే వారికి వినియోగదారుల నిర్వహణ లేదా కార్యాచరణ లాగ్ ఇచ్చదు; అవి అడ్మిన్ ఫోన్ నంబర్కు మాత్రమే వస్తాయి.",
+      sup_search_placeholder: "పేరు, ఫోన్ లేదా పాత్ర ద్వారా వెతకండి…",
+      sup_th_phone: "ఫోన్", sup_th_name: "పేరు", sup_th_role: "పాత్ర", sup_th_stageaccess: "దశ యాక్సెస్",
+      sup_empty: "వినియోగదారులు కనుగొనబడలేదు.", sup_name_placeholder: "ఉదా. రాజు", sup_role_placeholder: "ఉదా. సూపర్‌వైజర్",
+      sup_cancel_edit: "ఎడిట్ రద్దు చేయండి", sup_add_user: "వినియోగదారుని జోడించండి", sup_save_changes: "మార్పులను సేవ్ చేయండి",
+      sup_edit: "ఎడిట్", sup_remove: "తీసివేయండి",
+      sup_err_choose_stage: "కనీసం ఒక దశను ఎంచుకోండి, లేదా \"అన్ని దశలు\" ఎంచుకోండి.",
+      sup_err_save_failed: "సేవ్ చేయలేకపోయాము. మళ్ళీ ప్రయత్నించండి.",
+      sup_err_load_failed: "వినియోగదారులను లోడ్ చేయలేకపోయాము. మీ కనెక్షన్‌ను తనిఖీ చేయండి.",
+      sup_err_remove_failed: "ఆ ఎంట్రీని తీసివేయలేకపోయాము. మళ్ళీ ప్రయత్నించండి.",
+      sup_count_all: "{n} వినియోగదారులు", sup_count_showing: "{total} లో {shown} వినియోగదారులను చూపిస్తోంది",
+      act_title: "కార్యాచరణ లాగ్",
+      act_desc: "జోడించిన, మార్చిన లేదా తొలగించిన ప్రతి జాబ్ కార్డ్, ఎవరు ఎప్పుడు చేశారో అన్నిటితో సహా. తొలగించిన జాబ్ కార్డ్ బోర్డు మరియు లాగ్ నుండి పోయినా ఇక్కడ జాబితాలో ఉంటుంది.",
+      act_search_placeholder: "జాబ్ కార్డ్, ప్రొడక్ట్, దశ లేదా పేరు ద్వారా వెతకండి…",
+      act_th_time: "సమయం", act_th_action: "చర్య", act_th_jobcard: "జాబ్ కార్డ్", act_th_product: "ప్రొడక్ట్",
+      act_th_stage: "దశ", act_th_by: "ఎవరు",
+      act_empty: "ఇంకా ఎటువంటి కార్యాచరణ నమోదు కాలేదు.",
+      act_added: "జోడించబడింది", act_edited: "మార్చబడింది", act_deleted: "తొలగించబడింది",
+      act_err_load_prefix: "కార్యాచరణ లాగ్‌ను లోడ్ చేయలేకపోయాము:",
+      act_count_all: "{n} ఈవెంట్లు", act_count_showing: "{total} లో {shown} ఈవెంట్లను చూపిస్తోంది",
+      del_title: "జాబ్ కార్డ్‌ను తొలగించాలా?", del_name_label: "మీ పేరు",
+      del_err_name_required: "తొలగింపును నిర్ధారించడానికి మీ పేరు నమోదు చేయండి.",
+      del_err_failed_prefix: "తొలగించడం విఫలమైంది:",
+      del_summary_prefix: "జాబ్ కార్డ్ {jc}{prod}ని {stage} నుండి శాశ్వతంగా తొలగించబడుతుంది. దీన్ని వెనక్కి తీసుకోలేరు.",
+      form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
+      form_close: "మూసివేయండి",
+      form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
+      form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
+      form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
+      form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
+      form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
+      form_updatedby_placeholder: "మీ పేరు", form_remarks_placeholder: "సాఫీగా జరుగుతోంది, షెడ్యూల్ ప్రకారం",
+      form_readonly_prefix: "ఈ ఎంట్రీ {stage}కి చెందింది — ఈ పరికరానికి ఈ కింది వాటికి మాత్రమే యాక్సెస్ ఉంది: ",
+      form_readonly_suffix: "। దీన్ని సవరించడానికి పైన కుడివైపున \"మార్చండి\" ద్వారా పరికర దశ యాక్సెస్‌ను మార్చండి.",
+      banner_no_rows_export: "ఎగుమతి చేయడానికి వరుసలు లేవు.", banner_save_failed_prefix: "సేవ్ విఫలమైంది:",
+      banner_live_updates_stopped_prefix: "లైవ్ అప్‌డేట్లు ఆగిపోయాయి:",
+      banner_log_updates_stopped_prefix: "లాగ్ అప్‌డేట్లు ఆగిపోయాయి:",
+      banner_moved: "జాబ్ కార్డ్ {jc} {from} వద్ద పూర్తయింది — {to}కి తరలించబడింది."
+    }
+  };
+  function t(key){
+    var d = I18N[state.lang] || I18N.en;
+    if(d && d[key] != null) return d[key];
+    if(I18N.en[key] != null) return I18N.en[key];
+    return key;
+  }
+  function tf(key, params){
+    var s = t(key);
+    if(params){
+      Object.keys(params).forEach(function(k){
+        s = s.split("{" + k + "}").join(params[k] == null ? "" : params[k]);
+      });
+    }
+    return s;
+  }
+  function t_status(canonical){
+    if(canonical === "Completed") return t("status_completed");
+    if(canonical === "In Progress") return t("status_in_progress");
+    return t("status_not_started");
+  }
+  function actionLabel(action){
+    if(action === "add") return t("act_added");
+    if(action === "edit") return t("act_edited");
+    if(action === "delete") return t("act_deleted");
+    return action || "";
+  }
 
   function todayStr(){
     var d = new Date();
@@ -782,13 +1055,17 @@
     deviceStages: "ALL",   // "ALL", or an array of one or more stage names this device is locked to
     isAdminDevice: false,  // true only on the device set up with the admin phone number
     loggedInViaPhone: false, // true whenever this device was logged in with a phone number (admin or not)
-    modalReadOnly: false
+    modalReadOnly: false,
+    modalTitleKey: "form_add_entry",
+    lang: (function(){ try{ return localStorage.getItem("visipakLanguage") || "en"; }catch(e){ return "en"; } })()
   };
 
   // ---------- DOM refs ----------
   var el = {
     dateInput: document.getElementById("dateInput"),
     dateInputLabel: document.getElementById("dateInputLabel"),
+    langSelect: document.getElementById("langSelect"),
+    refreshBtn: document.getElementById("refreshBtn"),
     boardShiftFilter: document.getElementById("boardShiftFilter"),
     boardStageFilter: document.getElementById("boardStageFilter"),
     addBtn: document.getElementById("addBtn"),
@@ -957,15 +1234,21 @@
 
   var deviceSupervisorName = "";
   var deviceSupervisorRole = "";
+  var deviceSetupTitleKey = "setup_title_login";
+  var deviceSetupMode = "phone";
+  function setDeviceSetupTitle(key){
+    deviceSetupTitleKey = key;
+    el.deviceSetupTitle.textContent = t(key);
+  }
   function stagesLabel(stages){
-    if(stages === "ALL") return "All stages";
-    if(!stages || !stages.length) return "No stages";
+    if(stages === "ALL") return t("stages_all");
+    if(!stages || !stages.length) return t("stages_none");
     if(stages.length <= 2) return stages.join(", ");
-    return stages.length + " stages";
+    return tf("stages_count", { n: stages.length });
   }
   function stagesFullList(stages){
-    if(stages === "ALL") return "all stages";
-    if(!stages || !stages.length) return "no stages";
+    if(stages === "ALL") return t("stages_all");
+    if(!stages || !stages.length) return t("stages_none");
     return stages.join(", ");
   }
 
@@ -1009,7 +1292,7 @@
       el.profileMenuRole.textContent = "";
       el.profileMenuRole.hidden = true;
     }
-    el.profileMenuStages.textContent = "Stage access: " + stagesLabel(stages);
+    el.profileMenuStages.textContent = tf("profile_stage_access_line", { stages: stagesLabel(stages) });
     el.profileMenu.hidden = true;
     el.profileBtn.setAttribute("aria-expanded", "false");
 
@@ -1017,8 +1300,8 @@
     // the Stage filters only offer the permitted stages, so the operator can't switch away.
     var locked = stages !== "ALL";
     state.boardStage = "";
-    populateStageFilterOptions(el.boardStageFilter, locked ? stages : "ALL", "All");
-    populateStageFilterOptions(el.logStageFilter, locked ? stages : "ALL", "All stages");
+    populateStageFilterOptions(el.boardStageFilter, locked ? stages : "ALL", t("filter_all"));
+    populateStageFilterOptions(el.logStageFilter, locked ? stages : "ALL", t("log_all_stages"));
 
     // Restrict the Add/Edit Entry "Stage" field to the device's permitted stages.
     var stageOptionsFor = locked ? stages : STAGES;
@@ -1035,11 +1318,12 @@
   }
 
   function showDeviceSetupMode(mode){
+    deviceSetupMode = mode;
     el.deviceSetupPhoneMode.hidden = mode !== "phone";
     el.deviceSetupManualMode.hidden = mode !== "manual";
-    el.deviceSetupToggleLink.textContent = mode === "phone" ? "Set up manually instead" : "Use phone number instead";
+    el.deviceSetupToggleLink.textContent = mode === "phone" ? t("setup_manual_link") : t("setup_phone_link");
     el.deviceSetupToggleLink.dataset.mode = mode === "phone" ? "manual" : "phone";
-    el.deviceSetupSaveBtn.textContent = mode === "phone" ? "Log In" : "Continue";
+    el.deviceSetupSaveBtn.textContent = mode === "phone" ? t("setup_login") : t("setup_continue");
     el.deviceSetupPhoneError.hidden = true;
   }
   el.deviceSetupToggleLink.addEventListener("click", function(){
@@ -1047,7 +1331,7 @@
   });
 
   el.changeDeviceBtn.addEventListener("click", function(){
-    el.deviceSetupTitle.textContent = "Change Device Setup";
+    setDeviceSetupTitle("setup_title_change");
     el.deviceStageSelect.value = state.deviceStage;
     el.deviceSetupPhoneInput.value = "";
     el.deviceSetupCancelBtn.hidden = false;
@@ -1070,7 +1354,7 @@
       localStorage.removeItem("visipakDeviceStage");
     }catch(e){}
     applyDeviceStage("ALL", "", false, false, "");
-    el.deviceSetupTitle.textContent = "Log In to This Device";
+    setDeviceSetupTitle("setup_title_login");
     el.deviceSetupPhoneInput.value = "";
     el.deviceSetupCancelBtn.hidden = true;
     showDeviceSetupMode("phone");
@@ -1105,7 +1389,7 @@
     }
     var phone = normalizePhone(el.deviceSetupPhoneInput.value);
     if(phone.length < 10){
-      el.deviceSetupPhoneError.textContent = "Enter a valid 10-digit phone number.";
+      el.deviceSetupPhoneError.textContent = t("generic_err_invalid_phone");
       el.deviceSetupPhoneError.hidden = false;
       return;
     }
@@ -1123,19 +1407,19 @@
         var data = doc.data();
         var stages = data.stages || (data.stage ? [data.stage] : []);
         if(stages !== "ALL" && (!stages || !stages.length)){
-          el.deviceSetupPhoneError.textContent = "That number has no stage access assigned yet. Ask admin to fix it under \"Manage Users\".";
+          el.deviceSetupPhoneError.textContent = t("setup_err_no_stage");
           el.deviceSetupPhoneError.hidden = false;
           return;
         }
         applyDeviceStage(stages, data.name || "", false, true, data.role || "");
         el.deviceSetupOverlay.hidden = true;
       } else {
-        el.deviceSetupPhoneError.textContent = "That phone number isn't set up yet. Ask admin to add it under \"Manage Users\", or set up this device manually.";
+        el.deviceSetupPhoneError.textContent = t("setup_err_not_found");
         el.deviceSetupPhoneError.hidden = false;
       }
     }).catch(function(){
       el.deviceSetupSaveBtn.disabled = false;
-      el.deviceSetupPhoneError.textContent = "Couldn't check that number right now. Check your connection and try again.";
+      el.deviceSetupPhoneError.textContent = t("generic_err_network");
       el.deviceSetupPhoneError.hidden = false;
     });
   });
@@ -1187,7 +1471,7 @@
       cb.checked = false; cb.disabled = false;
       cb.closest("label").classList.remove("disabled");
     });
-    el.supAddBtn.textContent = "Add user";
+    el.supAddBtn.textContent = t("sup_add_user");
     el.supAddBtn.classList.remove("editing");
     el.supClearBtn.hidden = true;
   }
@@ -1206,7 +1490,7 @@
       cb.checked = !isAll && stages.indexOf(cb.value) !== -1;
       cb.closest("label").classList.toggle("disabled", isAll);
     });
-    el.supAddBtn.textContent = "Save changes";
+    el.supAddBtn.textContent = t("sup_save_changes");
     el.supAddBtn.classList.add("editing");
     el.supClearBtn.hidden = false;
     el.supNameInput.focus();
@@ -1225,8 +1509,8 @@
         "<td>" + esc(s.role || "") + "</td>" +
         "<td>" + esc(stagesLabel(supervisorStages(s))) + "</td>" +
         '<td style="white-space:nowrap;">' +
-          "<button type=\"button\" class=\"btn ghost small\" data-edit-phone=\"" + esc(s.phone) + "\">Edit</button> " +
-          "<button type=\"button\" class=\"btn danger small\" data-phone=\"" + esc(s.phone) + "\">Remove</button>" +
+          "<button type=\"button\" class=\"btn ghost small\" data-edit-phone=\"" + esc(s.phone) + "\">" + esc(t("sup_edit")) + "</button> " +
+          "<button type=\"button\" class=\"btn danger small\" data-phone=\"" + esc(s.phone) + "\">" + esc(t("sup_remove")) + "</button>" +
         "</td>";
       el.supervisorsBody.appendChild(tr);
     });
@@ -1246,15 +1530,15 @@
           loadSupervisors();
         }).catch(function(){
           btn.disabled = false;
-          el.supervisorsError.textContent = "Couldn't remove that entry. Try again.";
+          el.supervisorsError.textContent = t("sup_err_remove_failed");
           el.supervisorsError.hidden = false;
         });
       });
     });
     el.supervisorsCount.textContent = supervisorsCache.length === 0 ? "" :
       (list.length === supervisorsCache.length ?
-        supervisorsCache.length + " user" + (supervisorsCache.length === 1 ? "" : "s") :
-        "Showing " + list.length + " of " + supervisorsCache.length + " users");
+        tf("sup_count_all", { n: supervisorsCache.length }) :
+        tf("sup_count_showing", { shown: list.length, total: supervisorsCache.length }));
   }
 
   // Filters the already-loaded cache by the search box (client-side, no network round-trip) and re-renders.
@@ -1277,7 +1561,7 @@
       supervisorsCache = list;
       applySupervisorFilter();
     }).catch(function(){
-      el.supervisorsError.textContent = "Couldn't load users. Check your connection.";
+      el.supervisorsError.textContent = t("sup_err_load_failed");
       el.supervisorsError.hidden = false;
     });
   }
@@ -1302,12 +1586,12 @@
     var chosenStages = isAll ? "ALL" : supStageCheckboxes().filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
     el.supervisorsError.hidden = true;
     if(phone.length < 10){
-      el.supervisorsError.textContent = "Enter a valid 10-digit phone number.";
+      el.supervisorsError.textContent = t("generic_err_invalid_phone");
       el.supervisorsError.hidden = false;
       return;
     }
     if(!isAll && chosenStages.length === 0){
-      el.supervisorsError.textContent = "Choose at least one stage, or check \"All stages\".";
+      el.supervisorsError.textContent = t("sup_err_choose_stage");
       el.supervisorsError.hidden = false;
       return;
     }
@@ -1320,7 +1604,7 @@
       loadSupervisors();
     }).catch(function(){
       el.supAddBtn.disabled = false;
-      el.supervisorsError.textContent = "Couldn't save. Try again.";
+      el.supervisorsError.textContent = t("sup_err_save_failed");
       el.supervisorsError.hidden = false;
     });
   });
@@ -1415,7 +1699,7 @@
       if(entries.length === 0){
         var hint = document.createElement("div");
         hint.className = "emptyHint";
-        hint.textContent = "No job cards logged here yet for this date.";
+        hint.textContent = t("board_empty_hint");
         body.appendChild(hint);
       } else {
         entries.forEach(function(e){
@@ -1437,14 +1721,14 @@
         '<span class="jobCard">' + esc(e.jobCardNo || "—") + '</span>' +
         '<span class="shiftTag">' + esc(e.shift || "") + '</span>' +
       '</div>' +
-      '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(statusLabel(e.status)) + '</span></div>' +
+      '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span></div>' +
       '<div class="productName">' + esc(e.productName || "(no product name)") + '</div>' +
       '<div class="cardStats">' +
-        '<span>Qty ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
-        '<span>Start ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
-        '<span>End ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
-        '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' hrs</span>' +
-        '<span>MP ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
+        '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+        '<span>' + esc(t("card_start_label")) + ' ' + esc(e.startTime ? fmtTime12(e.startTime) : "—") + '</span>' +
+        '<span>' + esc(t("card_end_label")) + ' ' + esc(e.endTime ? fmtTime12(e.endTime) : "—") + '</span>' +
+        '<span>' + esc(e.runtimeHrs != null ? e.runtimeHrs : "—") + ' ' + esc(t("card_hrs_label")) + '</span>' +
+        '<span>' + esc(t("card_mp_label")) + ' ' + esc(e.manpower != null ? e.manpower : "—") + '</span>' +
       '</div>' +
       (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "") +
       '<div class="cardMeta">' +
@@ -1486,7 +1770,7 @@
         "<td>" + esc(e.stage) + "</td>" +
         "<td>" + esc(e.productName) + "</td>" +
         '<td class="mono">' + esc(e.jobCardNo) + "</td>" +
-        '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(statusLabel(e.status)) + '</span></td>' +
+        '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(t_status(statusLabel(e.status))) + '</span></td>' +
         '<td class="num">' + esc(e.quantity != null ? e.quantity : "") + "</td>" +
         '<td class="mono">' + esc(e.startTime ? fmtTime12(e.startTime) : "") + "</td>" +
         '<td class="mono">' + esc(e.endTime ? fmtTime12(e.endTime) : "") + "</td>" +
@@ -1506,11 +1790,11 @@
 
   // ---------- CSV export (real browser download — no Claude sandbox here) ----------
   function buildCsv(rows){
-    var header = ["Date","Shift","Stage","Product Name","Job Card No","Status","Quantity","Start Time","End Time","Run Time (Hrs)","Man power","Remarks","Updated By","Last Updated"];
+    var header = [t("th_date"),t("th_shift"),t("th_stage"),t("th_product"),t("th_jobcard"),t("th_status"),t("th_qty"),t("th_start"),t("th_end"),t("form_runtime_label"),t("th_manpower"),t("th_remarks"),t("th_updatedby"),t("th_lastupdated")];
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(e){
       lines.push([
-        e.date, e.shift, e.stage, e.productName, e.jobCardNo, statusLabel(e.status),
+        e.date, e.shift, e.stage, e.productName, e.jobCardNo, t_status(statusLabel(e.status)),
         e.quantity != null ? e.quantity : "",
         e.startTime ? fmtTime12(e.startTime) : "",
         e.endTime ? fmtTime12(e.endTime) : "",
@@ -1551,7 +1835,7 @@
       }
       return true;
     });
-    if(rows.length === 0){ showBanner("No rows to export."); return; }
+    if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
     var csv = buildCsv(rows);
     downloadCsv("visipak-daily-job-track-log.csv", csv);
   });
@@ -1579,10 +1863,9 @@
   var activityCache = [];
   function renderActivityRows(list){
     el.activityBody.innerHTML = list.map(function(a){
-      var actionLabel = a.action === "add" ? "Added" : a.action === "edit" ? "Edited" : a.action === "delete" ? "Deleted" : (a.action || "");
       return "<tr>" +
         "<td>" + esc(fmtDateTime(a.at)) + "</td>" +
-        "<td>" + esc(actionLabel) + "</td>" +
+        "<td>" + esc(actionLabel(a.action)) + "</td>" +
         "<td>" + esc(a.jobCardNo || "") + "</td>" +
         "<td>" + esc(a.productName || "") + "</td>" +
         "<td>" + esc(a.stage || "") + "</td>" +
@@ -1591,8 +1874,8 @@
     }).join("");
     el.activityEmpty.hidden = list.length !== 0;
     el.activityCount.textContent = list.length === activityCache.length ?
-      (list.length + (list.length === 1 ? " event" : " events")) :
-      ("Showing " + list.length + " of " + activityCache.length + " events");
+      tf("act_count_all", { n: list.length }) :
+      tf("act_count_showing", { shown: list.length, total: activityCache.length });
   }
   function applyActivityFilter(){
     var q = (el.activitySearchInput.value || "").trim().toLowerCase();
@@ -1612,7 +1895,7 @@
       activityCache = snap.docs.map(function(d){ return d.data() || {}; });
       applyActivityFilter();
     }).catch(function(err){
-      el.activityError.textContent = "Couldn't load activity log: " + (err && err.message ? err.message : "unknown error");
+      el.activityError.textContent = t("act_err_load_prefix") + " " + (err && err.message ? err.message : "unknown error");
       el.activityError.hidden = false;
     });
   }
@@ -1627,12 +1910,11 @@
   });
   el.activityExportBtn.addEventListener("click", function(){
     if(activityCache.length === 0){ return; }
-    var header = ["Time","Action","Job Card No","Product Name","Stage","Date","Shift","By"];
+    var header = [t("act_th_time"),t("act_th_action"),t("th_jobcard"),t("th_product"),t("act_th_stage"),t("th_date"),t("th_shift"),t("act_th_by")];
     var lines = [header.map(csvEscape).join(",")];
     activityCache.forEach(function(a){
-      var actionLabel = a.action === "add" ? "Added" : a.action === "edit" ? "Edited" : a.action === "delete" ? "Deleted" : (a.action || "");
       lines.push([
-        fmtDateTime(a.at), actionLabel, a.jobCardNo || "", a.productName || "", a.stage || "", a.date || "", a.shift || "", a.by || ""
+        fmtDateTime(a.at), actionLabel(a.action), a.jobCardNo || "", a.productName || "", a.stage || "", a.date || "", a.shift || "", a.by || ""
       ].map(csvEscape).join(","));
     });
     downloadCsv("visipak-daily-job-track-activity-log.csv", lines.join("\r\n"));
@@ -1647,10 +1929,11 @@
     var readOnly = !!entry && deviceLocked && allowedStages.indexOf(entry.stage) === -1;
     state.modalReadOnly = readOnly;
 
-    el.modalTitle.textContent = entry ? (readOnly ? "View Entry" : "Edit Entry") : "Add Entry";
+    state.modalTitleKey = entry ? (readOnly ? "form_view_entry" : "form_edit_entry") : "form_add_entry";
+    el.modalTitle.textContent = t(state.modalTitleKey);
     el.deleteBtn.hidden = !entry || readOnly;
     el.saveBtn.hidden = readOnly;
-    el.cancelBtn.textContent = readOnly ? "Close" : "Cancel";
+    el.cancelBtn.textContent = readOnly ? t("form_close") : t("generic_cancel");
 
     el.f_date.value = entry ? entry.date : state.date;
     syncFDateLabel();
@@ -1673,8 +1956,8 @@
 
     if(readOnly){
       el.readOnlyNote.hidden = false;
-      el.readOnlyNote.textContent = "This entry belongs to " + entry.stage + " — this device only has access to " +
-        stagesFullList(allowedStages) + ". Switch this device's stage access (top right, \"Change\") to edit it.";
+      el.readOnlyNote.textContent = tf("form_readonly_prefix", { stage: entry.stage }) +
+        stagesFullList(allowedStages) + t("form_readonly_suffix");
     } else {
       el.readOnlyNote.hidden = true;
     }
@@ -1749,11 +2032,11 @@
       logActivity(isNewEntry ? "add" : "edit", Object.assign({ id: logEntryId }, payload), payload.updatedBy);
       closeModal();
       if(movedTo){
-        showBanner("Job Card " + (payload.jobCardNo || "") + " completed at " + chosenStage + " — moved to " + movedTo + ".");
+        showBanner(tf("banner_moved", { jc: payload.jobCardNo || "", from: chosenStage, to: movedTo }));
       }
     }).catch(function(err){
       saveBtn.disabled = false;
-      showBanner("Save failed: " + (err && err.message ? err.message : "unknown error"));
+      showBanner(t("banner_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
     });
   });
 
@@ -1769,9 +2052,11 @@
       date: el.f_date.value,
       shift: el.f_shift.value.trim()
     };
-    el.deleteConfirmSummary.textContent = "Job Card " + (pendingDeleteEntry.jobCardNo || "—") +
-      (pendingDeleteEntry.productName ? " (" + pendingDeleteEntry.productName + ")" : "") +
-      " at " + (pendingDeleteEntry.stage || "") + " will be permanently removed. This can't be undone.";
+    el.deleteConfirmSummary.textContent = tf("del_summary_prefix", {
+      jc: pendingDeleteEntry.jobCardNo || "—",
+      prod: pendingDeleteEntry.productName ? " (" + pendingDeleteEntry.productName + ")" : "",
+      stage: pendingDeleteEntry.stage || ""
+    });
     el.deleteConfirmName.value = deviceSupervisorName || lastUpdatedBy || "";
     el.deleteConfirmError.hidden = true;
     el.deleteConfirmYesBtn.disabled = false;
@@ -1789,7 +2074,7 @@
     if(!pendingDeleteEntry) return;
     var actorName = el.deleteConfirmName.value.trim();
     if(!actorName){
-      el.deleteConfirmError.textContent = "Enter your name to confirm the delete.";
+      el.deleteConfirmError.textContent = t("del_err_name_required");
       el.deleteConfirmError.hidden = false;
       return;
     }
@@ -1801,7 +2086,7 @@
       closeModal();
     }).catch(function(err){
       el.deleteConfirmYesBtn.disabled = false;
-      el.deleteConfirmError.textContent = "Delete failed: " + (err && err.message ? err.message : "unknown error");
+      el.deleteConfirmError.textContent = t("del_err_failed_prefix") + " " + (err && err.message ? err.message : "unknown error");
       el.deleteConfirmError.hidden = false;
     });
   });
@@ -1817,7 +2102,7 @@
       });
       renderBoard();
     }, function(err){
-      showBanner("Live updates stopped: " + (err && err.message ? err.message : "unknown error"));
+      showBanner(t("banner_live_updates_stopped_prefix") + " " + (err && err.message ? err.message : "unknown error"));
     });
   }
 
@@ -1831,7 +2116,7 @@
       });
       renderLog();
     }, function(err){
-      showBanner("Log updates stopped: " + (err && err.message ? err.message : "unknown error"));
+      showBanner(t("banner_log_updates_stopped_prefix") + " " + (err && err.message ? err.message : "unknown error"));
     });
   }
 
@@ -1852,9 +2137,50 @@
     renderBoard();
   });
 
+  // ---------- Language switching & refresh ----------
+  function applyTranslations(){
+    document.querySelectorAll("[data-i18n]").forEach(function(node){
+      node.textContent = t(node.getAttribute("data-i18n"));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(function(node){
+      node.placeholder = t(node.getAttribute("data-i18n-placeholder"));
+    });
+    document.querySelectorAll("[data-i18n-title]").forEach(function(node){
+      node.title = t(node.getAttribute("data-i18n-title"));
+    });
+    // Dynamic text that depends on current app/UI state rather than static markup.
+    el.deviceSetupTitle.textContent = t(deviceSetupTitleKey);
+    el.deviceSetupToggleLink.textContent = deviceSetupMode === "phone" ? t("setup_manual_link") : t("setup_phone_link");
+    el.deviceSetupSaveBtn.textContent = deviceSetupMode === "phone" ? t("setup_login") : t("setup_continue");
+    el.deviceTagLabel.textContent = stagesLabel(state.deviceStages);
+    el.profileMenuStages.textContent = tf("profile_stage_access_line", { stages: stagesLabel(state.deviceStages) });
+    var locked = state.deviceStages !== "ALL";
+    populateStageFilterOptions(el.boardStageFilter, locked ? state.deviceStages : "ALL", t("filter_all"));
+    populateStageFilterOptions(el.logStageFilter, locked ? state.deviceStages : "ALL", t("log_all_stages"));
+    el.modalTitle.textContent = t(state.modalTitleKey);
+    el.cancelBtn.textContent = state.modalReadOnly ? t("form_close") : t("generic_cancel");
+    el.supAddBtn.textContent = editingSupervisorPhone ? t("sup_save_changes") : t("sup_add_user");
+    if(!el.supervisorsOverlay.hidden) applySupervisorFilter();
+    if(!el.activityOverlay.hidden) applyActivityFilter();
+    renderBoard();
+    renderLog();
+  }
+  el.langSelect.value = state.lang;
+  el.langSelect.addEventListener("change", function(){
+    state.lang = el.langSelect.value;
+    try{ localStorage.setItem("visipakLanguage", state.lang); }catch(e){}
+    applyTranslations();
+  });
+  // Reloads the page from the server so this device picks up whatever's newest deployed to
+  // GitHub Pages, plus a fresh Firestore connection — the board/log already update live via
+  // onSnapshot, so this is mainly for getting new app code/features onto an already-open tab.
+  el.refreshBtn.addEventListener("click", function(){
+    el.refreshBtn.classList.add("spinning");
+    setTimeout(function(){ window.location.reload(); }, 150);
+  });
+
   // ---------- Init ----------
-  renderBoard();
-  renderLog();
+  applyTranslations();
   subscribeBoard();
   subscribeLog();
 })();
