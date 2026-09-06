@@ -650,6 +650,14 @@
       <label><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
       <label><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <label><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <label id="fld_ply"><span data-i18n="form_ply_label">PLY</span>
+        <select id="f_ply">
+          <option value="" data-i18n="form_ply_select">— select —</option>
+          <option value="3 Ply">3 Ply</option>
+          <option value="5 Ply">5 Ply</option>
+          <option value="7 Ply">7 Ply</option>
+        </select>
+      </label>
       <label id="fld_clientname"><span data-i18n="form_clientname_label">Client Name</span> <input type="text" id="f_clientname" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
       <label id="fld_invoiceno"><span data-i18n="form_invoiceno_label">Invoice No</span> <input type="text" id="f_invoiceno" placeholder="e.g. INV-1042" data-i18n-placeholder="form_invoiceno_placeholder"></label>
       <label id="fld_vehicleno"><span data-i18n="form_vehicleno_label">Vehicle Number</span> <input type="text" id="f_vehicleno" placeholder="e.g. TS09AB1234" data-i18n-placeholder="form_vehicleno_placeholder"></label>
@@ -803,6 +811,7 @@
       del_summary_prefix: "Job Card {jc}{prod} at {stage} will be permanently removed. This can't be undone.",
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
+      form_ply_label: "PLY", form_ply_select: "— select —",
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
@@ -887,6 +896,7 @@
       del_summary_prefix: "जॉब कार्ड {jc}{prod} को {stage} से स्थायी रूप से हटा दिया जाएगा। इसे वापस नहीं लाया जा सकता।",
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
+      form_ply_label: "PLY", form_ply_select: "— चुनें —",
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
@@ -971,6 +981,7 @@
       del_summary_prefix: "జాబ్ కార్డ్ {jc}{prod}ని {stage} నుండి శాశ్వతంగా తొలగించబడుతుంది. దీన్ని వెనక్కి తీసుకోలేరు.",
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
+      form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
@@ -1194,6 +1205,8 @@
     f_product: document.getElementById("f_product"),
     f_jobcard: document.getElementById("f_jobcard"),
     f_qty: document.getElementById("f_qty"),
+    f_ply: document.getElementById("f_ply"),
+    fld_ply: document.getElementById("fld_ply"),
     f_starttime: document.getElementById("f_starttime"),
     f_endtime: document.getElementById("f_endtime"),
     f_runtime: document.getElementById("f_runtime"),
@@ -1291,7 +1304,7 @@
   }
 
   var ALL_FORM_FIELDS = [
-    el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_qty,
+    el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_qty, el.f_ply,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
@@ -1302,8 +1315,16 @@
   // The Dispatch stage tracks different information than a production stage (who it's going to,
   // the invoice/vehicle it left on) rather than run time/manpower. Rather than a second modal,
   // the same Add/Edit Entry form shows a different subset of fields depending on the chosen
-  // stage — hidden fields are excluded from HTML5 required-field validation automatically.
+  // stage. Note: a "hidden" field is NOT automatically excluded from HTML5 required-field
+  // validation in every case here — the .formGrid CSS gives labels their own display rule that
+  // can outrank the browser's default [hidden]{display:none}, so any required field that gets
+  // hidden must also have its `required` flag toggled off explicitly (see f_shift below).
   function isDispatchStage(stage){ return stage === "Dispatch"; }
+  // PLY (board thickness: 3/5/7 Ply) applies to production stages, but not to the stages at the
+  // tail end of the flow that aren't really "making" anything — dispatch handling and the two
+  // manpower/housekeeping bookkeeping stages.
+  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "HR_MP", "House keeping"];
+  function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
     el.fld_shift.hidden = dispatch;
@@ -1324,6 +1345,7 @@
     el.fld_qtyperbundle.hidden = !dispatch;
     el.fld_noofbundles.hidden = !dispatch;
     el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
+    el.fld_ply.hidden = !stageHasPly(stage);
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -2065,6 +2087,7 @@
     el.f_product.value = entry ? (entry.productName||"") : "";
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
     el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
+    el.f_ply.value = entry ? (entry.ply || "") : "";
     el.f_starttime.value = entry ? (entry.startTime || "") : "";
     el.f_endtime.value = entry ? (entry.endTime || "") : "";
     el.f_runtime.value = entry && entry.runtimeHrs != null ? entry.runtimeHrs : "";
@@ -2137,6 +2160,7 @@
       productName: el.f_product.value.trim(),
       jobCardNo: el.f_jobcard.value.trim(),
       quantity: el.f_qty.value === "" ? null : Number(el.f_qty.value),
+      ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       startTime: isDispatch ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
       endTime: isDispatch ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
       runtimeHrs: isDispatch ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
