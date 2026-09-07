@@ -574,7 +574,10 @@
     <div class="tableWrap">
       <table>
         <thead>
-          <tr>
+          <!-- Rebuilt in JS on every render (see renderLog): when a specific stage is selected in
+               the Stage filter, the columns switch to that stage's own Add Entry fields instead of
+               this generic set, which only remains the header for "All stages". -->
+          <tr id="logTableHeadRow">
             <th data-i18n="th_date">Date</th><th data-i18n="th_shift">Shift</th><th data-i18n="th_stage">Stage</th><th data-i18n="th_product">Product Name</th><th data-i18n="th_jobcard">Job Card No</th><th data-i18n="th_status">Status</th>
             <th data-i18n="th_qty">Qty</th><th data-i18n="th_start">Start Time</th><th data-i18n="th_end">End Time</th><th data-i18n="th_runtime">Run Time</th><th data-i18n="th_manpower">Man&nbsp;power</th><th data-i18n="th_remarks">Remarks</th>
             <th data-i18n="th_updatedby">Updated&nbsp;By</th><th data-i18n="th_lastupdated">Last&nbsp;Updated</th>
@@ -1058,6 +1061,7 @@
       form_palletno_label: "Pallet No", form_palletno_placeholder: "e.g. PL-014",
       qc_specs_heading: "Specifications",
       artwork_check_heading: "QC Check",
+      log_th_artworkcheck: "Artwork Check",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
@@ -1169,6 +1173,7 @@
       form_palletno_label: "पैलेट नंबर", form_palletno_placeholder: "जैसे PL-014",
       qc_specs_heading: "स्पेसिफिकेशन",
       artwork_check_heading: "QC जांच",
+      log_th_artworkcheck: "आर्टवर्क जांच",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
@@ -1280,6 +1285,7 @@
       form_palletno_label: "పాలెట్ నంబర్", form_palletno_placeholder: "ఉదా. PL-014",
       qc_specs_heading: "స్పెసిఫికేషన్లు",
       artwork_check_heading: "QC చెక్",
+      log_th_artworkcheck: "ఆర్ట్‌వర్క్ చెక్",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
@@ -1444,6 +1450,7 @@
     boardView: document.getElementById("boardView"),
     logView: document.getElementById("logView"),
     logBody: document.getElementById("logBody"),
+    logTableHeadRow: document.getElementById("logTableHeadRow"),
     logEmpty: document.getElementById("logEmpty"),
     logSearch: document.getElementById("logSearch"),
     logStageFilter: document.getElementById("logStageFilter"),
@@ -2574,6 +2581,180 @@
     return card;
   }
 
+  // ---------- Log column definitions ----------
+  // One definition per Add Entry field. When the Log's Stage filter is set to one specific stage,
+  // stageLogColumnKeys() below picks exactly the columns that stage's own Add Entry form shows
+  // (the same predicates as updateFormFieldsForStage / the submit handler), so the Log mirrors
+  // that stage's fields instead of always showing the one-size-fits-all generic set — which
+  // remains the column list only for "All stages" (GENERIC_LOG_COLUMN_KEYS, unchanged from
+  // before this existed).
+  function hrTotalField(e, key){
+    var total = e.hrManpowerTotal || {};
+    return total[key] != null ? total[key] : "";
+  }
+  function summarizeLayers(layers){
+    if(!layers || !layers.length) return "";
+    return layers.map(function(l, i){
+      return "L" + (i + 1) + ": " + (l.size || "—") + "/" + (l.gsm || "—") + "/" + (l.bf || "—");
+    }).join("; ");
+  }
+  function summarizeQcSpec(clientVal, visipakVal, pass){
+    if(!clientVal && !visipakVal) return "";
+    var result = pass === false ? t("pf_fail") : t("pf_pass");
+    return (clientVal || "—") + " / " + (visipakVal || "—") + " (" + result + ")";
+  }
+  // Wrapped in a hoisted function (rather than a plain "var X = {...}") and cached on first call:
+  // applyDeviceStage() below calls renderLog() synchronously during page init, before the script
+  // would otherwise have reached this line, so a plain var assignment here would still be
+  // undefined at that point — a function declaration is fully hoisted (body included), so it
+  // works correctly no matter when it's first called.
+  var _logColumnsCache = null;
+  function getLogColumns(){
+    if(_logColumnsCache) return _logColumnsCache;
+    _logColumnsCache = {
+    date: { header: function(){ return t("th_date"); },
+      html: function(e){ return esc(fmtDateForDisplay(e.date)); }, csv: function(e){ return e.date; } },
+    shift: { header: function(){ return t("th_shift"); },
+      html: function(e){ return esc(e.shift || ""); }, csv: function(e){ return e.shift || ""; } },
+    stage: { header: function(){ return t("th_stage"); },
+      html: function(e){ return esc(e.stage || ""); }, csv: function(e){ return e.stage || ""; } },
+    productName: { header: function(){ return t("th_product"); },
+      html: function(e){ return esc(e.productName || (isHRManpowerStage(e.stage) ? t("hrmp_report_title") : "")); },
+      csv: function(e){ return e.productName || (isHRManpowerStage(e.stage) ? t("hrmp_report_title") : ""); } },
+    jobCardNo: { header: function(){ return t("th_jobcard"); }, cellClass: "mono",
+      html: function(e){ return esc(e.jobCardNo || ""); }, csv: function(e){ return e.jobCardNo || ""; } },
+    artworkNo: { header: function(){ return t("form_artworkno_label"); }, cellClass: "mono",
+      html: function(e){ return esc(e.artworkNo || ""); }, csv: function(e){ return e.artworkNo || ""; } },
+    artworkCheck: { header: function(){ return t("log_th_artworkcheck"); },
+      html: function(e){ return esc(e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass")); },
+      csv: function(e){ return e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass"); } },
+    quantity: { header: function(){ return t("form_qty_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.quantity != null ? e.quantity : ""); }, csv: function(e){ return e.quantity != null ? e.quantity : ""; } },
+    type: { header: function(){ return t("form_type_label"); },
+      html: function(e){ return esc(e.type || ""); }, csv: function(e){ return e.type || ""; } },
+    qtyInStock: { header: function(){ return t("form_qtyinstock_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.qtyInStock != null ? e.qtyInStock : ""); }, csv: function(e){ return e.qtyInStock != null ? e.qtyInStock : ""; } },
+    totalBundle: { header: function(){ return t("form_totalbundle_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.totalBundle != null ? e.totalBundle : ""); }, csv: function(e){ return e.totalBundle != null ? e.totalBundle : ""; } },
+    availableStock: { header: function(){ return t("form_availablestock_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.availableStock != null ? e.availableStock : ""); }, csv: function(e){ return e.availableStock != null ? e.availableStock : ""; } },
+    ply: { header: function(){ return t("form_ply_label"); },
+      html: function(e){ return esc(e.ply || ""); }, csv: function(e){ return e.ply || ""; } },
+    layers: { header: function(){ return t("layers_heading"); },
+      html: function(e){ return esc(summarizeLayers(e.layers)); }, csv: function(e){ return summarizeLayers(e.layers); } },
+    clientName: { header: function(){ return t("form_clientname_label"); },
+      html: function(e){ return esc(e.clientName || ""); }, csv: function(e){ return e.clientName || ""; } },
+    invoiceNo: { header: function(){ return t("form_invoiceno_label"); },
+      html: function(e){ return esc(e.invoiceNo || ""); }, csv: function(e){ return e.invoiceNo || ""; } },
+    vehicleNumber: { header: function(){ return t("form_vehicleno_label"); },
+      html: function(e){ return esc(e.vehicleNumber || ""); }, csv: function(e){ return e.vehicleNumber || ""; } },
+    driver: { header: function(){ return t("form_driver_label"); },
+      html: function(e){ return esc(e.driver || ""); }, csv: function(e){ return e.driver || ""; } },
+    qtyPerBundle: { header: function(){ return t("form_qtyperbundle_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.qtyPerBundle != null ? e.qtyPerBundle : ""); }, csv: function(e){ return e.qtyPerBundle != null ? e.qtyPerBundle : ""; } },
+    noOfBundles: { header: function(){ return t("form_noofbundles_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.noOfBundles != null ? e.noOfBundles : ""); }, csv: function(e){ return e.noOfBundles != null ? e.noOfBundles : ""; } },
+    reasonForRejection: { header: function(){ return t("form_reasonforrejection_label"); },
+      html: function(e){ return esc(e.reasonForRejection || ""); }, csv: function(e){ return e.reasonForRejection || ""; } },
+    startTime: { header: function(){ return t("th_start"); }, cellClass: "mono",
+      html: function(e){ return esc(e.startTime ? fmtTime12(e.startTime) : ""); }, csv: function(e){ return e.startTime ? fmtTime12(e.startTime) : ""; } },
+    endTime: { header: function(){ return t("th_end"); }, cellClass: "mono",
+      html: function(e){ return esc(e.endTime ? fmtTime12(e.endTime) : ""); }, csv: function(e){ return e.endTime ? fmtTime12(e.endTime) : ""; } },
+    runtimeHrs: { header: function(){ return t("form_runtime_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.runtimeHrs != null ? e.runtimeHrs : ""); }, csv: function(e){ return e.runtimeHrs != null ? e.runtimeHrs : ""; } },
+    manpower: { header: function(){ return t("th_manpower"); }, cellClass: "num",
+      html: function(e){ return esc(e.manpower != null ? e.manpower : ""); }, csv: function(e){ return e.manpower != null ? e.manpower : ""; } },
+    palletNo: { header: function(){ return t("form_palletno_label"); },
+      html: function(e){ return esc(e.palletNo || ""); }, csv: function(e){ return e.palletNo || ""; } },
+    updatedBy: { header: function(){ return t("th_updatedby"); },
+      html: function(e){ return esc(e.updatedBy || ""); }, csv: function(e){ return e.updatedBy || ""; } },
+    status: { header: function(){ return t("th_status"); },
+      html: function(e){
+        return '<span class="statusPill ' + statusClass(e.status) + '">' + esc(t_status(statusLabel(e.status))) + '</span>' +
+          (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "");
+      },
+      csv: function(e){ return t_status(statusLabel(e.status)); } },
+    nextStage: { header: function(){ return t("form_nextstage_label"); },
+      html: function(e){ return esc(e.nextStage || ""); }, csv: function(e){ return e.nextStage || ""; } },
+    hold: { header: function(){ return t("form_hold_label"); },
+      html: function(e){ return esc(e.onHold ? t("hold_on_label") : t("hold_off_label")); },
+      csv: function(e){ return e.onHold ? t("hold_on_label") : t("hold_off_label"); } },
+    remarks: { header: function(){ return t("th_remarks"); },
+      html: function(e){ return esc(e.remarks || ""); }, csv: function(e){ return e.remarks || ""; } },
+    qcBoardGsm: { header: function(){ return t("qc_spec_boardgsm"); },
+      html: function(e){ return esc(summarizeQcSpec(e.qcBoardGsmClient, e.qcBoardGsmVisipak, e.qcBoardGsmPass)); },
+      csv: function(e){ return summarizeQcSpec(e.qcBoardGsmClient, e.qcBoardGsmVisipak, e.qcBoardGsmPass); } },
+    qcBustingStrength: { header: function(){ return t("qc_spec_bustingstrength"); },
+      html: function(e){ return esc(summarizeQcSpec(e.qcBustingStrengthClient, e.qcBustingStrengthVisipak, e.qcBustingStrengthPass)); },
+      csv: function(e){ return summarizeQcSpec(e.qcBustingStrengthClient, e.qcBustingStrengthVisipak, e.qcBustingStrengthPass); } },
+    qcMoisture: { header: function(){ return t("qc_spec_moisture"); },
+      html: function(e){ return esc(summarizeQcSpec(e.qcMoistureClient, e.qcMoistureVisipak, e.qcMoisturePass)); },
+      csv: function(e){ return summarizeQcSpec(e.qcMoistureClient, e.qcMoistureVisipak, e.qcMoisturePass); } },
+    qcWeight: { header: function(){ return t("qc_spec_weight"); },
+      html: function(e){ return esc(summarizeQcSpec(e.qcWeightClient, e.qcWeightVisipak, e.qcWeightPass)); },
+      csv: function(e){ return summarizeQcSpec(e.qcWeightClient, e.qcWeightVisipak, e.qcWeightPass); } },
+    qcBct: { header: function(){ return t("qc_spec_bct"); },
+      html: function(e){ return esc(summarizeQcSpec(e.qcBctClient, e.qcBctVisipak, e.qcBctPass)); },
+      csv: function(e){ return summarizeQcSpec(e.qcBctClient, e.qcBctVisipak, e.qcBctPass); } },
+    hrTotalOperator: { header: function(){ return t("hrmp_th_operator"); }, cellClass: "num",
+      html: function(e){ return esc(hrTotalField(e, "operator")); }, csv: function(e){ return hrTotalField(e, "operator"); } },
+    hrTotalMh: { header: function(){ return t("hrmp_th_mh"); }, cellClass: "num",
+      html: function(e){ return esc(hrTotalField(e, "mh")); }, csv: function(e){ return hrTotalField(e, "mh"); } },
+    hrTotalFh: { header: function(){ return t("hrmp_th_fh"); }, cellClass: "num",
+      html: function(e){ return esc(hrTotalField(e, "fh")); }, csv: function(e){ return hrTotalField(e, "fh"); } },
+    hrTotalGrand: { header: function(){ return t("hrmp_grand_label"); }, cellClass: "num",
+      html: function(e){ return esc(hrTotalField(e, "grand")); }, csv: function(e){ return hrTotalField(e, "grand"); } },
+    lastUpdated: { header: function(){ return t("th_lastupdated"); },
+      html: function(e){ return esc(fmtDateTime(e.updatedAt)); }, csv: function(e){ return fmtDateTime(e.updatedAt); } }
+    };
+    return _logColumnsCache;
+  }
+  // The column set shown when the Log's Stage filter is "All stages" — unchanged from before
+  // per-stage Log columns existed, so a mixed-stage view stays readable rather than showing every
+  // field from every stage at once. Also wrapped in a function for the same hoisting reason as
+  // getLogColumns() above.
+  function getGenericLogColumnKeys(){
+    return ["date","shift","stage","productName","jobCardNo","status","quantity","startTime","endTime","runtimeHrs","manpower","remarks","updatedBy","lastUpdated"];
+  }
+  // When one specific stage is selected, its columns become exactly that stage's own Add Entry
+  // fields, in the same order they appear on the form — same predicates as
+  // updateFormFieldsForStage and the submit handler above.
+  function stageLogColumnKeys(stage){
+    var dispatch = isDispatchStage(stage);
+    var readyToDispatch = isReadyToDispatchStage(stage);
+    var fg = isFGStage(stage);
+    var qc = isQCStage(stage);
+    var hr = isHRManpowerStage(stage);
+    var rejected = isRejectedStage(stage);
+    var special = dispatch || readyToDispatch || fg || qc || hr || rejected;
+    var hasType = readyToDispatch || fg || qc;
+    var keys = ["date"];
+    if(!special) keys.push("shift");
+    keys.push("stage");
+    if(!hr) keys.push("productName", "jobCardNo");
+    if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck");
+    if(!(fg || hr)) keys.push("quantity");
+    if(hasType) keys.push("type");
+    if(fg) keys.push("qtyInStock", "totalBundle", "availableStock");
+    if(stageHasPly(stage)) keys.push("ply");
+    if(stageHasLayers(stage)) keys.push("layers");
+    if(dispatch || fg || rejected) keys.push("clientName");
+    if(dispatch) keys.push("invoiceNo", "vehicleNumber", "driver");
+    if(dispatch || readyToDispatch || fg || rejected) keys.push("qtyPerBundle");
+    if(dispatch || readyToDispatch || rejected) keys.push("noOfBundles");
+    if(rejected) keys.push("reasonForRejection");
+    if(!special) keys.push("startTime", "endTime", "runtimeHrs", "manpower");
+    if(fg) keys.push("palletNo");
+    keys.push("updatedBy");
+    if(!special) keys.push("status", "nextStage");
+    if(stageHasHold(stage)) keys.push("hold");
+    if(!special) keys.push("remarks");
+    if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct");
+    if(hr) keys.push("hrTotalOperator", "hrTotalMh", "hrTotalFh", "hrTotalGrand");
+    keys.push("lastUpdated");
+    return keys;
+  }
+
   // ---------- Log rendering ----------
   function renderLog(){
     var q = (el.logSearch.value || "").trim().toLowerCase();
@@ -2590,28 +2771,22 @@
       return true;
     });
 
+    var logColumns = getLogColumns();
+    var columnKeys = stageFilter ? stageLogColumnKeys(stageFilter) : getGenericLogColumnKeys();
+    el.logTableHeadRow.innerHTML = columnKeys.map(function(key){
+      return "<th>" + esc(logColumns[key].header()) + "</th>";
+    }).join("");
+
     el.logBody.innerHTML = "";
     el.logEmpty.hidden = rows.length !== 0;
 
     rows.forEach(function(e){
       var tr = document.createElement("tr");
-      var displayName = e.productName || (isHRManpowerStage(e.stage) ? t("hrmp_report_title") : "");
-      tr.innerHTML =
-        "<td>" + esc(fmtDateForDisplay(e.date)) + "</td>" +
-        "<td>" + esc(e.shift) + "</td>" +
-        "<td>" + esc(e.stage) + "</td>" +
-        "<td>" + esc(displayName) + "</td>" +
-        '<td class="mono">' + esc(e.jobCardNo) + "</td>" +
-        '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(t_status(statusLabel(e.status))) +
-          '</span>' + (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") + '</td>' +
-        '<td class="num">' + esc(e.quantity != null ? e.quantity : "") + "</td>" +
-        '<td class="mono">' + esc(e.startTime ? fmtTime12(e.startTime) : "") + "</td>" +
-        '<td class="mono">' + esc(e.endTime ? fmtTime12(e.endTime) : "") + "</td>" +
-        '<td class="num">' + esc(e.runtimeHrs != null ? e.runtimeHrs : "") + "</td>" +
-        '<td class="num">' + esc(e.manpower != null ? e.manpower : "") + "</td>" +
-        "<td>" + esc(e.remarks) + "</td>" +
-        "<td>" + esc(e.updatedBy) + "</td>" +
-        "<td>" + esc(fmtDateTime(e.updatedAt)) + "</td>";
+      tr.innerHTML = columnKeys.map(function(key){
+        var col = logColumns[key];
+        var cls = col.cellClass ? ' class="' + col.cellClass + '"' : "";
+        return "<td" + cls + ">" + col.html(e) + "</td>";
+      }).join("");
       tr.addEventListener("click", function(){ openModal(e); });
       el.logBody.appendChild(tr);
     });
@@ -2622,21 +2797,16 @@
   el.logStatusFilter.addEventListener("change", renderLog);
 
   // ---------- CSV export (real browser download — no Claude sandbox here) ----------
-  function buildCsv(rows){
-    var header = [t("th_date"),t("th_shift"),t("th_stage"),t("th_product"),t("th_jobcard"),t("th_status"),t("th_qty"),t("th_start"),t("th_end"),t("form_runtime_label"),t("th_manpower"),t("th_remarks"),t("th_updatedby"),t("th_lastupdated")];
+  // Exports exactly the columns currently on screen for the selected Stage filter (see
+  // LOG_COLUMNS / stageLogColumnKeys / GENERIC_LOG_COLUMN_KEYS above), so the download always
+  // matches what's visible in the Log table.
+  function buildCsv(rows, columnKeys){
+    var logColumns = getLogColumns();
+    var keys = columnKeys || getGenericLogColumnKeys();
+    var header = keys.map(function(key){ return logColumns[key].header(); });
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(e){
-      lines.push([
-        e.date, e.shift, e.stage, e.productName, e.jobCardNo, t_status(statusLabel(e.status)),
-        e.quantity != null ? e.quantity : "",
-        e.startTime ? fmtTime12(e.startTime) : "",
-        e.endTime ? fmtTime12(e.endTime) : "",
-        e.runtimeHrs != null ? e.runtimeHrs : "",
-        e.manpower != null ? e.manpower : "",
-        e.remarks,
-        e.updatedBy,
-        fmtDateTime(e.updatedAt)
-      ].map(csvEscape).join(","));
+      lines.push(keys.map(function(key){ return logColumns[key].csv(e); }).map(csvEscape).join(","));
     });
     return lines.join("\r\n");
   }
@@ -2705,7 +2875,8 @@
       downloadCsv("visipak-daily-job-track-hr-manpower.csv", hrCsv);
       return;
     }
-    var csv = buildCsv(rows);
+    var columnKeys = stageFilter ? stageLogColumnKeys(stageFilter) : getGenericLogColumnKeys();
+    var csv = buildCsv(rows, columnKeys);
     downloadCsv("visipak-daily-job-track-log.csv", csv);
   });
 
