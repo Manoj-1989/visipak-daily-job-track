@@ -378,24 +378,6 @@
     width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);
     font-size:13px;box-sizing:border-box;
   }
-  /* Client Specifications attachment (Artwork Check / QC Specifications): one optional
-     image-or-PDF per block, captured from the camera or picked from files, uploaded straight to
-     Firebase Storage (see storageRoot / makeAttachmentController in the script). */
-  .attachmentWidget{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
-  .attachmentLabel{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
-  .attachmentControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .attachBtn{padding:6px 10px;font-size:12px;}
-  .attachBtn:disabled{opacity:.55;cursor:not-allowed;}
-  .attachStatus{font-size:12px;color:var(--ink-soft);}
-  .attachmentPreview{margin-top:8px;display:flex;align-items:center;gap:10px;}
-  .attachmentThumb{max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line-strong);display:block;}
-  .attachmentFileLink{font-size:13px;color:var(--accent);text-decoration:none;}
-  .attachmentFileLink:hover{text-decoration:underline;}
-  .attachmentRemoveBtn{
-    border:1px solid var(--line-strong);background:var(--surface);color:var(--crit);border-radius:999px;
-    width:22px;height:22px;line-height:1;cursor:pointer;font-size:13px;flex:none;
-  }
-  .attachmentRemoveBtn:hover{background:var(--crit-soft);}
   /* Manual Pass/Fail switch per spec row: ON (checked) = Pass (green), OFF = Fail (red).
      A plain checkbox is visually hidden and styled via its sibling <span> track + thumb. */
   .passFailCell{white-space:nowrap;}
@@ -846,19 +828,6 @@
             </tr>
           </tbody>
         </table>
-        <!-- Client Specifications attachment for this artwork — one image or PDF, captured or
-             uploaded, stored in Firebase Storage (see makeAttachmentController in the script). -->
-        <div class="attachmentWidget" id="attachArtworkWidget">
-          <div class="attachmentLabel" data-i18n="attach_client_specs_label">Client Specifications</div>
-          <div class="attachmentControls">
-            <input type="file" accept="image/*" capture="environment" id="attachArtworkCameraInput" hidden>
-            <input type="file" accept="image/*,application/pdf" id="attachArtworkFileInput" hidden>
-            <button type="button" class="btn ghost attachBtn" id="attachArtworkCameraBtn" data-i18n="attach_capture_btn">📷 Capture</button>
-            <button type="button" class="btn ghost attachBtn" id="attachArtworkUploadBtn" data-i18n="attach_upload_btn">📎 Upload</button>
-            <span class="attachStatus" id="attachArtworkStatus"></span>
-          </div>
-          <div class="attachmentPreview" id="attachArtworkPreview" hidden></div>
-        </div>
       </div>
       <div class="span2 qcSpecsBlock" id="fld_qcspecs">
         <div class="qcSpecsHead" data-i18n="qc_specs_heading">Specifications</div>
@@ -899,19 +868,6 @@
             </tr>
           </tbody>
         </table>
-        <!-- Client Specifications attachment for this whole table — one image or PDF, captured or
-             uploaded, stored in Firebase Storage (see makeAttachmentController in the script). -->
-        <div class="attachmentWidget" id="attachQcSpecsWidget">
-          <div class="attachmentLabel" data-i18n="attach_client_specs_label">Client Specifications</div>
-          <div class="attachmentControls">
-            <input type="file" accept="image/*" capture="environment" id="attachQcSpecsCameraInput" hidden>
-            <input type="file" accept="image/*,application/pdf" id="attachQcSpecsFileInput" hidden>
-            <button type="button" class="btn ghost attachBtn" id="attachQcSpecsCameraBtn" data-i18n="attach_capture_btn">📷 Capture</button>
-            <button type="button" class="btn ghost attachBtn" id="attachQcSpecsUploadBtn" data-i18n="attach_upload_btn">📎 Upload</button>
-            <span class="attachStatus" id="attachQcSpecsStatus"></span>
-          </div>
-          <div class="attachmentPreview" id="attachQcSpecsPreview" hidden></div>
-        </div>
       </div>
       <div class="span2 hrManpowerBlock" id="fld_hrmanpower">
         <div class="qcSpecsHead" data-i18n="hrmp_heading">Daily Manpower Count</div>
@@ -954,7 +910,6 @@
 <!-- Firebase (self-hosted backend — replaces Claude's live db) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
 <script>
 (function(){
@@ -971,13 +926,6 @@
   };
   firebase.initializeApp(firebaseConfig);
   var firestoreDb = firebase.firestore();
-  // Client Specifications attachments (Artwork Check, QC Specifications) are uploaded here rather
-  // than into Firestore itself — Firestore documents cap out at 1MB, which a phone-camera photo or
-  // a multi-page PDF blows past easily. This requires Storage to be enabled for this Firebase
-  // project (Firebase console → Build → Storage → Get started) with rules that allow reads/writes
-  // the same way this app's Firestore rules are already wide open — see the storage.rules note
-  // near uploadAttachment() below.
-  var storageRoot = firebase.storage();
 
   // Ask the browser to treat this site's local storage (device stage/login setup) as
   // persistent rather than "best-effort" — on mobile Chrome/Android in particular, best-effort
@@ -1114,10 +1062,6 @@
       qc_specs_heading: "Specifications",
       artwork_check_heading: "QC Check",
       log_th_artworkcheck: "Artwork Check",
-      attach_client_specs_label: "Client Specifications",
-      attach_capture_btn: "📷 Capture", attach_upload_btn: "📎 Upload",
-      attach_uploading: "Uploading…", attach_err_filetype: "Only images or PDF files are allowed.",
-      attach_err_toolarge: "File is too large (max 15MB).", attach_err_upload: "Upload failed. Please try again.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
@@ -1230,10 +1174,6 @@
       qc_specs_heading: "स्पेसिफिकेशन",
       artwork_check_heading: "QC जांच",
       log_th_artworkcheck: "आर्टवर्क जांच",
-      attach_client_specs_label: "क्लाइंट स्पेसिफिकेशन",
-      attach_capture_btn: "📷 कैप्चर करें", attach_upload_btn: "📎 अपलोड करें",
-      attach_uploading: "अपलोड हो रहा है…", attach_err_filetype: "केवल इमेज या PDF फ़ाइलें ही मान्य हैं।",
-      attach_err_toolarge: "फ़ाइल बहुत बड़ी है (अधिकतम 15MB)।", attach_err_upload: "अपलोड विफल रहा। कृपया फिर से कोशिश करें।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
@@ -1346,10 +1286,6 @@
       qc_specs_heading: "స్పెసిఫికేషన్లు",
       artwork_check_heading: "QC చెక్",
       log_th_artworkcheck: "ఆర్ట్‌వర్క్ చెక్",
-      attach_client_specs_label: "క్లయింట్ స్పెసిఫికేషన్లు",
-      attach_capture_btn: "📷 క్యాప్చర్", attach_upload_btn: "📎 అప్‌లోడ్",
-      attach_uploading: "అప్‌లోడ్ అవుతోంది…", attach_err_filetype: "చిత్రాలు లేదా PDF ఫైళ్లు మాత్రమే అనుమతించబడతాయి.",
-      attach_err_toolarge: "ఫైల్ చాలా పెద్దది (గరిష్టం 15MB).", attach_err_upload: "అప్‌లోడ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
@@ -1764,11 +1700,7 @@
     el.f_qc_moisture_client, el.f_qc_moisture_visipak, el.f_qc_moisture_pass,
     el.f_qc_weight_client, el.f_qc_weight_visipak, el.f_qc_weight_pass,
     el.f_qc_bct_client, el.f_qc_bct_visipak, el.f_qc_bct_pass,
-    el.f_artworkcheck_pass, el.f_hold,
-    // The Client Specifications attachment buttons live inside these same QC-only blocks
-    // (Artwork Check, QC Specifications), so they're gated the same way.
-    document.getElementById("attachArtworkCameraBtn"), document.getElementById("attachArtworkUploadBtn"),
-    document.getElementById("attachQcSpecsCameraBtn"), document.getElementById("attachQcSpecsUploadBtn")
+    el.f_artworkcheck_pass, el.f_hold
   ];
 
   // ---------- Stage-specific entry form fields ----------
@@ -2696,9 +2628,6 @@
     artworkCheck: { header: function(){ return t("log_th_artworkcheck"); },
       html: function(e){ return esc(e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass")); },
       csv: function(e){ return e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass"); } },
-    artworkAttachment: { header: function(){ return t("attach_client_specs_label"); },
-      html: function(e){ return e.artworkCheckAttachment ? '<a href="' + esc(e.artworkCheckAttachment.url) + '" target="_blank" rel="noopener">📎 ' + esc(e.artworkCheckAttachment.name || "view") + '</a>' : ""; },
-      csv: function(e){ return e.artworkCheckAttachment ? e.artworkCheckAttachment.url : ""; } },
     quantity: { header: function(){ return t("form_qty_label"); }, cellClass: "num",
       html: function(e){ return esc(e.quantity != null ? e.quantity : ""); }, csv: function(e){ return e.quantity != null ? e.quantity : ""; } },
     type: { header: function(){ return t("form_type_label"); },
@@ -2767,9 +2696,6 @@
     qcBct: { header: function(){ return t("qc_spec_bct"); },
       html: function(e){ return esc(summarizeQcSpec(e.qcBctClient, e.qcBctVisipak, e.qcBctPass)); },
       csv: function(e){ return summarizeQcSpec(e.qcBctClient, e.qcBctVisipak, e.qcBctPass); } },
-    qcSpecsAttachment: { header: function(){ return t("attach_client_specs_label"); },
-      html: function(e){ return e.qcSpecsAttachment ? '<a href="' + esc(e.qcSpecsAttachment.url) + '" target="_blank" rel="noopener">📎 ' + esc(e.qcSpecsAttachment.name || "view") + '</a>' : ""; },
-      csv: function(e){ return e.qcSpecsAttachment ? e.qcSpecsAttachment.url : ""; } },
     hrTotalOperator: { header: function(){ return t("hrmp_th_operator"); }, cellClass: "num",
       html: function(e){ return esc(hrTotalField(e, "operator")); }, csv: function(e){ return hrTotalField(e, "operator"); } },
     hrTotalMh: { header: function(){ return t("hrmp_th_mh"); }, cellClass: "num",
@@ -2806,7 +2732,7 @@
     if(!special) keys.push("shift");
     keys.push("stage");
     if(!hr) keys.push("productName", "jobCardNo");
-    if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck", "artworkAttachment");
+    if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck");
     if(!(fg || hr)) keys.push("quantity");
     if(hasType) keys.push("type");
     if(fg) keys.push("qtyInStock", "totalBundle", "availableStock");
@@ -2823,7 +2749,7 @@
     if(!special) keys.push("status", "nextStage");
     if(stageHasHold(stage)) keys.push("hold");
     if(!special) keys.push("remarks");
-    if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment");
+    if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct");
     if(hr) keys.push("hrTotalOperator", "hrTotalMh", "hrTotalFh", "hrTotalGrand");
     keys.push("lastUpdated");
     return keys;
@@ -3048,148 +2974,6 @@
     el.artworkCheckNoDisplay.textContent = el.f_artworkno.value.trim() || "—";
   });
 
-  // ---------- Client Specifications attachments (Artwork Check / QC Specifications) ----------
-  // One optional image-or-PDF attachment per block (Artwork Check on RD-1CP/RS-2CP/RS+RD-4CP, the
-  // Specifications table on QC/Plant), uploaded to Firebase Storage (see storageRoot above) rather
-  // than into the Firestore document — Firestore's 1MB per-document cap doesn't leave room for a
-  // real phone photo or a scanned spec sheet PDF.
-  //
-  // Saved value shape: { url, path, name, type } | null — url is what gets shown/opened, path is
-  // the Storage location used to delete the file later.
-  //
-  // Storage deletion is deferred to commit()/discard()/discardAll() rather than happening the
-  // moment a file is replaced or removed, so that hitting Cancel never destroys a file that's
-  // still referenced by the saved entry — see the three methods below for exactly when each runs.
-  function makeAttachmentController(cfg){
-    var current = null;
-    var originalValue = null;
-    var pendingDeletePaths = [];
-    var fileInput = document.getElementById(cfg.fileInputId);
-    var cameraInput = document.getElementById(cfg.cameraInputId);
-    var cameraBtn = document.getElementById(cfg.cameraBtnId);
-    var uploadBtn = document.getElementById(cfg.uploadBtnId);
-    var statusEl = document.getElementById(cfg.statusElId);
-    var previewEl = document.getElementById(cfg.previewElId);
-
-    function setStatus(text){ statusEl.textContent = text || ""; }
-    function setBusy(busy){ cameraBtn.disabled = busy; uploadBtn.disabled = busy; }
-
-    function renderPreview(){
-      if(!current){
-        previewEl.hidden = true;
-        previewEl.innerHTML = "";
-        return;
-      }
-      previewEl.hidden = false;
-      var isImage = current.type && current.type.indexOf("image/") === 0;
-      previewEl.innerHTML = (isImage
-        ? '<a href="' + esc(current.url) + '" target="_blank" rel="noopener"><img src="' + esc(current.url) + '" class="attachmentThumb" alt=""></a>'
-        : '<a href="' + esc(current.url) + '" target="_blank" rel="noopener" class="attachmentFileLink">📄 ' + esc(current.name || "file.pdf") + '</a>'
-      ) + '<button type="button" class="attachmentRemoveBtn" title="Remove">✕</button>';
-      var removeBtn = previewEl.querySelector(".attachmentRemoveBtn");
-      // Same permission gate as the Capture/Upload buttons — viewing the attachment (the link
-      // above) stays available either way, but removing it doesn't when this device can't edit
-      // this block's QC-only fields.
-      removeBtn.hidden = cameraBtn.disabled;
-      removeBtn.addEventListener("click", function(){
-        if(current) pendingDeletePaths.push(current.path);
-        current = null;
-        renderPreview();
-      });
-    }
-
-    function upload(file){
-      if(!file) return;
-      var okType = file.type === "application/pdf" || file.type.indexOf("image/") === 0;
-      if(!okType){ setStatus(t("attach_err_filetype")); return; }
-      var maxBytes = 15 * 1024 * 1024; // generous for a phone photo or a scanned spec sheet
-      if(file.size > maxBytes){ setStatus(t("attach_err_toolarge")); return; }
-      var replacing = current;
-      var safeName = file.name.replace(/[^A-Za-z0-9_.-]/g, "_");
-      var path = cfg.storageFolder + "/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "_" + safeName;
-      setStatus(t("attach_uploading"));
-      setBusy(true);
-      var ref = storageRoot.ref(path);
-      ref.put(file).then(function(){
-        return ref.getDownloadURL();
-      }).then(function(url){
-        if(replacing) pendingDeletePaths.push(replacing.path);
-        current = { url: url, path: path, name: file.name, type: file.type };
-        setStatus("");
-        setBusy(false);
-        renderPreview();
-      }).catch(function(err){
-        setStatus(t("attach_err_upload"));
-        setBusy(false);
-        if(window.console) console.error("Attachment upload failed:", err);
-      });
-    }
-
-    cameraBtn.addEventListener("click", function(){ cameraInput.click(); });
-    uploadBtn.addEventListener("click", function(){ fileInput.click(); });
-    cameraInput.addEventListener("change", function(){
-      if(cameraInput.files && cameraInput.files[0]) upload(cameraInput.files[0]);
-      cameraInput.value = "";
-    });
-    fileInput.addEventListener("change", function(){
-      if(fileInput.files && fileInput.files[0]) upload(fileInput.files[0]);
-      fileInput.value = "";
-    });
-
-    return {
-      getValue: function(){ return current; },
-      // Called from openModal — loads a saved entry's attachment (or null for a new entry) and
-      // resets the widget's undo bookkeeping to treat this as the current "saved" baseline.
-      setValue: function(val){
-        current = val || null;
-        originalValue = val || null;
-        pendingDeletePaths = [];
-        setStatus("");
-        renderPreview();
-      },
-      // Called right after the entry itself saves successfully: actually deletes whichever files
-      // were replaced/removed during this edit, and moves the baseline forward.
-      commit: function(){
-        pendingDeletePaths.forEach(function(p){ storageRoot.ref(p).delete().catch(function(){}); });
-        pendingDeletePaths = [];
-        originalValue = current;
-      },
-      // Called on Cancel/Escape/overlay-close: nothing that's already saved gets touched — only a
-      // brand-new upload from this session that's about to be thrown away is cleaned up.
-      discard: function(){
-        if(current && (!originalValue || current.path !== originalValue.path)){
-          storageRoot.ref(current.path).delete().catch(function(){});
-        }
-        pendingDeletePaths = [];
-        current = originalValue;
-        renderPreview();
-      },
-      // Called when the whole entry is deleted: both the saved file and any unsaved replacement
-      // sitting in the widget are now orphaned, so clean up both.
-      discardAll: function(){
-        if(current && current.path) storageRoot.ref(current.path).delete().catch(function(){});
-        if(originalValue && originalValue.path && (!current || current.path !== originalValue.path)){
-          storageRoot.ref(originalValue.path).delete().catch(function(){});
-        }
-        pendingDeletePaths = [];
-        current = null; originalValue = null;
-        renderPreview();
-      }
-    };
-  }
-  var artworkAttachmentCtrl = makeAttachmentController({
-    fileInputId: "attachArtworkFileInput", cameraInputId: "attachArtworkCameraInput",
-    cameraBtnId: "attachArtworkCameraBtn", uploadBtnId: "attachArtworkUploadBtn",
-    statusElId: "attachArtworkStatus", previewElId: "attachArtworkPreview",
-    storageFolder: "artworkCheckAttachments"
-  });
-  var qcSpecsAttachmentCtrl = makeAttachmentController({
-    fileInputId: "attachQcSpecsFileInput", cameraInputId: "attachQcSpecsCameraInput",
-    cameraBtnId: "attachQcSpecsCameraBtn", uploadBtnId: "attachQcSpecsUploadBtn",
-    statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview",
-    storageFolder: "qcSpecsAttachments"
-  });
-
   // ---------- Modal ----------
   function openModal(entry){
     state.editingId = entry ? entry.id : null;
@@ -3282,10 +3066,6 @@
 
     NORMAL_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditNormal; });
     QC_ONLY_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditQcSpecs; });
-    // Loaded after the disable loop above so the attachment widgets' Remove button correctly
-    // reflects this device's QC-edit access from the moment the modal opens.
-    artworkAttachmentCtrl.setValue(entry ? entry.artworkCheckAttachment : null);
-    qcSpecsAttachmentCtrl.setValue(entry ? entry.qcSpecsAttachment : null);
 
     if(readOnly){
       el.readOnlyNote.hidden = false;
@@ -3316,24 +3096,16 @@
     el.entryForm.reset();
     syncFDateLabel();
   }
-  // Cancel/Escape/overlay-click all abandon the edit rather than save it, so any brand-new
-  // attachment upload from this session (never referenced by a saved entry) gets cleaned up —
-  // see discard() on the attachment controllers above. Whatever was already saved is untouched.
-  function cancelModal(){
-    artworkAttachmentCtrl.discard();
-    qcSpecsAttachmentCtrl.discard();
-    closeModal();
-  }
   el.addBtn.addEventListener("click", function(){ openModal(null); });
-  el.cancelBtn.addEventListener("click", cancelModal);
+  el.cancelBtn.addEventListener("click", closeModal);
   el.modalOverlay.addEventListener("click", function(ev){
-    if(ev.target === el.modalOverlay) cancelModal();
+    if(ev.target === el.modalOverlay) closeModal();
   });
   document.addEventListener("keydown", function(ev){
     if(ev.key !== "Escape") return;
     if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
     else if(!el.activityOverlay.hidden) el.activityOverlay.hidden = true;
-    else if(!el.modalOverlay.hidden) cancelModal();
+    else if(!el.modalOverlay.hidden) closeModal();
     else if(!el.profileMenu.hidden) closeProfileMenu();
   });
 
@@ -3374,7 +3146,6 @@
       jobCardNo: isHR ? "" : el.f_jobcard.value.trim(),
       artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
       artworkCheckPass: stageHasArtworkNo(chosenStage) ? el.f_artworkcheck_pass.checked : null,
-      artworkCheckAttachment: stageHasArtworkNo(chosenStage) ? artworkAttachmentCtrl.getValue() : null,
       quantity: (isFG || isHR) ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
@@ -3414,7 +3185,6 @@
       qcBctClient: hasQcSpecs ? el.f_qc_bct_client.value.trim() : "",
       qcBctVisipak: hasQcSpecs ? el.f_qc_bct_visipak.value.trim() : "",
       qcBctPass: hasQcSpecs ? el.f_qc_bct_pass.checked : null,
-      qcSpecsAttachment: hasQcSpecs ? qcSpecsAttachmentCtrl.getValue() : null,
       hrManpowerRows: isHR ? hrManpowerData.rows : null,
       hrManpowerTotal: isHR ? hrManpowerData.total : null,
       updatedAt: Date.now()
@@ -3434,11 +3204,6 @@
       if(isNewEntry && res && res.id) logEntryId = res.id;
       saveBtn.disabled = false;
       logActivity(isNewEntry ? "add" : "edit", Object.assign({ id: logEntryId }, payload), payload.updatedBy);
-      // The entry itself is safely saved now — actually delete whichever attachment files were
-      // replaced/removed during this edit (deferred until now so Cancel never destroys a file
-      // that's still referenced by the saved entry).
-      artworkAttachmentCtrl.commit();
-      qcSpecsAttachmentCtrl.commit();
       closeModal();
       if(movedTo){
         showBanner(tf("banner_moved", { jc: payload.jobCardNo || "", from: chosenStage, to: movedTo }));
@@ -3492,10 +3257,6 @@
       logActivity("delete", pendingDeleteEntry, actorName);
       el.deleteConfirmYesBtn.disabled = false;
       closeDeleteConfirm();
-      // The entry itself (and any attachment reference it carried) is gone now, so any attachment
-      // file sitting in this modal's widgets — saved or a not-yet-saved replacement — is orphaned.
-      artworkAttachmentCtrl.discardAll();
-      qcSpecsAttachmentCtrl.discardAll();
       closeModal();
     }).catch(function(err){
       el.deleteConfirmYesBtn.disabled = false;
