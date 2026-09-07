@@ -282,6 +282,13 @@
   .card.status-completed{border-left-color:var(--good);}
   .card.status-in-progress{border-left-color:var(--orange);}
   .card.status-not-started{border-left-color:var(--crit);}
+  /* An on-hold job takes priority over the usual status coloring — QC has flagged it, so the
+     card reads as urgent regardless of what stage/status it's otherwise sitting at. */
+  .card.onHold{border-left-color:var(--crit);border-left-width:6px;}
+  .holdBadge{
+    display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--crit);color:#fff;margin-left:6px;
+  }
   .cardTop{display:flex;justify-content:space-between;align-items:baseline;gap:6px;}
   .cardStatusRow{margin-top:5px;}
   .jobCard{font-family:var(--font-mono);font-weight:600;font-size:13px;color:var(--accent);}
@@ -340,13 +347,26 @@
   }
   .modal h2{font-size:18px;margin-bottom:16px;}
   .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .formGrid label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
-  .formGrid label[hidden]{display:none;}
-  .formGrid label.span2{grid-column:1 / -1;}
+  .formGrid label, .formGrid .formGridItem{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .formGrid label[hidden], .formGrid .formGridItem[hidden]{display:none;}
+  .formGrid label.span2, .formGrid .formGridItem.span2{grid-column:1 / -1;}
   .formGrid input, .formGrid select, .formGrid textarea{
     border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);
     font-size:13px;resize:vertical;
   }
+  /* A field disabled because it belongs to the other team (Plant vs QC) on this device reads as
+     visibly locked, not just inert. */
+  .formGrid input:disabled, .formGrid select:disabled, .formGrid textarea:disabled{
+    opacity:.55;cursor:not-allowed;background:var(--surface-2);
+  }
+  .passFailToggle input:disabled ~ .pfTrack, .passFailToggle input:disabled ~ .pfLabel{opacity:.55;}
+  .passFailToggle input:disabled ~ .pfTrack{cursor:not-allowed;}
+  /* Hold uses the same switch, but its colors are the reverse of Pass/Fail: ON (checked) means
+     "stopped" (red/crit — the alarming state), OFF means the job is free to keep moving (green). */
+  .passFailToggle.holdToggle input:checked ~ .pfTrack{background:var(--crit);}
+  .passFailToggle.holdToggle input:not(:checked) ~ .pfTrack{background:var(--good);}
+  .passFailToggle.holdToggle .pfLabel{color:var(--good);}
+  .passFailToggle.holdToggle input:checked ~ .pfLabel{color:var(--crit);}
   /* QC's Client Specs vs Visipak Specs comparison table — spans the full form width. */
   .qcSpecsBlock{grid-column:1 / -1;}
   .qcSpecsHead{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
@@ -358,6 +378,24 @@
     width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);
     font-size:13px;box-sizing:border-box;
   }
+  /* Manual Pass/Fail switch per spec row: ON (checked) = Pass (green), OFF = Fail (red).
+     A plain checkbox is visually hidden and styled via its sibling <span> track + thumb. */
+  .passFailCell{white-space:nowrap;}
+  .passFailToggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .passFailToggle input{position:absolute;opacity:0;width:1px;height:1px;}
+  .passFailToggle .pfTrack{
+    position:relative;flex:none;width:40px;height:22px;border-radius:999px;background:var(--crit);
+    transition:background .15s ease;
+  }
+  .passFailToggle .pfTrack::after{
+    content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.35);transition:transform .15s ease;
+  }
+  .passFailToggle input:checked ~ .pfTrack{background:var(--good);}
+  .passFailToggle input:checked ~ .pfTrack::after{transform:translateX(18px);}
+  .passFailToggle input:focus-visible ~ .pfTrack{outline:2px solid var(--accent);outline-offset:2px;}
+  .passFailToggle .pfLabel{font-size:12px;font-weight:600;color:var(--crit);}
+  .passFailToggle input:checked ~ .pfLabel{color:var(--good);}
   /* HR Man Power's daily headcount table — one row per stage plus a few fixed staffing
      categories, with an auto-summed "Total Man power" / "Grand Total" line at the bottom. */
   .hrManpowerBlock{grid-column:1 / -1;}
@@ -715,16 +753,38 @@
           <option value="7 Ply">7 Ply</option>
         </select>
       </label>
+      <!-- Plant-only: once a PLY count is chosen, show that many Layer rows (Size/GSM/BF each).
+           All 7 rows always exist in the DOM; only the ones up to the selected PLY count are
+           unhidden — simpler and more robust than rebuilding rows on every PLY change. -->
+      <div class="span2 qcSpecsBlock" id="fld_layers">
+        <div class="qcSpecsHead" data-i18n="layers_heading">Layers</div>
+        <table class="qcSpecsTable">
+          <thead>
+            <tr><th></th><th data-i18n="layers_th_size">Size</th><th data-i18n="layers_th_gsm">GSM</th><th data-i18n="layers_th_bf">BF</th></tr>
+          </thead>
+          <tbody id="layersBody">
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><input type="text" id="f_layer1_size"></td><td><input type="text" id="f_layer1_gsm"></td><td><input type="text" id="f_layer1_bf"></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><input type="text" id="f_layer2_size"></td><td><input type="text" id="f_layer2_gsm"></td><td><input type="text" id="f_layer2_bf"></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><input type="text" id="f_layer3_size"></td><td><input type="text" id="f_layer3_gsm"></td><td><input type="text" id="f_layer3_bf"></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><input type="text" id="f_layer4_size"></td><td><input type="text" id="f_layer4_gsm"></td><td><input type="text" id="f_layer4_bf"></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><input type="text" id="f_layer5_size"></td><td><input type="text" id="f_layer5_gsm"></td><td><input type="text" id="f_layer5_bf"></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><input type="text" id="f_layer6_size"></td><td><input type="text" id="f_layer6_gsm"></td><td><input type="text" id="f_layer6_bf"></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><input type="text" id="f_layer7_size"></td><td><input type="text" id="f_layer7_gsm"></td><td><input type="text" id="f_layer7_bf"></td></tr>
+          </tbody>
+        </table>
+      </div>
       <label id="fld_clientname"><span data-i18n="form_clientname_label">Client Name</span> <input type="text" id="f_clientname" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
       <label id="fld_invoiceno"><span data-i18n="form_invoiceno_label">Invoice No</span> <input type="text" id="f_invoiceno" placeholder="e.g. INV-1042" data-i18n-placeholder="form_invoiceno_placeholder"></label>
       <label id="fld_vehicleno"><span data-i18n="form_vehicleno_label">Vehicle Number</span> <input type="text" id="f_vehicleno" placeholder="e.g. TS09AB1234" data-i18n-placeholder="form_vehicleno_placeholder"></label>
       <label id="fld_driver"><span data-i18n="form_driver_label">Driver</span> <input type="text" id="f_driver" placeholder="Driver's name" data-i18n-placeholder="form_driver_placeholder"></label>
       <label id="fld_qtyperbundle"><span data-i18n="form_qtyperbundle_label">Quantity Per Bundle</span> <input type="number" id="f_qtyperbundle" min="0" step="1" placeholder="50" data-i18n-placeholder="form_qtyperbundle_placeholder"></label>
       <label id="fld_noofbundles"><span data-i18n="form_noofbundles_label">No of Bundles</span> <input type="number" id="f_noofbundles" min="0" step="1" placeholder="10" data-i18n-placeholder="form_noofbundles_placeholder"></label>
+      <label class="span2" id="fld_reasonforrejection"><span data-i18n="form_reasonforrejection_label">Reason for Rejection</span> <textarea id="f_reasonforrejection" rows="2" placeholder="e.g. Print misalignment" data-i18n-placeholder="form_reasonforrejection_placeholder"></textarea></label>
       <label id="fld_starttime"><span data-i18n="form_starttime_label">Start Time</span> <input type="time" id="f_starttime"></label>
       <label id="fld_endtime"><span data-i18n="form_endtime_label">End Time</span> <input type="time" id="f_endtime"></label>
       <label id="fld_runtime"><span data-i18n="form_runtime_label">Run Time (Hrs)</span> <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5" data-i18n-placeholder="form_runtime_placeholder"></label>
       <label id="fld_manpower"><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
+      <label id="fld_palletno"><span data-i18n="form_palletno_label">Pallet No</span> <input type="text" id="f_palletno" placeholder="e.g. PL-014" data-i18n-placeholder="form_palletno_placeholder"></label>
       <label><span id="f_updatedbyLabel" data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
       <label id="fld_status"><span data-i18n="filter_status">Status</span>
         <select id="f_status">
@@ -736,38 +796,72 @@
       <label id="fld_nextstage"><span data-i18n="form_nextstage_label">Next Stage</span>
         <select id="f_nextstage"><option value="" data-i18n="form_stays_here">— stays here —</option></select>
       </label>
+      <!-- Hold: QC's right to stop a job at any production stage if it fails. Visible on every
+           production stage (including the "special" terminal ones like Dispatch/QC/FG, unlike
+           Status/Next Stage above) — only House keeping and HR_Man Power don't get it. -->
+      <div class="formGridItem" id="fld_hold">
+        <span data-i18n="form_hold_label">Hold</span>
+        <label class="passFailToggle holdToggle">
+          <input type="checkbox" id="f_hold">
+          <span class="pfTrack"></span>
+          <span class="pfLabel"></span>
+        </label>
+      </div>
       <label class="span2" id="fld_remarks"><span data-i18n="th_remarks">Remarks</span> <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule" data-i18n-placeholder="form_remarks_placeholder"></textarea></label>
+      <!-- QC's Artwork check — RD-1CP, RS-2CP, RS+RD-4CP only. The Artwork No cell just mirrors
+           the value typed into the normal Artwork No field above (kept in sync via JS); this
+           block only adds the Pass/Fail call, which — like the Specifications table — is QC's
+           own call to make, not that stage's own team's. -->
+      <div class="span2 qcSpecsBlock" id="fld_artworkcheck">
+        <div class="qcSpecsHead" data-i18n="artwork_check_heading">QC Check</div>
+        <table class="qcSpecsTable">
+          <thead>
+            <tr><th data-i18n="form_artworkno_label">Artwork No</th><th data-i18n="qc_th_result">Result</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono" id="artworkCheckNoDisplay">—</td>
+              <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_artworkcheck_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div class="span2 qcSpecsBlock" id="fld_qcspecs">
         <div class="qcSpecsHead" data-i18n="qc_specs_heading">Specifications</div>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="qc_th_client">Client Specs</th><th data-i18n="qc_th_visipak">Visipak Specs</th></tr>
+            <tr><th></th><th data-i18n="qc_th_client">Client Specs</th><th data-i18n="qc_th_visipak">Visipak Specs</th><th data-i18n="qc_th_result">Result</th></tr>
           </thead>
           <tbody>
             <tr>
               <td data-i18n="qc_spec_boardgsm">Board GSM</td>
               <td><input type="text" id="f_qc_boardgsm_client"></td>
               <td><input type="text" id="f_qc_boardgsm_visipak"></td>
+              <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_boardgsm_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_bustingstrength">Busting Strength</td>
               <td><input type="text" id="f_qc_bustingstrength_client"></td>
               <td><input type="text" id="f_qc_bustingstrength_visipak"></td>
+              <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_bustingstrength_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_moisture">Moisture</td>
               <td><input type="text" id="f_qc_moisture_client"></td>
               <td><input type="text" id="f_qc_moisture_visipak"></td>
+              <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_moisture_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_weight">Weight</td>
               <td><input type="text" id="f_qc_weight_client"></td>
               <td><input type="text" id="f_qc_weight_visipak"></td>
+              <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_weight_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_bct">BCT</td>
               <td><input type="text" id="f_qc_bct_client"></td>
               <td><input type="text" id="f_qc_bct_visipak"></td>
+              <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_bct_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
           </tbody>
         </table>
@@ -820,12 +914,12 @@
 
   // ---------- Firebase init ----------
   var firebaseConfig = {
-    apiKey: "AIzaSyDuA5ww1SMpBGl2uOzVWkCx9m4XrNtI2Dk",
+    apiKey: "AIzaSyC6rAjmfX9A9hCuKlTEO39j5HdbSrOHFKU",
     authDomain: "visipak-daily-job-track.firebaseapp.com",
     projectId: "visipak-daily-job-track",
     storageBucket: "visipak-daily-job-track.firebasestorage.app",
-    messagingSenderId: "30257376497",
-    appId: "1:30257376497:web:af1c5c1b51be4697c78d50"
+    messagingSenderId: "289629516602",
+    appId: "1:289629516602:web:96aa493a59beafd98a1603"
   };
   firebase.initializeApp(firebaseConfig);
   var firestoreDb = firebase.firestore();
@@ -860,14 +954,18 @@
     "Finished Goods (FG)",
     "Ready to Dispatch",
     "Dispatch",
+    "Rejected",
     "House keeping",
     "HR_Man Power"
   ];
-  // Plant through Dispatch are the actual production line — a job card moves through them in
-  // order. House keeping and HR_Man Power aren't part of that flow at all; they're separate
-  // departments that happen to log their own daily entries the same way, so the board groups
-  // them under their own "Departments" heading instead of letting them read as just more stages.
-  var DEPARTMENT_STAGES = STAGES.slice(STAGES.indexOf("Dispatch") + 1);
+  // Plant through Rejected are the actual production line — a job card moves through them in
+  // order (Rejected being where a job lands if it fails somewhere along the way). House keeping
+  // and HR_Man Power aren't part of that flow at all; they're separate departments that happen to
+  // log their own daily entries the same way, so the board groups them under their own
+  // "Departments" heading instead of letting them read as just more stages. This is listed
+  // explicitly (rather than derived from STAGES.indexOf("Dispatch")) now that a production stage
+  // (Rejected) sits after Dispatch in the list.
+  var DEPARTMENT_STAGES = ["House keeping", "HR_Man Power"];
   function boardSectionFor(stage){ return DEPARTMENT_STAGES.indexOf(stage) !== -1 ? "departments" : "production"; }
   var SLOTS = 10;
   // The one phone number that unlocks admin-only UI (Manage Users, Activity Log, the device tag).
@@ -950,15 +1048,20 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
+      layers_heading: "Layers", layers_th_size: "Size", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_row_label_n: "Layer {n}",
       form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
       form_type_label: "Type", form_type_select: "— select —",
       type_boxes: "Boxes", type_partition: "Partition", type_pads: "Pads",
       form_qtyinstock_label: "Quantity in Stock", form_totalbundle_label: "Total Bundle",
       form_availablestock_label: "Available Stock",
+      form_palletno_label: "Pallet No", form_palletno_placeholder: "e.g. PL-014",
       qc_specs_heading: "Specifications",
-      qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs",
+      artwork_check_heading: "QC Check",
+      qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
+      pf_pass: "Pass", pf_fail: "Fail",
       hrmp_heading: "Daily Manpower Count", hrmp_th_dev: "Dev",
       hrmp_th_operator: "Operator", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "Total Man power", hrmp_grand_label: "Grand Total",
@@ -966,6 +1069,7 @@
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
+      form_hold_label: "Hold", hold_on_label: "On Hold", hold_off_label: "Active",
       form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "Your name", form_remarks_placeholder: "Running smoothly, on schedule",
@@ -973,11 +1077,15 @@
       form_vehicleno_label: "Vehicle Number", form_driver_label: "Driver",
       form_qtyperbundle_label: "Quantity Per Bundle", form_noofbundles_label: "No of Bundles",
       form_checkedby_label: "Checked By",
+      form_reasonforrejection_label: "Reason for Rejection",
       form_clientname_placeholder: "e.g. ABC Traders", form_invoiceno_placeholder: "e.g. INV-1042",
       form_vehicleno_placeholder: "e.g. TS09AB1234", form_driver_placeholder: "Driver's name",
       form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
+      form_reasonforrejection_placeholder: "e.g. Print misalignment",
       form_readonly_prefix: "This entry belongs to {stage} — this device only has access to ",
       form_readonly_suffix: ". Switch this device's stage access (top right, \"Change\") to edit it.",
+      form_qcspecs_readonly_note: "The QC Check / Specifications / Hold section below is managed by the QC team and is read-only on this device.",
+      form_normalfields_readonly_note: "This entry's other fields belong to that stage's own team and are read-only on this device — only the QC Check / Specifications / Hold section below is editable here.",
       banner_no_rows_export: "No rows to export.", banner_save_failed_prefix: "Save failed:",
       banner_live_updates_stopped_prefix: "Live updates stopped:",
       banner_log_updates_stopped_prefix: "Log updates stopped:",
@@ -1051,15 +1159,20 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
+      layers_heading: "लेयर", layers_th_size: "साइज़", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_row_label_n: "लेयर {n}",
       form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
       form_type_label: "टाइप", form_type_select: "— चुनें —",
       type_boxes: "बॉक्स", type_partition: "पार्टीशन", type_pads: "पैड",
       form_qtyinstock_label: "स्टॉक में मात्रा", form_totalbundle_label: "कुल बंडल",
       form_availablestock_label: "उपलब्ध स्टॉक",
+      form_palletno_label: "पैलेट नंबर", form_palletno_placeholder: "जैसे PL-014",
       qc_specs_heading: "स्पेसिफिकेशन",
-      qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स",
+      artwork_check_heading: "QC जांच",
+      qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
+      pf_pass: "पास", pf_fail: "फेल",
       hrmp_heading: "दैनिक मैनपावर गिनती", hrmp_th_dev: "स्टेज",
       hrmp_th_operator: "ऑपरेटर", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "कुल मैनपावर", hrmp_grand_label: "ग्रैंड टोटल",
@@ -1067,6 +1180,7 @@
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
+      form_hold_label: "होल्ड", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
       form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "आपका नाम", form_remarks_placeholder: "सुचारू रूप से चल रहा है, समय पर",
@@ -1074,11 +1188,15 @@
       form_vehicleno_label: "वाहन नंबर", form_driver_label: "ड्राइवर",
       form_qtyperbundle_label: "प्रति बंडल मात्रा", form_noofbundles_label: "बंडलों की संख्या",
       form_checkedby_label: "जांचकर्ता",
+      form_reasonforrejection_label: "अस्वीकृति का कारण",
       form_clientname_placeholder: "जैसे ABC Traders", form_invoiceno_placeholder: "जैसे INV-1042",
       form_vehicleno_placeholder: "जैसे TS09AB1234", form_driver_placeholder: "ड्राइवर का नाम",
       form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
+      form_reasonforrejection_placeholder: "जैसे प्रिंट मिसअलाइनमेंट",
       form_readonly_prefix: "यह एंट्री {stage} की है — इस डिवाइस को केवल इसका एक्सेस है: ",
       form_readonly_suffix: "। इसे बदलने के लिए ऊपर दाईं ओर \"बदलें\" से डिवाइस की स्टेज एक्सेस बदलें।",
+      form_qcspecs_readonly_note: "नीचे दिया गया QC Check / स्पेसिफिकेशन / होल्ड सेक्शन QC टीम द्वारा प्रबंधित होता है और इस डिवाइस पर केवल देखने के लिए है।",
+      form_normalfields_readonly_note: "इस एंट्री के अन्य फ़ील्ड उस स्टेज की अपनी टीम के हैं और इस डिवाइस पर केवल देखने के लिए हैं — यहाँ केवल नीचे दिया गया QC Check / स्पेसिफिकेशन / होल्ड सेक्शन संपादित किया जा सकता है।",
       banner_no_rows_export: "एक्सपोर्ट के लिए कोई पंक्ति नहीं।", banner_save_failed_prefix: "सेव विफल:",
       banner_live_updates_stopped_prefix: "लाइव अपडेट रुक गए:",
       banner_log_updates_stopped_prefix: "लॉग अपडेट रुक गए:",
@@ -1152,15 +1270,20 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
+      layers_heading: "లేయర్లు", layers_th_size: "సైజు", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_row_label_n: "లేయర్ {n}",
       form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
       form_type_label: "టైప్", form_type_select: "— ఎంచుకోండి —",
       type_boxes: "బాక్సులు", type_partition: "పార్టిషన్", type_pads: "ప్యాడ్స్",
       form_qtyinstock_label: "స్టాక్‌లో పరిమాణం", form_totalbundle_label: "మొత్తం బండిల్",
       form_availablestock_label: "అందుబాటులో ఉన్న స్టాక్",
+      form_palletno_label: "పాలెట్ నంబర్", form_palletno_placeholder: "ఉదా. PL-014",
       qc_specs_heading: "స్పెసిఫికేషన్లు",
-      qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్",
+      artwork_check_heading: "QC చెక్",
+      qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
+      pf_pass: "పాస్", pf_fail: "ఫెయిల్",
       hrmp_heading: "రోజువారీ మ్యాన్‌పవర్ లెక్క", hrmp_th_dev: "స్టేజ్",
       hrmp_th_operator: "ఆపరేటర్", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "మొత్తం మ్యాన్‌పవర్", hrmp_grand_label: "గ్రాండ్ టోటల్",
@@ -1168,6 +1291,7 @@
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
+      form_hold_label: "హోల్డ్", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
       form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "మీ పేరు", form_remarks_placeholder: "సాఫీగా జరుగుతోంది, షెడ్యూల్ ప్రకారం",
@@ -1175,11 +1299,15 @@
       form_vehicleno_label: "వాహన నంబర్", form_driver_label: "డ్రైవర్",
       form_qtyperbundle_label: "బండిల్‌కు పరిమాణం", form_noofbundles_label: "బండిళ్ల సంఖ్య",
       form_checkedby_label: "తనిఖీ చేసినవారు",
+      form_reasonforrejection_label: "తిరస్కరణకు కారణం",
       form_clientname_placeholder: "ఉదా. ABC Traders", form_invoiceno_placeholder: "ఉదా. INV-1042",
       form_vehicleno_placeholder: "ఉదా. TS09AB1234", form_driver_placeholder: "డ్రైవర్ పేరు",
       form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
+      form_reasonforrejection_placeholder: "ఉదా. ప్రింట్ మిస్‌అలైన్‌మెంట్",
       form_readonly_prefix: "ఈ ఎంట్రీ {stage}కి చెందింది — ఈ పరికరానికి ఈ కింది వాటికి మాత్రమే యాక్సెస్ ఉంది: ",
       form_readonly_suffix: "। దీన్ని సవరించడానికి పైన కుడివైపున \"మార్చండి\" ద్వారా పరికర దశ యాక్సెస్‌ను మార్చండి.",
+      form_qcspecs_readonly_note: "దిగువ ఉన్న QC Check / స్పెసిఫికేషన్ల / హోల్డ్ విభాగం QC టీమ్ నిర్వహిస్తుంది మరియు ఈ పరికరంలో ఇది వీక్షణ మాత్రమే.",
+      form_normalfields_readonly_note: "ఈ ఎంట్రీలోని మిగతా ఫీల్డ్‌లు ఆ దశకు చెందిన సొంత టీమ్‌వి మరియు ఈ పరికరంలో వీక్షణ మాత్రమే — ఇక్కడ దిగువ ఉన్న QC Check / స్పెసిఫికేషన్ల / హోల్డ్ విభాగం మాత్రమే సవరించవచ్చు.",
       banner_no_rows_export: "ఎగుమతి చేయడానికి వరుసలు లేవు.", banner_save_failed_prefix: "సేవ్ విఫలమైంది:",
       banner_live_updates_stopped_prefix: "లైవ్ అప్‌డేట్లు ఆగిపోయాయి:",
       banner_log_updates_stopped_prefix: "లాగ్ అప్‌డేట్లు ఆగిపోయాయి:",
@@ -1299,6 +1427,7 @@
     isAdminDevice: false,  // true only on the device set up with the admin phone number
     loggedInViaPhone: false, // true whenever this device was logged in with a phone number (admin or not)
     modalReadOnly: false,
+    modalCanEditNormal: true,
     modalTitleKey: "form_add_entry",
     lang: (function(){ try{ return localStorage.getItem("visipakLanguage") || "en"; }catch(e){ return "en"; } })()
   };
@@ -1389,9 +1518,13 @@
     f_jobcard: document.getElementById("f_jobcard"),
     f_artworkno: document.getElementById("f_artworkno"),
     fld_artworkno: document.getElementById("fld_artworkno"),
+    fld_artworkcheck: document.getElementById("fld_artworkcheck"),
+    artworkCheckNoDisplay: document.getElementById("artworkCheckNoDisplay"),
+    f_artworkcheck_pass: document.getElementById("f_artworkcheck_pass"),
     f_qty: document.getElementById("f_qty"),
     f_ply: document.getElementById("f_ply"),
     fld_ply: document.getElementById("fld_ply"),
+    fld_layers: document.getElementById("fld_layers"),
     f_starttime: document.getElementById("f_starttime"),
     f_endtime: document.getElementById("f_endtime"),
     f_runtime: document.getElementById("f_runtime"),
@@ -1400,6 +1533,8 @@
     f_updatedbyLabel: document.getElementById("f_updatedbyLabel"),
     f_status: document.getElementById("f_status"),
     f_nextstage: document.getElementById("f_nextstage"),
+    f_hold: document.getElementById("f_hold"),
+    fld_hold: document.getElementById("fld_hold"),
     f_remarks: document.getElementById("f_remarks"),
     f_clientname: document.getElementById("f_clientname"),
     f_invoiceno: document.getElementById("f_invoiceno"),
@@ -1407,6 +1542,8 @@
     f_driver: document.getElementById("f_driver"),
     f_qtyperbundle: document.getElementById("f_qtyperbundle"),
     f_noofbundles: document.getElementById("f_noofbundles"),
+    f_reasonforrejection: document.getElementById("f_reasonforrejection"),
+    fld_reasonforrejection: document.getElementById("fld_reasonforrejection"),
     fld_shift: document.getElementById("fld_shift"),
     fld_starttime: document.getElementById("fld_starttime"),
     fld_endtime: document.getElementById("fld_endtime"),
@@ -1430,17 +1567,24 @@
     fld_totalbundle: document.getElementById("fld_totalbundle"),
     f_availablestock: document.getElementById("f_availablestock"),
     fld_availablestock: document.getElementById("fld_availablestock"),
+    f_palletno: document.getElementById("f_palletno"),
+    fld_palletno: document.getElementById("fld_palletno"),
     fld_qcspecs: document.getElementById("fld_qcspecs"),
     f_qc_boardgsm_client: document.getElementById("f_qc_boardgsm_client"),
     f_qc_boardgsm_visipak: document.getElementById("f_qc_boardgsm_visipak"),
+    f_qc_boardgsm_pass: document.getElementById("f_qc_boardgsm_pass"),
     f_qc_bustingstrength_client: document.getElementById("f_qc_bustingstrength_client"),
     f_qc_bustingstrength_visipak: document.getElementById("f_qc_bustingstrength_visipak"),
+    f_qc_bustingstrength_pass: document.getElementById("f_qc_bustingstrength_pass"),
     f_qc_moisture_client: document.getElementById("f_qc_moisture_client"),
     f_qc_moisture_visipak: document.getElementById("f_qc_moisture_visipak"),
+    f_qc_moisture_pass: document.getElementById("f_qc_moisture_pass"),
     f_qc_weight_client: document.getElementById("f_qc_weight_client"),
     f_qc_weight_visipak: document.getElementById("f_qc_weight_visipak"),
+    f_qc_weight_pass: document.getElementById("f_qc_weight_pass"),
     f_qc_bct_client: document.getElementById("f_qc_bct_client"),
     f_qc_bct_visipak: document.getElementById("f_qc_bct_visipak"),
+    f_qc_bct_pass: document.getElementById("f_qc_bct_pass"),
     fld_product: document.getElementById("fld_product"),
     fld_jobcard: document.getElementById("fld_jobcard"),
     fld_hrmanpower: document.getElementById("fld_hrmanpower"),
@@ -1454,6 +1598,15 @@
     statInProgress: document.getElementById("statInProgress"),
     statNotStarted: document.getElementById("statNotStarted")
   };
+  // The 7 Layer rows (Plant-only, up to 7 Ply) are looked up here rather than listed above one by
+  // one — same idea as folding the HR Man Power inputs into a field list after the fact.
+  for(var layerN = 1; layerN <= 7; layerN++){
+    el["layerRow" + layerN] = document.getElementById("layerRow" + layerN);
+    el["layerLabel" + layerN] = document.getElementById("layerLabel" + layerN);
+    el["f_layer" + layerN + "_size"] = document.getElementById("f_layer" + layerN + "_size");
+    el["f_layer" + layerN + "_gsm"] = document.getElementById("f_layer" + layerN + "_gsm");
+    el["f_layer" + layerN + "_bf"] = document.getElementById("f_layer" + layerN + "_bf");
+  }
   var lastUpdatedBy = "";
 
   var syncDateInputLabel = bindDateDisplay(el.dateInput, el.dateInputLabel);
@@ -1516,18 +1669,31 @@
     selectEl.value = stages.indexOf(prevValue) !== -1 ? prevValue : "";
   }
 
-  var ALL_FORM_FIELDS = [
+  // The Specifications/Pass-Fail table is kept in its own field group, separate from every other
+  // form field, because it's gated on QC stage access specifically (see deviceHasQcAccess)
+  // rather than on whichever stage the entry itself belongs to — a Plant-stage entry's own
+  // fields and its QC specs table can end up independently enabled/disabled for the same device.
+  var NORMAL_FORM_FIELDS = [
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
-    el.f_type, el.f_qtyinstock, el.f_totalbundle, el.f_availablestock,
+    el.f_type, el.f_qtyinstock, el.f_totalbundle, el.f_availablestock, el.f_palletno,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
-    el.f_qtyperbundle, el.f_noofbundles,
-    el.f_qc_boardgsm_client, el.f_qc_boardgsm_visipak,
-    el.f_qc_bustingstrength_client, el.f_qc_bustingstrength_visipak,
-    el.f_qc_moisture_client, el.f_qc_moisture_visipak,
-    el.f_qc_weight_client, el.f_qc_weight_visipak,
-    el.f_qc_bct_client, el.f_qc_bct_visipak
+    el.f_qtyperbundle, el.f_noofbundles, el.f_reasonforrejection
+  ];
+  // Layer Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
+  for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
+    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_size"], el["f_layer" + layerFieldN + "_gsm"], el["f_layer" + layerFieldN + "_bf"]);
+  }
+  // Every field only QC (or admin) can edit, regardless of which stage the entry itself belongs
+  // to: the Specifications table, the Artwork No check, and the Hold switch.
+  var QC_ONLY_FORM_FIELDS = [
+    el.f_qc_boardgsm_client, el.f_qc_boardgsm_visipak, el.f_qc_boardgsm_pass,
+    el.f_qc_bustingstrength_client, el.f_qc_bustingstrength_visipak, el.f_qc_bustingstrength_pass,
+    el.f_qc_moisture_client, el.f_qc_moisture_visipak, el.f_qc_moisture_pass,
+    el.f_qc_weight_client, el.f_qc_weight_visipak, el.f_qc_weight_pass,
+    el.f_qc_bct_client, el.f_qc_bct_visipak, el.f_qc_bct_pass,
+    el.f_artworkcheck_pass, el.f_hold
   ];
 
   // ---------- Stage-specific entry form fields ----------
@@ -1544,15 +1710,83 @@
   function isFGStage(stage){ return stage === "Finished Goods (FG)"; }
   function isQCStage(stage){ return stage === "QC"; }
   function isHRManpowerStage(stage){ return stage === "HR_Man Power"; }
+  function isRejectedStage(stage){ return stage === "Rejected"; }
   // PLY (board thickness: 3/5/7 Ply) applies to production stages, but not to the stages at the
   // tail end of the flow that aren't really "making" anything — dispatch handling, QC/FG's own
-  // specialized fields, and the two manpower/housekeeping bookkeeping stages.
-  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Finished Goods (FG)", "QC", "HR_Man Power", "House keeping"];
+  // specialized fields, Rejected's own outcome fields, and the two manpower/housekeeping
+  // bookkeeping stages.
+  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Rejected", "Finished Goods (FG)", "QC", "HR_Man Power", "House keeping"];
   function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // Artwork No only applies to the printing/die-cut stages where a job is tied to a specific
   // artwork/plate — it's meaningless once the job has moved past those into gluing, punching, etc.
   var ARTWORKNO_STAGES = ["RD-1CP", "RS-2CP", "RS+RD-4CP"];
   function stageHasArtworkNo(stage){ return ARTWORKNO_STAGES.indexOf(stage) !== -1; }
+  // The Client Specs vs Visipak Specs comparison table started as QC-only, but Plant also checks
+  // board specs on the way in, so it gets the same table alongside its normal fields (this does
+  // NOT make Plant a "special" stage — it keeps its usual timing/manpower/status fields too).
+  var QC_SPECS_STAGES = ["QC", "Plant"];
+  function stageHasQcSpecs(stage){ return QC_SPECS_STAGES.indexOf(stage) !== -1; }
+  // QC has the right to stop and hold a job at ANY production stage if something fails — every
+  // stage except the two non-production department columns (House keeping, HR_Man Power) gets
+  // the Hold switch.
+  function stageHasHold(stage){ return DEPARTMENT_STAGES.indexOf(stage) === -1; }
+  // Layer Size/GSM/BF rows are Plant-only (not the other Ply stages) — the number of rows shown
+  // tracks whichever Ply was picked: 3/5/7 Ply -> that many layers, anything else -> none.
+  function stageHasLayers(stage){ return stage === "Plant"; }
+  function plyLayerCount(plyValue){
+    if(plyValue === "3 Ply") return 3;
+    if(plyValue === "5 Ply") return 5;
+    if(plyValue === "7 Ply") return 7;
+    return 0;
+  }
+
+  // The Specifications/Pass-Fail table (Plant), the Artwork No Pass/Fail check (RD-1CP, RS-2CP,
+  // RS+RD-4CP), and the Hold switch (every production stage) are all QC's own checklist items
+  // even though they live on another stage's entry, so editing them is gated on QC stage access
+  // specifically — not on whichever stage the entry itself belongs to. A device only ever gets
+  // this by being locked to "QC" or being an unlocked/admin ("ALL") device.
+  function deviceHasQcAccess(){ return state.deviceStages === "ALL" || state.deviceStages.indexOf("QC") !== -1; }
+  // Hold can be placed at any production stage, so QC now needs visibility into all of them, not
+  // just the ones with a dedicated QC checklist (Plant, the artwork stages) — this is simply
+  // every stage minus the two department columns, i.e. everywhere stageHasHold is true.
+  var QC_MANAGED_EXTRA_STAGES = STAGES.filter(function(s){ return DEPARTMENT_STAGES.indexOf(s) === -1; });
+  // A QC-access device also needs to be able to find and open these stages' entries in the first
+  // place (to check them), even though the stages aren't in its own assigned stage list — so
+  // viewing is a bit broader than editing.
+  function deviceCanViewStage(stage){
+    if(state.deviceStages === "ALL") return true;
+    if(state.deviceStages.indexOf(stage) !== -1) return true;
+    if(deviceHasQcAccess() && QC_MANAGED_EXTRA_STAGES.indexOf(stage) !== -1) return true;
+    return false;
+  }
+  // The set of stages this device's Board/Log/Export should show — its own assigned stages plus
+  // the QC-managed extra stages when it has QC access, kept in the same order stages normally
+  // flow in.
+  function deviceVisibleStages(){
+    if(state.deviceStages === "ALL") return STAGES;
+    var set = state.deviceStages.slice();
+    if(deviceHasQcAccess()){
+      QC_MANAGED_EXTRA_STAGES.forEach(function(s){ if(set.indexOf(s) === -1) set.push(s); });
+    }
+    return STAGES.filter(function(s){ return set.indexOf(s) !== -1; });
+  }
+
+  // Each spec row's Pass/Fail is a manual toggle (not auto-computed from the Client/Visipak
+  // values) — the checkbox's .pfLabel sibling span shows "Pass"/"Fail" text next to the switch,
+  // and needs refreshing both when the switch is flipped and when the language changes.
+  var QC_PASS_FIELDS = ["f_qc_boardgsm_pass", "f_qc_bustingstrength_pass", "f_qc_moisture_pass", "f_qc_weight_pass", "f_qc_bct_pass", "f_artworkcheck_pass"];
+  function refreshPassFailLabel(checkbox){
+    var label = checkbox.closest(".passFailToggle").querySelector(".pfLabel");
+    label.textContent = checkbox.checked ? t("pf_pass") : t("pf_fail");
+  }
+  function refreshAllPassFailLabels(){
+    QC_PASS_FIELDS.forEach(function(key){ refreshPassFailLabel(el[key]); });
+  }
+  // Hold uses the same switch widget but its own On Hold/Active wording rather than Pass/Fail.
+  function refreshHoldLabel(){
+    var label = el.f_hold.closest(".passFailToggle").querySelector(".pfLabel");
+    label.textContent = el.f_hold.checked ? t("hold_on_label") : t("hold_off_label");
+  }
 
   // ---------- HR Man Power's daily headcount table ----------
   // HR files one entry per day listing Operator/MH (Man Helper)/FH (Female Helper) counts against
@@ -1573,9 +1807,9 @@
         '</tr>';
     }).join("");
     // The row inputs are built dynamically (there's one per current stage), so fold them into
-    // ALL_FORM_FIELDS after the fact rather than listing them by id up front — that keeps the
+    // NORMAL_FORM_FIELDS after the fact rather than listing them by id up front — that keeps the
     // read-only toggle (openModal) covering them too.
-    Array.prototype.push.apply(ALL_FORM_FIELDS, Array.prototype.slice.call(el.hrManpowerBody.querySelectorAll("input")));
+    Array.prototype.push.apply(NORMAL_FORM_FIELDS, Array.prototype.slice.call(el.hrManpowerBody.querySelectorAll("input")));
   }
   buildHRManpowerTable();
 
@@ -1600,6 +1834,19 @@
       rows: rows,
       total: { operator: totalOperator, mh: totalMh, fh: totalFh, grand: totalOperator + totalMh + totalFh }
     };
+  }
+
+  // Collects only the layer rows that are actually in play for the given Ply count (Plant-only).
+  function computeLayersData(count){
+    var layers = [];
+    for(var i = 1; i <= count; i++){
+      layers.push({
+        size: el["f_layer" + i + "_size"].value.trim(),
+        gsm: el["f_layer" + i + "_gsm"].value.trim(),
+        bf: el["f_layer" + i + "_bf"].value.trim()
+      });
+    }
+    return layers;
   }
 
   function recalcHRManpowerTotals(){
@@ -1633,9 +1880,10 @@
     var fg = isFGStage(stage);
     var qc = isQCStage(stage);
     var hr = isHRManpowerStage(stage);
-    // These five stages all swap out the standard shift/timing/workflow fields for their own
+    var rejected = isRejectedStage(stage);
+    // These stages all swap out the standard shift/timing/workflow fields for their own
     // specialized field set, and are always treated as a finished, terminal entry on save.
-    var special = dispatch || readyToDispatch || fg || qc || hr;
+    var special = dispatch || readyToDispatch || fg || qc || hr || rejected;
 
     el.fld_shift.hidden = special;
     // A hidden field can still block native form submission if left "required" (an invisible
@@ -1653,24 +1901,28 @@
     el.fld_invoiceno.hidden = !dispatch;
     el.fld_vehicleno.hidden = !dispatch;
     el.fld_driver.hidden = !dispatch;
-    // Client Name: Dispatch (who it's going to) and Finished Goods (whose stock this is).
-    el.fld_clientname.hidden = !(dispatch || fg);
-    // Quantity Per Bundle: Dispatch, Ready to Dispatch, and Finished Goods all track it.
-    el.fld_qtyperbundle.hidden = !(dispatch || readyToDispatch || fg);
-    // No of Bundles: only the two dispatch-flow stages — Finished Goods tracks "Total Bundle"
-    // (its overall stock count) instead, which is a different thing.
-    el.fld_noofbundles.hidden = !(dispatch || readyToDispatch);
+    // Client Name: Dispatch (who it's going to), Finished Goods (whose stock this is), and
+    // Rejected (whose order the rejected goods belonged to).
+    el.fld_clientname.hidden = !(dispatch || fg || rejected);
+    // Quantity Per Bundle: Dispatch, Ready to Dispatch, Finished Goods, and Rejected all track it.
+    el.fld_qtyperbundle.hidden = !(dispatch || readyToDispatch || fg || rejected);
+    // No of Bundles: the two dispatch-flow stages plus Rejected — Finished Goods tracks
+    // "Total Bundle" (its overall stock count) instead, which is a different thing.
+    el.fld_noofbundles.hidden = !(dispatch || readyToDispatch || rejected);
+    // Reason for Rejection is Rejected's own field, same idea as Dispatch's Invoice/Vehicle/Driver.
+    el.fld_reasonforrejection.hidden = !rejected;
     // Type (Boxes / Partition / Pads): Ready to Dispatch, Finished Goods, and QC.
     el.fld_type.hidden = !(readyToDispatch || fg || qc);
     // Finished Goods-only stock fields.
     el.fld_qtyinstock.hidden = !fg;
     el.fld_totalbundle.hidden = !fg;
     el.fld_availablestock.hidden = !fg;
+    el.fld_palletno.hidden = !fg;
     // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field; HR Man Power
     // has no single quantity at all (its table is the whole entry).
     el.fld_qty.hidden = fg || hr;
-    // QC's Client Specs vs Visipak Specs comparison table.
-    el.fld_qcspecs.hidden = !qc;
+    // Client Specs vs Visipak Specs comparison table — QC and Plant.
+    el.fld_qcspecs.hidden = !stageHasQcSpecs(stage);
     // HR Man Power has no product/job-card of its own — it's a whole-factory daily headcount,
     // not tied to a job — so it swaps those out for the manpower table instead.
     el.fld_product.hidden = hr;
@@ -1682,8 +1934,29 @@
     el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
     el.fld_ply.hidden = !stageHasPly(stage);
     el.fld_artworkno.hidden = !stageHasArtworkNo(stage);
+    el.fld_artworkcheck.hidden = !stageHasArtworkNo(stage);
+    // Hold stays visible even on the "special" terminal stages (Dispatch, QC, FG...) that just
+    // hid Status/Next Stage above — only the two department stages don't get it.
+    el.fld_hold.hidden = !stageHasHold(stage);
+    updateLayersVisibility();
+    refreshAllPassFailLabels();
+    refreshHoldLabel();
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
+
+  // Layer rows depend on BOTH the current stage (Plant-only) and the chosen Ply (row count) —
+  // unlike the other QC-owned toggles above, Ply can change on its own after Plant is already
+  // selected, so this is called both from updateFormFieldsForStage (on stage change) and from a
+  // dedicated change listener on the Ply select itself (see below).
+  function updateLayersVisibility(){
+    var show = stageHasLayers(el.f_stage.value);
+    var count = show ? plyLayerCount(el.f_ply.value) : 0;
+    el.fld_layers.hidden = count === 0;
+    for(var n = 1; n <= 7; n++){
+      el["layerRow" + n].hidden = n > count;
+    }
+  }
+  el.f_ply.addEventListener("change", updateLayersVisibility);
 
   // ---------- Device stage lock ----------
   function normalizePhone(raw){
@@ -1762,11 +2035,15 @@
     // the Stage filters only offer the permitted stages, so the operator can't switch away.
     var locked = stages !== "ALL";
     state.boardStage = "";
-    populateStageFilterOptions(el.boardStageFilter, locked ? stages : "ALL", t("filter_all"));
-    populateStageFilterOptions(el.logStageFilter, locked ? stages : "ALL", t("log_all_stages"));
+    populateStageFilterOptions(el.boardStageFilter, locked ? deviceVisibleStages() : "ALL", t("filter_all"));
+    populateStageFilterOptions(el.logStageFilter, locked ? deviceVisibleStages() : "ALL", t("log_all_stages"));
 
-    // Restrict the Add/Edit Entry "Stage" field to the device's permitted stages.
-    var stageOptionsFor = locked ? stages : STAGES;
+    // Restrict the Add/Edit Entry "Stage" field to the device's permitted stages — but include
+    // Plant too when this device has QC access, purely so an opened Plant entry's <select>
+    // actually has a matching <option> to display (the field itself stays disabled below since
+    // the device's own assigned stage count is still 1, so this doesn't let a QC device create a
+    // new Plant entry or retarget an existing one).
+    var stageOptionsFor = locked ? deviceVisibleStages() : STAGES;
     var prevFStage = el.f_stage.value;
     el.f_stage.innerHTML = "";
     stageOptionsFor.forEach(function(s){
@@ -2128,7 +2405,7 @@
     STAGES.forEach(function(s){ byStage[s]=[]; });
     var locked = state.deviceStages !== "ALL";
     var filtered = state.boardEntries.filter(function(e){
-      if(locked && state.deviceStages.indexOf(e.stage) === -1) return false;
+      if(!deviceCanViewStage(e.stage)) return false;
       if(state.shift && (e.shift||"").toLowerCase() !== state.shift.toLowerCase()) return false;
       if(state.boardStage && e.stage !== state.boardStage) return false;
       if(state.boardStatus && statusLabel(e.status) !== state.boardStatus) return false;
@@ -2141,7 +2418,7 @@
     renderSummary(filtered);
 
     el.boardView.innerHTML = "";
-    var stagesToShow = state.boardStage ? [state.boardStage] : (locked ? state.deviceStages : STAGES);
+    var stagesToShow = state.boardStage ? [state.boardStage] : (locked ? deviceVisibleStages() : STAGES);
     var lastSection = null;
     stagesToShow.forEach(function(stage){
       // A dashed "Production" / "Departments" heading appears the first time a column from that
@@ -2198,13 +2475,14 @@
   function renderCard(e){
     var card = document.createElement("div");
     var sClass = statusClass(e.status);
-    card.className = "card status-" + sClass;
+    card.className = "card status-" + sClass + (e.onHold ? " onHold" : "");
     card.tabIndex = 0;
     var isDispatch = e.stage === "Dispatch";
     var isReadyToDispatch = e.stage === "Ready to Dispatch";
     var isFG = e.stage === "Finished Goods (FG)";
     var isQC = e.stage === "QC";
     var isHR = e.stage === "HR_Man Power";
+    var isRejected = e.stage === "Rejected";
     // These stages don't carry start/end time, run time, or manpower — show the fields that
     // actually apply to each of them instead.
     var statsHtml;
@@ -2238,6 +2516,13 @@
           '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
           '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
         '</div>';
+    } else if(isRejected){
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
+          '<span>' + esc(t("form_qtyperbundle_label")) + ' ' + esc(e.qtyPerBundle != null ? e.qtyPerBundle : "—") + '</span>' +
+          '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+        '</div>';
     } else if(isHR){
       var hrTotal = e.hrManpowerTotal || {};
       statsHtml =
@@ -2259,8 +2544,10 @@
     }
     var dispatchNote = [e.clientName, e.driver].filter(Boolean).join(" · ");
     var fgNote = e.clientName || "";
+    var rejectedNote = [e.clientName, e.reasonForRejection].filter(Boolean).join(" · ");
     var noteHtml = isDispatch ? (dispatchNote ? '<div class="cardRemarks">' + esc(dispatchNote) + '</div>' : "")
       : isFG ? (fgNote ? '<div class="cardRemarks">' + esc(fgNote) + '</div>' : "")
+      : isRejected ? (rejectedNote ? '<div class="cardRemarks">' + esc(rejectedNote) + '</div>' : "")
       : (e.remarks ? '<div class="cardRemarks">' + esc(e.remarks) + '</div>' : "");
     // PLY (board thickness) sits right next to the product name — it's a property of what's
     // being made, not a run stat, so it belongs beside the product rather than in the stats row.
@@ -2270,7 +2557,9 @@
         '<span class="jobCard">' + esc(e.jobCardNo || "—") + '</span>' +
         '<span class="shiftTag">' + esc(e.shift || "") + '</span>' +
       '</div>' +
-      '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span></div>' +
+      '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span>' +
+        (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") +
+      '</div>' +
       '<div class="productName">' + esc(isHR ? t("hrmp_report_title") : (e.productName || "(no product name)")) + plyHtml + '</div>' +
       statsHtml +
       noteHtml +
@@ -2290,9 +2579,8 @@
     var q = (el.logSearch.value || "").trim().toLowerCase();
     var stageFilter = el.logStageFilter.value;
     var statusFilter = el.logStatusFilter.value;
-    var locked = state.deviceStages !== "ALL";
     var rows = state.logEntries.filter(function(e){
-      if(locked && state.deviceStages.indexOf(e.stage) === -1) return false;
+      if(!deviceCanViewStage(e.stage)) return false;
       if(stageFilter && e.stage !== stageFilter) return false;
       if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
       if(q){
@@ -2314,7 +2602,8 @@
         "<td>" + esc(e.stage) + "</td>" +
         "<td>" + esc(displayName) + "</td>" +
         '<td class="mono">' + esc(e.jobCardNo) + "</td>" +
-        '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(t_status(statusLabel(e.status))) + '</span></td>' +
+        '<td><span class="statusPill ' + statusClass(e.status) + '">' + esc(t_status(statusLabel(e.status))) +
+          '</span>' + (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") + '</td>' +
         '<td class="num">' + esc(e.quantity != null ? e.quantity : "") + "</td>" +
         '<td class="mono">' + esc(e.startTime ? fmtTime12(e.startTime) : "") + "</td>" +
         '<td class="mono">' + esc(e.endTime ? fmtTime12(e.endTime) : "") + "</td>" +
@@ -2400,9 +2689,8 @@
     var q = (el.logSearch.value || "").trim().toLowerCase();
     var stageFilter = el.logStageFilter.value;
     var statusFilter = el.logStatusFilter.value;
-    var locked = state.deviceStages !== "ALL";
     var rows = state.logEntries.filter(function(e){
-      if(locked && state.deviceStages.indexOf(e.stage) === -1) return false;
+      if(!deviceCanViewStage(e.stage)) return false;
       if(stageFilter && e.stage !== stageFilter) return false;
       if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
       if(q){
@@ -2504,18 +2792,39 @@
     downloadCsv("visipak-daily-job-track-activity-log.csv", lines.join("\r\n"));
   });
 
+  QC_PASS_FIELDS.forEach(function(key){
+    el[key].addEventListener("change", function(){ refreshPassFailLabel(el[key]); });
+  });
+  el.f_hold.addEventListener("change", refreshHoldLabel);
+  // Keep the QC Check block's Artwork No mirror in sync as the stage's own team types it —
+  // there's only one Artwork No per entry; this block just surfaces it next to QC's Pass/Fail
+  // call rather than asking for it a second time.
+  el.f_artworkno.addEventListener("input", function(){
+    el.artworkCheckNoDisplay.textContent = el.f_artworkno.value.trim() || "—";
+  });
+
   // ---------- Modal ----------
   function openModal(entry){
     state.editingId = entry ? entry.id : null;
     var deviceLocked = state.deviceStages !== "ALL";
     var allowedStages = deviceLocked ? state.deviceStages : STAGES;
     var targetStage = entry ? entry.stage : (deviceLocked ? allowedStages[0] : STAGES[0]);
-    var readOnly = !!entry && deviceLocked && allowedStages.indexOf(entry.stage) === -1;
+    // The Specifications/Pass-Fail table is QC's own checklist wherever it appears (QC or Plant),
+    // so it's gated on QC stage access rather than on the entry's own stage — a device can end up
+    // able to edit one half of a Plant entry but not the other (see deviceHasQcAccess above).
+    var canEditNormal = !deviceLocked || (entry ? allowedStages.indexOf(entry.stage) !== -1 : true);
+    var canEditQcSpecs = !deviceLocked || deviceHasQcAccess();
+    var readOnly = !!entry && !canEditNormal && !canEditQcSpecs;
     state.modalReadOnly = readOnly;
+    // Deletion is gated separately from the general readOnly flag — it removes the whole entry,
+    // so it always requires normal-fields access even when the QC specs section is editable here.
+    state.modalCanEditNormal = canEditNormal;
 
     state.modalTitleKey = entry ? (readOnly ? "form_view_entry" : "form_edit_entry") : "form_add_entry";
     el.modalTitle.textContent = t(state.modalTitleKey);
-    el.deleteBtn.hidden = !entry || readOnly;
+    // Deleting removes the whole entry, not just one half of it, so it stays gated on full
+    // (normal-fields) access — a QC-only visitor checking specs on a Plant entry can't delete it.
+    el.deleteBtn.hidden = !entry || !canEditNormal;
     el.saveBtn.hidden = readOnly;
     el.cancelBtn.textContent = readOnly ? t("form_close") : t("generic_cancel");
 
@@ -2527,8 +2836,20 @@
     el.f_product.value = entry ? (entry.productName||"") : "";
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
     el.f_artworkno.value = entry ? (entry.artworkNo||"") : "";
+    el.artworkCheckNoDisplay.textContent = (entry && entry.artworkNo) ? entry.artworkNo : "—";
+    // Same default-to-Pass rule as the Specifications table's switches (see below): a new entry,
+    // or an older one saved before this check existed, both start off as Pass.
+    el.f_artworkcheck_pass.checked = !entry || entry.artworkCheckPass !== false;
     el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
     el.f_ply.value = entry ? (entry.ply || "") : "";
+    // Layers: populate whichever rows the saved entry actually has data for (up to 7); a new
+    // entry, or one saved before/without Layers, just leaves them blank.
+    for(var layerPopN = 1; layerPopN <= 7; layerPopN++){
+      var layerData = (entry && entry.layers && entry.layers[layerPopN - 1]) || null;
+      el["f_layer" + layerPopN + "_size"].value = layerData ? (layerData.size || "") : "";
+      el["f_layer" + layerPopN + "_gsm"].value = layerData ? (layerData.gsm || "") : "";
+      el["f_layer" + layerPopN + "_bf"].value = layerData ? (layerData.bf || "") : "";
+    }
     el.f_starttime.value = entry ? (entry.startTime || "") : "";
     el.f_endtime.value = entry ? (entry.endTime || "") : "";
     el.f_runtime.value = entry && entry.runtimeHrs != null ? entry.runtimeHrs : "";
@@ -2536,6 +2857,9 @@
     el.f_updatedby.value = entry ? (entry.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
     el.f_status.value = entry ? statusLabel(entry.status) : "In Progress";
     el.f_nextstage.value = entry ? (entry.nextStage || "") : "";
+    // Hold defaults OFF for a new entry (and for any older entry saved before Hold existed) —
+    // unlike the Pass/Fail switches, it's a problem flag, not something that starts out "passed".
+    el.f_hold.checked = !!(entry && entry.onHold);
     el.f_remarks.value = entry ? (entry.remarks||"") : "";
     el.f_clientname.value = entry ? (entry.clientName || "") : "";
     el.f_invoiceno.value = entry ? (entry.invoiceNo || "") : "";
@@ -2543,35 +2867,57 @@
     el.f_driver.value = entry ? (entry.driver || "") : "";
     el.f_qtyperbundle.value = entry && entry.qtyPerBundle != null ? entry.qtyPerBundle : "";
     el.f_noofbundles.value = entry && entry.noOfBundles != null ? entry.noOfBundles : "";
+    el.f_reasonforrejection.value = entry ? (entry.reasonForRejection || "") : "";
     el.f_type.value = entry ? (entry.type || "") : "";
     el.f_qtyinstock.value = entry && entry.qtyInStock != null ? entry.qtyInStock : "";
     el.f_totalbundle.value = entry && entry.totalBundle != null ? entry.totalBundle : "";
     el.f_availablestock.value = entry && entry.availableStock != null ? entry.availableStock : "";
+    el.f_palletno.value = entry ? (entry.palletNo || "") : "";
     el.f_qc_boardgsm_client.value = entry ? (entry.qcBoardGsmClient || "") : "";
     el.f_qc_boardgsm_visipak.value = entry ? (entry.qcBoardGsmVisipak || "") : "";
+    // Manual Pass/Fail switches: a brand-new entry, and any older saved entry from before this
+    // switch existed, both default to Pass (checked) — only an explicit `false` shows as Fail.
+    el.f_qc_boardgsm_pass.checked = !entry || entry.qcBoardGsmPass !== false;
     el.f_qc_bustingstrength_client.value = entry ? (entry.qcBustingStrengthClient || "") : "";
     el.f_qc_bustingstrength_visipak.value = entry ? (entry.qcBustingStrengthVisipak || "") : "";
+    el.f_qc_bustingstrength_pass.checked = !entry || entry.qcBustingStrengthPass !== false;
     el.f_qc_moisture_client.value = entry ? (entry.qcMoistureClient || "") : "";
     el.f_qc_moisture_visipak.value = entry ? (entry.qcMoistureVisipak || "") : "";
+    el.f_qc_moisture_pass.checked = !entry || entry.qcMoisturePass !== false;
     el.f_qc_weight_client.value = entry ? (entry.qcWeightClient || "") : "";
     el.f_qc_weight_visipak.value = entry ? (entry.qcWeightVisipak || "") : "";
+    el.f_qc_weight_pass.checked = !entry || entry.qcWeightPass !== false;
     el.f_qc_bct_client.value = entry ? (entry.qcBctClient || "") : "";
     el.f_qc_bct_visipak.value = entry ? (entry.qcBctVisipak || "") : "";
+    el.f_qc_bct_pass.checked = !entry || entry.qcBctPass !== false;
     populateHRManpowerTable(entry);
     updateFormFieldsForStage(targetStage);
 
-    ALL_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
+    NORMAL_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditNormal; });
+    QC_ONLY_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditQcSpecs; });
 
     if(readOnly){
       el.readOnlyNote.hidden = false;
       el.readOnlyNote.textContent = tf("form_readonly_prefix", { stage: entry.stage }) +
         stagesFullList(allowedStages) + t("form_readonly_suffix");
+    } else if(entry && !canEditQcSpecs && stageHasHold(entry.stage)){
+      // Full access to the entry's own fields, but the QC Check / Specifications / Hold section
+      // is QC-only on this device. stageHasHold covers every production stage, since Hold alone
+      // now reaches all of them even where there's no Specifications table or Artwork check.
+      el.readOnlyNote.hidden = false;
+      el.readOnlyNote.textContent = t("form_qcspecs_readonly_note");
+    } else if(entry && !canEditNormal && canEditQcSpecs){
+      // A QC-access device opening someone else's production-stage entry: only the QC Check /
+      // Specifications / Hold section is editable here, everything else is view-only.
+      el.readOnlyNote.hidden = false;
+      el.readOnlyNote.textContent = t("form_normalfields_readonly_note");
     } else {
       el.readOnlyNote.hidden = true;
     }
 
     el.modalOverlay.hidden = false;
-    if(!readOnly) el.f_jobcard.focus();
+    if(!readOnly && canEditNormal) el.f_jobcard.focus();
+    else if(!readOnly && canEditQcSpecs) el.f_qc_boardgsm_client.focus();
   }
   function closeModal(){
     el.modalOverlay.hidden = true;
@@ -2604,19 +2950,21 @@
     var isFG = isFGStage(chosenStage);
     var isQC = isQCStage(chosenStage);
     var isHR = isHRManpowerStage(chosenStage);
-    // These five stages have no Status/Next Stage fields of their own — a saved entry there is
+    var isRejected = isRejectedStage(chosenStage);
+    // These stages have no Status/Next Stage fields of their own — a saved entry there is
     // always treated as a finished, terminal record rather than something that advances further.
-    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC || isHR;
+    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC || isHR || isRejected;
     var chosenStatus = isSpecial ? "Completed" : el.f_status.value;
     var chosenNextStage = isSpecial ? "" : el.f_nextstage.value;
     var movedTo = null;
     if(chosenStatus === "Completed" && chosenNextStage && chosenNextStage !== chosenStage){
       movedTo = chosenNextStage;
     }
-    var hasClientName = isDispatch || isFG;
-    var hasQtyPerBundle = isDispatch || isReadyToDispatch || isFG;
-    var hasNoOfBundles = isDispatch || isReadyToDispatch;
+    var hasClientName = isDispatch || isFG || isRejected;
+    var hasQtyPerBundle = isDispatch || isReadyToDispatch || isFG || isRejected;
+    var hasNoOfBundles = isDispatch || isReadyToDispatch || isRejected;
     var hasType = isReadyToDispatch || isFG || isQC;
+    var hasQcSpecs = stageHasQcSpecs(chosenStage);
     var hrManpowerData = isHR ? computeHRManpowerData() : null;
 
     var payload = {
@@ -2626,8 +2974,10 @@
       productName: isHR ? "" : el.f_product.value.trim(),
       jobCardNo: isHR ? "" : el.f_jobcard.value.trim(),
       artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
+      artworkCheckPass: stageHasArtworkNo(chosenStage) ? el.f_artworkcheck_pass.checked : null,
       quantity: (isFG || isHR) ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
+      layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
       type: hasType ? el.f_type.value : "",
       startTime: isSpecial ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
       endTime: isSpecial ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
@@ -2636,6 +2986,7 @@
       updatedBy: el.f_updatedby.value.trim(),
       status: movedTo ? "Not Started" : chosenStatus,
       nextStage: movedTo ? "" : chosenNextStage,
+      onHold: stageHasHold(chosenStage) ? el.f_hold.checked : null,
       remarks: isSpecial ? "" : el.f_remarks.value.trim(),
       clientName: hasClientName ? el.f_clientname.value.trim() : "",
       invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
@@ -2643,19 +2994,26 @@
       driver: isDispatch ? el.f_driver.value.trim() : "",
       qtyPerBundle: hasQtyPerBundle ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
       noOfBundles: hasNoOfBundles ? (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)) : null,
+      reasonForRejection: isRejected ? el.f_reasonforrejection.value.trim() : "",
       qtyInStock: isFG ? (el.f_qtyinstock.value === "" ? null : Number(el.f_qtyinstock.value)) : null,
       totalBundle: isFG ? (el.f_totalbundle.value === "" ? null : Number(el.f_totalbundle.value)) : null,
       availableStock: isFG ? (el.f_availablestock.value === "" ? null : Number(el.f_availablestock.value)) : null,
-      qcBoardGsmClient: isQC ? el.f_qc_boardgsm_client.value.trim() : "",
-      qcBoardGsmVisipak: isQC ? el.f_qc_boardgsm_visipak.value.trim() : "",
-      qcBustingStrengthClient: isQC ? el.f_qc_bustingstrength_client.value.trim() : "",
-      qcBustingStrengthVisipak: isQC ? el.f_qc_bustingstrength_visipak.value.trim() : "",
-      qcMoistureClient: isQC ? el.f_qc_moisture_client.value.trim() : "",
-      qcMoistureVisipak: isQC ? el.f_qc_moisture_visipak.value.trim() : "",
-      qcWeightClient: isQC ? el.f_qc_weight_client.value.trim() : "",
-      qcWeightVisipak: isQC ? el.f_qc_weight_visipak.value.trim() : "",
-      qcBctClient: isQC ? el.f_qc_bct_client.value.trim() : "",
-      qcBctVisipak: isQC ? el.f_qc_bct_visipak.value.trim() : "",
+      palletNo: isFG ? el.f_palletno.value.trim() : "",
+      qcBoardGsmClient: hasQcSpecs ? el.f_qc_boardgsm_client.value.trim() : "",
+      qcBoardGsmVisipak: hasQcSpecs ? el.f_qc_boardgsm_visipak.value.trim() : "",
+      qcBoardGsmPass: hasQcSpecs ? el.f_qc_boardgsm_pass.checked : null,
+      qcBustingStrengthClient: hasQcSpecs ? el.f_qc_bustingstrength_client.value.trim() : "",
+      qcBustingStrengthVisipak: hasQcSpecs ? el.f_qc_bustingstrength_visipak.value.trim() : "",
+      qcBustingStrengthPass: hasQcSpecs ? el.f_qc_bustingstrength_pass.checked : null,
+      qcMoistureClient: hasQcSpecs ? el.f_qc_moisture_client.value.trim() : "",
+      qcMoistureVisipak: hasQcSpecs ? el.f_qc_moisture_visipak.value.trim() : "",
+      qcMoisturePass: hasQcSpecs ? el.f_qc_moisture_pass.checked : null,
+      qcWeightClient: hasQcSpecs ? el.f_qc_weight_client.value.trim() : "",
+      qcWeightVisipak: hasQcSpecs ? el.f_qc_weight_visipak.value.trim() : "",
+      qcWeightPass: hasQcSpecs ? el.f_qc_weight_pass.checked : null,
+      qcBctClient: hasQcSpecs ? el.f_qc_bct_client.value.trim() : "",
+      qcBctVisipak: hasQcSpecs ? el.f_qc_bct_visipak.value.trim() : "",
+      qcBctPass: hasQcSpecs ? el.f_qc_bct_pass.checked : null,
       hrManpowerRows: isHR ? hrManpowerData.rows : null,
       hrManpowerTotal: isHR ? hrManpowerData.total : null,
       updatedAt: Date.now()
@@ -2687,7 +3045,7 @@
 
   var pendingDeleteEntry = null;
   el.deleteBtn.addEventListener("click", function(){
-    if(!state.editingId || state.modalReadOnly) return;
+    if(!state.editingId || !state.modalCanEditNormal) return;
     var entry = state.boardEntries.concat(state.logEntries).find(function(e){ return e.id === state.editingId; });
     pendingDeleteEntry = entry || {
       id: state.editingId,
@@ -2800,10 +3158,13 @@
     el.deviceTagLabel.textContent = stagesLabel(state.deviceStages);
     el.profileMenuStages.textContent = tf("profile_stage_access_line", { stages: stagesLabel(state.deviceStages) });
     var locked = state.deviceStages !== "ALL";
-    populateStageFilterOptions(el.boardStageFilter, locked ? state.deviceStages : "ALL", t("filter_all"));
-    populateStageFilterOptions(el.logStageFilter, locked ? state.deviceStages : "ALL", t("log_all_stages"));
+    populateStageFilterOptions(el.boardStageFilter, locked ? deviceVisibleStages() : "ALL", t("filter_all"));
+    populateStageFilterOptions(el.logStageFilter, locked ? deviceVisibleStages() : "ALL", t("log_all_stages"));
     el.modalTitle.textContent = t(state.modalTitleKey);
     el.cancelBtn.textContent = state.modalReadOnly ? t("form_close") : t("generic_cancel");
+    for(var layerLabelN = 1; layerLabelN <= 7; layerLabelN++){
+      el["layerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
+    }
     updateFormFieldsForStage(el.f_stage.value);
     el.supAddBtn.textContent = editingSupervisorPhone ? t("sup_save_changes") : t("sup_add_user");
     if(!el.supervisorsOverlay.hidden) applySupervisorFilter();
