@@ -2672,6 +2672,17 @@
     var result = pass === false ? t("pf_fail") : t("pf_pass");
     return (clientVal || "—") + " / " + (visipakVal || "—") + " (" + result + ")";
   }
+  // Images render fine when opened this way in a new tab; PDFs don't reliably in every browser
+  // (some show a blank tab instead of the PDF viewer for a data: URL opened via target="_blank"),
+  // so a PDF link forces a real download instead — that always works.
+  function attachmentLinkHtml(data, name, type){
+    if(!data) return "";
+    var isImage = type && type.indexOf("image/") === 0;
+    var label = name || (isImage ? "view" : "download");
+    return isImage
+      ? '<a href="' + esc(data) + '" target="_blank" rel="noopener">📎 ' + esc(label) + '</a>'
+      : '<a href="' + esc(data) + '" download="' + esc(name || "file.pdf") + '">📎 ' + esc(label) + '</a>';
+  }
   // Wrapped in a hoisted function (rather than a plain "var X = {...}") and cached on first call:
   // applyDeviceStage() below calls renderLog() synchronously during page init, before the script
   // would otherwise have reached this line, so a plain var assignment here would still be
@@ -2698,7 +2709,7 @@
       html: function(e){ return esc(e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass")); },
       csv: function(e){ return e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass"); } },
     artworkAttachment: { header: function(){ return t("attach_client_specs_label"); },
-      html: function(e){ return e.artworkCheckAttachmentData ? '<a href="' + esc(e.artworkCheckAttachmentData) + '" target="_blank" rel="noopener">📎 ' + esc(e.artworkCheckAttachmentName || "view") + '</a>' : ""; },
+      html: function(e){ return attachmentLinkHtml(e.artworkCheckAttachmentData, e.artworkCheckAttachmentName, e.artworkCheckAttachmentType); },
       // The CSV export gets the filename, not the raw base64 data — a single attachment's data
       // can be hundreds of KB, which would bloat the export and likely break most CSV readers.
       csv: function(e){ return e.artworkCheckAttachmentData ? (e.artworkCheckAttachmentName || "Attached") : ""; } },
@@ -2771,7 +2782,7 @@
       html: function(e){ return esc(summarizeQcSpec(e.qcBctClient, e.qcBctVisipak, e.qcBctPass)); },
       csv: function(e){ return summarizeQcSpec(e.qcBctClient, e.qcBctVisipak, e.qcBctPass); } },
     qcSpecsAttachment: { header: function(){ return t("attach_client_specs_label"); },
-      html: function(e){ return e.qcSpecsAttachmentData ? '<a href="' + esc(e.qcSpecsAttachmentData) + '" target="_blank" rel="noopener">📎 ' + esc(e.qcSpecsAttachmentName || "view") + '</a>' : ""; },
+      html: function(e){ return attachmentLinkHtml(e.qcSpecsAttachmentData, e.qcSpecsAttachmentName, e.qcSpecsAttachmentType); },
       csv: function(e){ return e.qcSpecsAttachmentData ? (e.qcSpecsAttachmentName || "Attached") : ""; } },
     hrTotalOperator: { header: function(){ return t("hrmp_th_operator"); }, cellClass: "num",
       html: function(e){ return esc(hrTotalField(e, "operator")); }, csv: function(e){ return hrTotalField(e, "operator"); } },
@@ -3094,7 +3105,10 @@
       var isImage = current.type && current.type.indexOf("image/") === 0;
       previewEl.innerHTML = (isImage
         ? '<a href="' + esc(current.data) + '" target="_blank" rel="noopener"><img src="' + esc(current.data) + '" class="attachmentThumb" alt=""></a>'
-        : '<a href="' + esc(current.data) + '" target="_blank" rel="noopener" class="attachmentFileLink">📄 ' + esc(current.name || "file.pdf") + '</a>'
+        // PDFs use a "download" link rather than target="_blank" — some browsers show a blank
+        // tab instead of rendering a PDF opened this way from a data: URL, but a forced download
+        // always works and the file opens fine once it lands in Downloads.
+        : '<a href="' + esc(current.data) + '" download="' + esc(current.name || "file.pdf") + '" class="attachmentFileLink">📄 ' + esc(current.name || "file.pdf") + ' (download)</a>'
       ) + '<button type="button" class="attachmentRemoveBtn" title="Remove">✕</button>';
       var removeBtn = previewEl.querySelector(".attachmentRemoveBtn");
       // Same permission gate as the Capture/Upload buttons — viewing the attachment (the link
