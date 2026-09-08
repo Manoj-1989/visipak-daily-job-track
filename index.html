@@ -774,8 +774,15 @@
       <label class="span2"><span data-i18n="filter_stage">Stage</span>
         <select id="f_stage" required></select>
       </label>
-      <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span> <input type="text" id="f_clientname" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
-      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
+      <!-- Both stay plain text inputs (not <select>s) with a "list" datalist, exactly like the
+           Shift field's shiftOptions above — so someone can either pick an existing customer/
+           product from the suggestions or just type a brand-new one, and every existing bit of
+           code that reads .value keeps working unchanged. See the customer/product catalog
+           section of the script (buildCatalogOptionLists, applyCatalogAutofill, upsertCatalogEntry). -->
+      <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span> <input type="text" id="f_clientname" list="customerNameOptions" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
+      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" list="productNameOptions" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
+      <datalist id="customerNameOptions"></datalist>
+      <datalist id="productNameOptions"></datalist>
       <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
       <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
@@ -1540,6 +1547,10 @@
     editingId: null,
     unsubBoard: null,
     unsubLog: null,
+    // Customer/Product/Type/PLY autofill catalog — kept in sync from Firestore (see
+    // subscribeCatalog below), shared by every device. { customers: { "<name>": { products: {
+    // "<name>": { type, ply } } } } }; empty until the first snapshot arrives.
+    catalog: { customers: {} },
     deviceStage: "ALL",    // legacy single-stage field, kept for older saved devices; "ALL" = full access
     deviceStages: "ALL",   // "ALL", or an array of one or more stage names this device is locked to
     isAdminDevice: false,  // true only on the device set up with the admin phone number
@@ -1675,6 +1686,8 @@
     fld_nextstage: document.getElementById("fld_nextstage"),
     fld_remarks: document.getElementById("fld_remarks"),
     fld_clientname: document.getElementById("fld_clientname"),
+    customerNameOptions: document.getElementById("customerNameOptions"),
+    productNameOptions: document.getElementById("productNameOptions"),
     fld_invoiceno: document.getElementById("fld_invoiceno"),
     fld_vehicleno: document.getElementById("fld_vehicleno"),
     fld_driver: document.getElementById("fld_driver"),
@@ -1852,6 +1865,116 @@
   // NOT make Plant a "special" stage — it keeps its usual timing/manpower/status fields too).
   var QC_SPECS_STAGES = ["QC", "Plant"];
   function stageHasQcSpecs(stage){ return QC_SPECS_STAGES.indexOf(stage) !== -1; }
+  // One-time starting data for the Customer/Product catalog (see "Customer / Product catalog"
+  // section below) — imported from the Customer_Lists.xlsx Manu provided, cleaned up (trimmed
+  // names, normalized PLY spelling/casing, TYPE mapped to this form's own "Boxes" option). Only
+  // used to seed Firestore the very first time the catalog doc is empty; every entry added after
+  // that (new or edited) comes from what devices actually save, not from this constant.
+  var CATALOG_SEED_DATA = {"customers":{"AMORE RUSK":{"products":{"Amore rusk 200g":{"ply":"5 Ply","type":"Boxes"},"Amore rusk 36X12grm":{"ply":"5 Ply","type":"Boxes"},"Amore rusk 50g Blue":{"ply":"3 Ply","type":"Boxes"},"Amore rusk 56g Green":{"ply":"3 Ply","type":"Boxes"}}},"B M L":{"products":{"BRIGHT  DOUBLE  MENTHA & MENTHA":{"ply":"5 Ply","type":"Boxes"},"BRIGHT  DOUBLE SANDIA & MENTHA":{"ply":"5 Ply","type":"Boxes"},"BRIGHT  DOUBLE UVA & MENTHA":{"ply":"5 Ply","type":"Boxes"},"CANNON BLACK MENTHOL":{"ply":"3 Ply","type":"Boxes"},"FORT BLACK MENTOL":{"ply":"3 Ply","type":"Boxes"},"FORT PLAIN BOXES":{"ply":"3 Ply","type":"Boxes"},"FORT Somt bag":{"ply":"3 Ply","type":"Boxes"},"LG PREMIUM":{"ply":"3 Ply","type":"Boxes"},"MARCO":{"ply":"3 Ply","type":"Boxes"},"MILLONARE  SPECIAL":{"ply":"5 Ply","type":"Boxes"},"MILLONARE MENTHOL":{"ply":"5 Ply","type":"Boxes"},"PRIDE BLUE KS MASTERCASE":{"ply":"5 Ply","type":"Boxes"},"PRIDE GOLD KS MASTERCASE":{"ply":"5 Ply","type":"Boxes"},"RUBY CRUSH  SANDIA & MENTHA":{"ply":"5 Ply","type":"Boxes"},"RUBY CRUSH  UVA & MENTHA":{"ply":"5 Ply","type":"Boxes"},"RUBY CRUSH 100MM SANDIA & MENTHA":{"ply":"5 Ply","type":"Boxes"},"RUBY CRUSH MENTHA  & MENTHA":{"ply":"5 Ply","type":"Boxes"},"SMART CLICK ON BLUEBERRY":{"ply":"5 Ply","type":"Boxes"},"WALTON":{"ply":"3 Ply","type":"Boxes"}}},"DODLA":{"products":{"DODLA 140ML & 150 ML DTM New":{"ply":"5 Ply","type":"Boxes"},"DODLA 140ML TM":{"ply":"5 Ply","type":"Boxes"},"DODLA 150 ML DTM old":{"ply":"5 Ply","type":"Boxes"},"DODLA 30ML Pack":{"ply":"5 Ply","type":"Boxes"},"DODLA 500ML DTM":{"ply":"5 Ply","type":"Boxes"},"DODLA 500ML TM":{"ply":"5 Ply","type":"Boxes"},"DODLA Lassi samll Boxes":{"ply":"5 Ply","type":"Boxes"}}},"Fragile Vaachi":{"products":{"290X250X240 RED":{"ply":"3 Ply","type":"Boxes"},"370X280X250":{"ply":"3 Ply","type":"Boxes"},"535X370X255 RED":{"ply":"5 Ply","type":"Boxes"},"780X370X370 Green":{"ply":"5 Ply","type":"Boxes"},"875X460X490X Green":{"ply":"3 Ply","type":"Boxes"},"900X370X370 RED":{"ply":"3 Ply","type":"Boxes"}}},"Gland":{"products":{"GX - 141":{"ply":"5 Ply","type":"Boxes"},"GX - 195":{"ply":"5 Ply","type":"Boxes"},"GX - 198":{"ply":"5 Ply","type":"Boxes"},"GX - 209":{"ply":"5 Ply","type":"Boxes"},"GX - 216":{"ply":"5 Ply","type":"Boxes"},"GX - 218":{"ply":"5 Ply","type":"Boxes"},"GX - 241":{"ply":"5 Ply","type":"Boxes"},"GX - 296":{"ply":"5 Ply","type":"Boxes"},"GX - 308":{"ply":"5 Ply","type":"Boxes"},"GX - 347":{"ply":"5 Ply","type":"Boxes"},"GX - 369":{"ply":"5 Ply","type":"Boxes"},"GX - 370":{"ply":"5 Ply","type":"Boxes"},"GX - 444":{"ply":"5 Ply","type":"Boxes"},"GX - 509":{"ply":"5 Ply","type":"Boxes"},"GX-105":{"ply":"5 Ply","type":"Boxes"},"GX-116":{"ply":"5 Ply","type":"Boxes"},"GX-146":{"ply":"5 Ply","type":"Boxes"}}},"Laurus":{"products":{"1200X1000":{"ply":"3 Ply","type":"Boxes"},"1200X800":{"ply":"3 Ply","type":"Boxes"},"2000016":{"ply":"5 Ply","type":"Boxes"},"2000136":{"ply":"5 Ply","type":"Boxes"},"2000156 die cut":{"ply":"5 Ply","type":"Boxes"},"2000160":{"ply":"5 Ply","type":"Boxes"},"2000265":{"ply":"5 Ply","type":"Boxes"},"2000289":{"ply":"5 Ply","type":"Boxes"},"2000297":{"ply":"5 Ply","type":"Boxes"},"2000310":{"ply":"5 Ply","type":"Boxes"},"2000319":{"ply":"5 Ply","type":"Boxes"},"2000330":{"ply":"5 Ply","type":"Boxes"},"2000332":{"ply":"5 Ply","type":"Boxes"},"2000333 Die cut job":{"ply":"5 Ply","type":"Boxes"},"2000334":{"ply":"5 Ply","type":"Boxes"},"2000362":{"ply":"5 Ply","type":"Boxes"},"2000416":{"ply":"5 Ply","type":"Boxes"},"2000498":{"ply":"5 Ply","type":"Boxes"},"2000499":{"ply":"5 Ply","type":"Boxes"},"2000500":{"ply":"5 Ply","type":"Boxes"},"2000501":{"ply":"5 Ply","type":"Boxes"},"2000510":{"ply":"5 Ply","type":"Boxes"},"2000531":{"ply":"5 Ply","type":"Boxes"},"2000539":{"ply":"5 Ply","type":"Boxes"},"2000540":{"ply":"5 Ply","type":"Boxes"},"2000541":{"ply":"5 Ply","type":"Boxes"},"2000609":{"ply":"5 Ply","type":"Boxes"},"2000637":{"ply":"5 Ply","type":"Boxes"},"2000645":{"ply":"5 Ply","type":"Boxes"},"2000673":{"ply":"5 Ply","type":"Boxes"},"2001064":{"ply":"5 Ply","type":"Boxes"},"2001421":{"ply":"5 Ply","type":"Boxes"},"2001566":{"ply":"5 Ply","type":"Boxes"},"2001567":{"ply":"5 Ply","type":"Boxes"},"2001568":{"ply":"5 Ply","type":"Boxes"},"2001569":{"ply":"5 Ply","type":"Boxes"},"2001604":{"ply":"5 Ply","type":"Boxes"},"2001787":{"ply":"5 Ply","type":"Boxes"},"2001847":{"ply":"5 Ply","type":"Boxes"},"2002121":{"ply":"5 Ply","type":"Boxes"},"2002122":{"ply":"5 Ply","type":"Boxes"},"2002219":{"ply":"5 Ply","type":"Boxes"},"2002348":{"ply":"5 Ply","type":"Boxes"},"2002514 Punching die cut job":{"ply":"5 Ply","type":"Boxes"},"2002724":{"ply":"5 Ply","type":"Boxes"},"2002725":{"ply":"5 Ply","type":"Boxes"},"2002830":{"ply":"5 Ply","type":"Boxes"},"2002962":{"ply":"5 Ply","type":"Boxes"},"2002963":{"ply":"5 Ply","type":"Boxes"},"2003195":{"ply":"5 Ply","type":"Boxes"},"Laurus -4  20313":{"ply":"5 Ply","type":"Boxes"}}},"MOLDTEK":{"products":{"Moldtek 10 ltr":{"ply":"3 Ply","type":"Boxes"},"Moldtek 15 ltr":{"ply":"5 Ply","type":"Boxes"},"Moldtek 17ltr":{"ply":"5 Ply","type":"Boxes"},"Moldtek 20 ltr":{"ply":"3 Ply","type":"Boxes"},"Moldtek 4 ltr":{"ply":"3 Ply","type":"Boxes"},"Moldtek 7.5":{"ply":"3 Ply","type":"Boxes"}}},"Manjushree":{"products":{"648x398x448":{"ply":"5 Ply","type":"Boxes"},"743x568x263":{"ply":"5 Ply","type":"Boxes"},"853x448x253":{"ply":"5 Ply","type":"Boxes"}}},"NATCO":{"products":{"6250071":{"ply":"5 Ply","type":"Boxes"},"6250078 100grm":{"ply":"5 Ply","type":"Boxes"},"6250079 250grm":{"ply":"5 Ply","type":"Boxes"},"6250080 500grm":{"ply":"5 Ply","type":"Boxes"},"6250081":{"ply":"5 Ply","type":"Boxes"},"6250087":{"ply":"5 Ply","type":"Boxes"},"6250092":{"ply":"5 Ply","type":"Boxes"},"6250094":{"ply":"5 Ply","type":"Boxes"},"6250096":{"ply":"5 Ply","type":"Boxes"},"6250097 1kg":{"ply":"5 Ply","type":"Boxes"},"6250157":{"ply":"5 Ply","type":"Boxes"},"6250161":{"ply":"5 Ply","type":"Boxes"}}},"PIDILITE -1":{"products":{"HEATX 1 LTR":{"ply":"3 Ply","type":"Boxes"},"HEATX 2 LTR":{"ply":"3 Ply","type":"Boxes"},"HEATX 5 LTR":{"ply":"3 Ply","type":"Boxes"},"HEATX 500 ML":{"ply":"3 Ply","type":"Boxes"},"HIPER  2 KG":{"ply":"3 Ply","type":"Boxes"},"HIPER  5 KG  ( NSD ) NEW job":{"ply":"3 Ply","type":"Boxes"},"HIPER  5 KG RED":{"ply":"3 Ply","type":"Boxes"},"HIPER  STAR 2kg":{"ply":"3 Ply","type":"Boxes"},"HIPER 1 KG red":{"ply":"3 Ply","type":"Boxes"},"HIPER 10 KG":{"ply":"5 Ply","type":"Boxes"},"HIPER 500 GM":{"ply":"3 Ply","type":"Boxes"},"HIPER STAR 1 KG":{"ply":"3 Ply","type":"Boxes"},"HIPER STAR 2X5 KG":{"ply":"3 Ply","type":"Boxes"},"IBX 100 ML":{"ply":"3 Ply","type":"Boxes"},"IBX 200 ML":{"ply":"3 Ply","type":"Boxes"},"IBX 50 ML":{"ply":"3 Ply","type":"Boxes"},"MARANE 5 KG":{"ply":"3 Ply","type":"Boxes"},"MARANE 5 KG C - flute":{"ply":"3 Ply","type":"Boxes"},"MARINE 1 KG":{"ply":"3 Ply","type":"Boxes"},"MARINE 10 KG":{"ply":"5 Ply","type":"Boxes"},"MARINE 2KG":{"ply":"3 Ply","type":"Boxes"},"MARINE 500GM":{"ply":"3 Ply","type":"Boxes"},"PROBOND 10KG":{"ply":"5 Ply","type":"Boxes"},"PROBOND 1KG":{"ply":"3 Ply","type":"Boxes"},"PROBOND 500GM":{"ply":"3 Ply","type":"Boxes"},"PROBOND 5KG":{"ply":"3 Ply","type":"Boxes"},"SBX 100ML":{"ply":"3 Ply","type":"Boxes"},"SBX 200 ML":{"ply":"3 Ply","type":"Boxes"},"SBX 50 ML":{"ply":"3 Ply","type":"Boxes"},"SH 1 KG":{"ply":"3 Ply","type":"Boxes"},"SH 10 KG":{"ply":"5 Ply","type":"Boxes"},"SH 2KG":{"ply":"3 Ply","type":"Boxes"},"SH 5 KG":{"ply":"3 Ply","type":"Boxes"},"SH 500GM":{"ply":"3 Ply","type":"Boxes"}}},"PIDILITE -2":{"products":{"CRACK X PASTE 12X1 KG":{"ply":"5 Ply","type":"Boxes"},"CRACK X PASTE 12X500GM Inner":{"ply":"3 Ply","type":"Boxes"},"CRACK X PASTE 2X12X500GM":{"ply":"5 Ply","type":"Boxes"},"CRACK X PASTE 2X5 KG":{"ply":"5 Ply","type":"Boxes"},"CRACK X POWEDR 20x1 KG GM":{"ply":"3 Ply","type":"Boxes"},"CRACK X POWEDR 24X500 GM":{"ply":"3 Ply","type":"Boxes"},"DAMGAURD 1 KG":{"ply":"3 Ply","type":"Boxes"},"DAMGAURD 500 GM":{"ply":"5 Ply","type":"Boxes"},"DR FIX KWIK N EZEE KLEAR 12X250grm":{"ply":"3 Ply","type":"Boxes"},"DR FIX KWIK N EZEE KLEAR 6X1kg":{"ply":"3 Ply","type":"Boxes"},"FASTFELX  ULATRA 11 KG":{"ply":"5 Ply","type":"Boxes"},"FASTFELX 7 KG":{"ply":"5 Ply","type":"Boxes"},"FASTFELX ULATRA 6 KG":{"ply":"5 Ply","type":"Boxes"},"HAI SHA 4x4LTR":{"ply":"5 Ply","type":"Boxes"},"HAI SHA 6x1LTR":{"ply":"3 Ply","type":"Boxes"},"LW + 2X5 LTR  PROMO TAPE":{"ply":"3 Ply","type":"Boxes"},"LW + 2X5 LTR (REGULAR ) ND IH":{"ply":"3 Ply","type":"Boxes"},"LW+ M TAPE 2X5 LTR":{"ply":"3 Ply","type":"Boxes"},"Master Fix 4kg":{"ply":"5 Ply","type":"Boxes"},"P/FIN 2K 4X3 KG":{"ply":"3 Ply","type":"Boxes"},"P/FIN 2K 4X3 KG new job":{"ply":"3 Ply","type":"Boxes"},"P/FIN 2K INNER  10KG":{"ply":"5 Ply","type":"Boxes"},"PRIMO WHITE 1ltr":{"ply":"5 Ply","type":"Boxes"},"PRIMO WHITE 2x4ltr":{"ply":"5 Ply","type":"Boxes"},"RAINCOAT 2 in1 1ltr":{"ply":"5 Ply","type":"Boxes"},"RAINCOAT 2 in1 4ltr":{"ply":"5 Ply","type":"Boxes"},"RAINCOAT NEO 1LTR":{"ply":"5 Ply","type":"Boxes"},"RAINCOAT NEO 2x3.8ltr /4LTR":{"ply":"5 Ply","type":"Boxes"},"RAINCOAT Star 2X3.8ltr/ 4 LTR":{"ply":"5 Ply","type":"Boxes"},"RAINCOAT Star 6x950ml/1 LTR":{"ply":"5 Ply","type":"Boxes"},"ROFF HYGUARD 9 KG":{"ply":"5 Ply","type":"Boxes"},"ROOFSEAL Classic 2x4 LTR":{"ply":"5 Ply","type":"Boxes"},"ROOFSEAL Classic 6x1 LTR":{"ply":"5 Ply","type":"Boxes"},"ROOFSEAL Select 2x4 LTR":{"ply":"5 Ply","type":"Boxes"},"Regular LW + 15X1 ltr":{"ply":"3 Ply","type":"Boxes"},"Roof seal classic 2x4ltr New job Diecut":{"ply":"5 Ply","type":"Boxes"},"SURE SEAL 1KG":{"ply":"5 Ply","type":"Boxes"},"SURESEAL 5 KG":{"ply":"5 Ply","type":"Boxes"},"UNPRINTED 10KG":{"ply":"5 Ply","type":"Boxes"},"UNPRINTED 20 KG":{"ply":"5 Ply","type":"Boxes"}}},"PMK":{"products":{"8PM 750 ml":{"ply":"3 Ply","type":"Boxes"},"A/C NEAT 180ml":{"ply":"3 Ply","type":"Boxes"},"A/C NEAT 750ml":{"ply":"3 Ply","type":"Boxes"},"AFTER DARK BLUE 180 ml":{"ply":"3 Ply","type":"Boxes"},"BOLS  180 ml":{"ply":"3 Ply","type":"Boxes"},"BOLS 750 ml":{"ply":"3 Ply","type":"Boxes"},"BOLS 90 ml":{"ply":"3 Ply","type":"Boxes"},"Bombma 180ml":{"ply":"3 Ply","type":"Boxes"},"Good friends 180 ml":{"ply":"3 Ply","type":"Boxes"},"Good friends 90 ml":{"ply":"3 Ply","type":"Boxes"},"MXOP 180ml":{"ply":"3 Ply","type":"Boxes"},"MXOP 375 ml":{"ply":"3 Ply","type":"Boxes"},"MXOP 750 ml":{"ply":"3 Ply","type":"Boxes"},"MXOP 750 ml new jod":{"ply":"5 Ply","type":"Boxes"},"PARTY SPECIAL 180 ml":{"ply":"3 Ply","type":"Boxes"},"PARTY SPECIAL 375 ml":{"ply":"3 Ply","type":"Boxes"},"PARTY SPECIAL 750 ml":{"ply":"3 Ply","type":"Boxes"},"QULATY LIQUOR 180 ml":{"ply":"3 Ply","type":"Boxes"}}},"Pepsi":{"products":{"Aquafina 1 ltr water CC Boxes":{"ply":"3 Ply","type":"Boxes"},"Pepsi 1.25 ml CC Boxes":{"ply":"3 Ply","type":"Boxes"},"Pepsi 160ml cc Boxes":{"ply":"3 Ply","type":"Boxes"},"Pepsi 1ltr New Aquavees Pads 320X240":{"ply":"3 Ply","type":"Boxes"},"Pepsi 1ltr old Pads 400X240":{"ply":"3 Ply","type":"Boxes"},"Pepsi 200ml Pads":{"ply":"3 Ply","type":"Boxes"},"Pepsi 250 ml CC Boxes 28 Bottles":{"ply":"3 Ply","type":"Boxes"},"Pepsi 250 ml CC Boxes 30 Bottles":{"ply":"3 Ply","type":"Boxes"},"Pepsi 400ml Pads 390X315":{"ply":"3 Ply","type":"Boxes"}}}}};
+
+  // ---------- Customer / Product catalog (autofill for Customer Name / Product Name / Type / PLY) ----------
+  // Customer Name and Product Name stay plain text <input>s (see fld_clientname/fld_product HTML)
+  // with a native <datalist> of suggestions — so someone can pick an existing customer/product OR
+  // just type a brand-new one, exactly like the Shift field's shiftOptions already does. Choosing
+  // a customer narrows the Product Name suggestions to that customer's own products; choosing (or
+  // typing an exact match for) a known product then fills in Type/PLY if this stage shows them.
+  // Whatever is actually saved (new or edited) is written back into the shared catalog, so a
+  // manually-typed new customer/product becomes selectable — with its Type/PLY remembered — on
+  // every device from then on. Names are matched case-insensitively (normalizeKey) but stored and
+  // suggested using whichever casing was first used, so "laurus" and "Laurus" are one customer.
+  function normalizeKey(s){ return (s || "").trim().toLowerCase(); }
+  function findCanonicalCustomer(typed){
+    var key = normalizeKey(typed);
+    if(!key) return null;
+    var names = Object.keys(state.catalog.customers || {});
+    for(var i = 0; i < names.length; i++){
+      if(normalizeKey(names[i]) === key) return names[i];
+    }
+    return null;
+  }
+  function findCanonicalProduct(canonicalCustomer, typedProduct){
+    if(!canonicalCustomer) return null;
+    var key = normalizeKey(typedProduct);
+    if(!key) return null;
+    var products = (state.catalog.customers[canonicalCustomer] || {}).products || {};
+    var names = Object.keys(products);
+    for(var i = 0; i < names.length; i++){
+      if(normalizeKey(names[i]) === key) return names[i];
+    }
+    return null;
+  }
+  function refreshCustomerNameOptions(){
+    var names = Object.keys(state.catalog.customers || {}).sort(function(a, b){ return a.localeCompare(b); });
+    el.customerNameOptions.innerHTML = names.map(function(n){ return '<option value="' + esc(n) + '"></option>'; }).join("");
+  }
+  function refreshProductNameOptions(){
+    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
+    var products = canonicalCustomer ? Object.keys((state.catalog.customers[canonicalCustomer] || {}).products || {}) : [];
+    products.sort(function(a, b){ return a.localeCompare(b); });
+    el.productNameOptions.innerHTML = products.map(function(n){ return '<option value="' + esc(n) + '"></option>'; }).join("");
+  }
+  // Called whenever either field changes — handles picking Customer then Product, or (less
+  // common, but harmless to support) typing/pasting a known Product before choosing its Customer.
+  function applyCatalogAutofill(){
+    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, el.f_product.value);
+    if(!canonicalProduct) return;
+    var info = state.catalog.customers[canonicalCustomer].products[canonicalProduct] || {};
+    // Only touch Type/PLY if this stage actually shows that field right now, and only if the
+    // catalog actually has a value for it — an unknown/blank catalog value leaves whatever the
+    // person already picked alone rather than clearing it.
+    if(info.type && !el.fld_type.hidden) el.f_type.value = info.type;
+    if(info.ply && !el.fld_ply.hidden) el.f_ply.value = info.ply;
+  }
+  // Called after an entry saves successfully — adds a brand-new customer/product to the shared
+  // catalog, or fills in a Type/PLY that a known product didn't have yet. Never erases an already-
+  // known Type/PLY with a blank (a stage that doesn't collect one of those fields simply omits it
+  // from the update instead of overwriting it with "").
+  function upsertCatalogEntry(customerName, productName, typeVal, plyVal){
+    var custTrim = (customerName || "").trim();
+    var prodTrim = (productName || "").trim();
+    if(!custTrim || !prodTrim) return;
+    var canonicalCustomer = findCanonicalCustomer(custTrim) || custTrim;
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, prodTrim) || prodTrim;
+    var existing = ((state.catalog.customers[canonicalCustomer] || {}).products || {})[canonicalProduct] || {};
+    var merged = { type: existing.type || "", ply: existing.ply || "" };
+    if(typeVal) merged.type = typeVal;
+    if(plyVal) merged.ply = plyVal;
+    var isNewCustomer = !state.catalog.customers[canonicalCustomer];
+    var isNewProduct = isNewCustomer || !state.catalog.customers[canonicalCustomer].products[canonicalProduct];
+    if(!isNewProduct && merged.type === existing.type && merged.ply === existing.ply) return; // nothing changed, skip the write
+    var update = { customers: {} };
+    update.customers[canonicalCustomer] = { products: {} };
+    update.customers[canonicalCustomer].products[canonicalProduct] = merged;
+    state.db.collection("catalog").doc("customerProducts").set(update, { merge: true }).catch(function(err){
+      if(window.console) console.error("Catalog update failed:", err);
+    });
+  }
+  var catalogSeedAttempted = false;
+  function subscribeCatalog(){
+    state.db.collection("catalog").doc("customerProducts").onSnapshot(function(doc){
+      var data = (doc && doc.exists && doc.data()) || {};
+      state.catalog = { customers: data.customers || {} };
+      refreshCustomerNameOptions();
+      refreshProductNameOptions();
+      // Only the very first device to see a truly empty catalog seeds it — a stale/incomplete
+      // snapshot never re-triggers this because catalogSeedAttempted latches after the first try,
+      // and set(..., {merge:true}) is harmless even if more than one device races to do this.
+      if(!catalogSeedAttempted && Object.keys(state.catalog.customers).length === 0){
+        catalogSeedAttempted = true;
+        state.db.collection("catalog").doc("customerProducts").set(CATALOG_SEED_DATA, { merge: true }).catch(function(err){
+          if(window.console) console.error("Catalog seed failed:", err);
+        });
+      }
+    }, function(err){
+      if(window.console) console.error("Catalog subscription failed:", err);
+    });
+  }
+  el.f_clientname.addEventListener("input", function(){
+    refreshProductNameOptions();
+    applyCatalogAutofill();
+  });
+  el.f_product.addEventListener("input", applyCatalogAutofill);
   // QC has the right to stop and hold a job at ANY production stage if something fails — every
   // stage except the two non-production department columns (House keeping, HR_Man Power) gets
   // the Hold switch.
@@ -3685,6 +3808,10 @@
       // that's still referenced by the saved entry).
       artworkAttachmentCtrl.commit();
       qcSpecsAttachmentCtrl.commit();
+      // Remembers this customer/product (and whatever Type/PLY this stage collected for it) in
+      // the shared catalog — a no-op if both fields are blank (see upsertCatalogEntry's guard),
+      // which covers stages without a Customer Name / Product Name at all (e.g. HR Man Power).
+      upsertCatalogEntry(payload.clientName, payload.productName, payload.type, payload.ply);
       closeModal();
       if(movedTo){
         showBanner(tf("banner_moved", { jc: payload.jobCardNo || "", from: chosenStage, to: movedTo }));
@@ -3846,6 +3973,7 @@
   applyTranslations();
   subscribeBoard();
   subscribeLog();
+  subscribeCatalog();
 })();
 </script>
 </body>
