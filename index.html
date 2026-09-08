@@ -779,8 +779,15 @@
            product from the suggestions or just type a brand-new one, and every existing bit of
            code that reads .value keeps working unchanged. See the customer/product catalog
            section of the script (buildCatalogOptionLists, applyCatalogAutofill, upsertCatalogEntry). -->
-      <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span> <input type="text" id="f_clientname" list="customerNameOptions" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
-      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" list="productNameOptions" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
+      <!-- autocomplete="off" matters here, not just as a nicety: without it, Chrome/Edge layer
+           the BROWSER'S OWN remembered values for this field (built up from everything ever typed
+           into it, across every customer, over the life of the app) on top of our curated
+           customer-filtered <datalist> suggestions — the two lists just get shown together with no
+           way to tell them apart, which is why picking "Laurus" could still show other customers'
+           products mixed in. Turning off the browser's own autofill leaves only our own filtered
+           options showing. -->
+      <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span> <input type="text" id="f_clientname" list="customerNameOptions" autocomplete="off" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
+      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" list="productNameOptions" autocomplete="off" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
       <datalist id="customerNameOptions"></datalist>
       <datalist id="productNameOptions"></datalist>
       <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
