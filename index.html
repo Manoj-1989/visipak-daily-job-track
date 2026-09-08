@@ -370,20 +370,6 @@
   .formGrid input:disabled, .formGrid select:disabled, .formGrid textarea:disabled{
     opacity:.55;cursor:not-allowed;background:var(--surface-2);
   }
-  /* Custom Customer Name / Product Name suggestion dropdown (see makeCombobox in the script) —
-     built instead of relying on native <input list>/<datalist>, whose on-screen behavior is
-     inconsistent on mobile browsers. Positioned with position:fixed (via the input's own
-     getBoundingClientRect on open) and appended straight to <body>, so it always renders on top
-     of the modal instead of being clipped by the modal's own overflow-y:auto scrolling. */
-  .comboboxPanel{
-    position:fixed;z-index:50;background:var(--surface);border:1px solid var(--line-strong);
-    border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.28);max-height:220px;overflow-y:auto;
-    font-size:13px;
-  }
-  .comboboxPanel[hidden]{display:none;}
-  .comboboxOption{padding:9px 12px;color:var(--ink);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .comboboxOption.active{background:var(--accent-soft);}
-  .comboboxHint{padding:9px 12px;color:var(--ink-faint);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .passFailToggle input:disabled ~ .pfTrack, .passFailToggle input:disabled ~ .pfLabel{opacity:.55;}
   .passFailToggle input:disabled ~ .pfTrack{cursor:not-allowed;}
   /* Hold uses the same switch, but its colors are the reverse of Pass/Fail: ON (checked) means
@@ -788,20 +774,22 @@
       <label class="span2"><span data-i18n="filter_stage">Stage</span>
         <select id="f_stage" required></select>
       </label>
-      <!-- Both stay plain text inputs (not <select>s), so someone can either pick an existing
-           customer/product from the suggestions or just type a brand-new one, and every existing
-           bit of code that reads .value keeps working unchanged. The suggestions themselves are a
-           custom-built dropdown (see makeCombobox in the customer/product catalog section of the
-           script) rather than a native <input list>/<datalist> — datalist's on-screen behavior on
-           mobile browsers is inconsistent (Android Chrome shows it as a cramped, easy-to-miss chip
-           strip above the keyboard instead of an actual list, and iOS Safari doesn't show it at
-           all), which is what made customer/product picking unreliable on phones. The custom
-           dropdown renders the same suggestions as an always-visible, tappable list under the
-           field on every device. autocomplete="off" is kept for the same reason as before: it
-           stops the browser's own remembered-value history for this field (built up over the
-           life of the app, with no per-customer awareness) from mixing into what's shown. -->
-      <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span> <input type="text" id="f_clientname" autocomplete="off" placeholder="e.g. ABC Traders" data-i18n-placeholder="form_clientname_placeholder"></label>
-      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span> <input type="text" id="f_product" autocomplete="off" placeholder="e.g. Fevicol Carton" data-i18n-placeholder="form_product_placeholder"></label>
+      <!-- Real <select>s now (matching Ply/Type/Stage exactly, including on mobile — a native
+           select opens the device's own full-screen/native picker, which is what people actually
+           expect a "dropdown" to look like; the earlier custom-built suggestion panel still read
+           as a plain text field to people even once it looked and worked correctly). Options are
+           populated/refreshed in the script (see refreshCustomerNameOptions/refreshProductNameOptions
+           in the customer/product catalog section) from the shared catalog, scoped to whichever
+           Customer is currently chosen for Product Name. A "+ Add new…" option at the end of each
+           list is how a brand-new customer/product still gets entered manually (see
+           handleClientNameChange/handleProductChange) — everything else about saving/learning a
+           new entry into the shared catalog (upsertCatalogEntry) is unchanged. -->
+      <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span>
+        <select id="f_clientname"></select>
+      </label>
+      <label id="fld_product"><span data-i18n="form_product_label">Product Name</span>
+        <select id="f_product"></select>
+      </label>
       <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
       <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
@@ -1935,133 +1923,115 @@
     }
     return null;
   }
-  // ---------- Custom suggestion dropdown (combobox) ----------
-  // Built instead of relying on native <input list>/<datalist>: that renders inconsistently on
-  // mobile (Android Chrome shows it as a cramped chip strip above the keyboard — easy to miss and
-  // only fits 2-3 items at a time — and iOS Safari doesn't show it at all), which is what made
-  // picking a Customer/Product unreliable on phones. This gives every device the same
-  // always-visible, tappable list under the field, while still letting a person type a brand-new
-  // value freely (see upsertCatalogEntry) exactly like before.
-  var openCombobox = null; // whichever combobox's panel is currently open, if any (only one at a time)
+  // ---------- Customer Name / Product Name as real <select>s ----------
+  // These are genuine <select> elements (see fld_clientname/fld_product HTML) so they look and
+  // behave exactly like Ply/Type/Stage, including on mobile where a native select opens the
+  // device's own full-screen picker. A "+ Add new…" sentinel option at the end of each list is
+  // the escape hatch for a brand-new customer/product (see handleClientNameChange/
+  // handleProductChange below) — picking it prompts for a name and adds it as a real option, so
+  // manual entry still works exactly like the original requirement, just via a small prompt
+  // instead of free-typing directly into the field.
+  var ADD_NEW_VALUE = "__ADD_NEW__";
   function catalogSortCmp(a, b){ return a.localeCompare(b); }
-  function makeCombobox(inputEl, getOptionsFn){
-    var panel = document.createElement("div");
-    panel.className = "comboboxPanel";
-    panel.hidden = true;
-    panel.setAttribute("role", "listbox");
-    document.body.appendChild(panel);
-    var currentOptions = [];
-    var activeIndex = -1;
-    var suppressNextRender = false;
-
-    function position(){
-      var r = inputEl.getBoundingClientRect();
-      panel.style.left = Math.round(r.left) + "px";
-      panel.style.top = Math.round(r.bottom + 4) + "px";
-      panel.style.width = Math.round(r.width) + "px";
+  // Builds the full <option> list for a select, given whatever raw value it needs to be able to
+  // display (the entry currently being edited, or whatever the field already holds) — that raw
+  // value is included as its own option if it doesn't already match a catalog entry, so setting
+  // .value to it afterwards always actually selects something instead of silently reverting to
+  // blank (which is what a plain <select> does when told to select a value with no matching
+  // option).
+  function buildCatalogOptionsHtml(names, formatFn, canonicalFinder, rawSelected){
+    var trimmedRaw = (rawSelected || "").trim();
+    var html = '<option value="">— select —</option>';
+    html += names.map(function(n){ var f = formatFn(n); return '<option value="' + esc(f) + '">' + esc(f) + '</option>'; }).join("");
+    if(trimmedRaw && !canonicalFinder(trimmedRaw)){
+      html += '<option value="' + esc(trimmedRaw) + '">' + esc(trimmedRaw) + '</option>';
     }
-    function setActive(idx){
-      var rows = panel.querySelectorAll(".comboboxOption");
-      for(var i = 0; i < rows.length; i++) rows[i].classList.toggle("active", i === idx);
-      activeIndex = idx;
-    }
-    function close(){
-      panel.hidden = true;
-      activeIndex = -1;
-      if(openCombobox === api) openCombobox = null;
-    }
-    function render(){
-      if(suppressNextRender) return;
-      var typed = (inputEl.value || "").trim();
-      var query = typed.toLowerCase();
-      var all = getOptionsFn();
-      currentOptions = query ? all.filter(function(n){ return n.toLowerCase().indexOf(query) !== -1; }) : all;
-      activeIndex = -1;
-      if(!currentOptions.length){
-        if(!typed){ close(); return; }
-        // Nothing existing matches what's already been typed — say so instead of the panel just
-        // vanishing, so it's clear this will become a brand-new customer/product rather than
-        // looking like the dropdown broke.
-        panel.innerHTML = '<div class="comboboxHint">"' + esc(typed) + '" — new, will be saved</div>';
-        position();
-        panel.hidden = false;
-        openCombobox = api;
-        return;
-      }
-      panel.innerHTML = currentOptions.map(function(opt, i){
-        return '<div class="comboboxOption" role="option" data-idx="' + i + '">' + esc(opt) + '</div>';
-      }).join("");
-      position();
-      panel.hidden = false;
-      openCombobox = api;
-    }
-    function selectIndex(idx){
-      var val = currentOptions[idx];
-      if(val == null) return;
-      inputEl.value = val;
-      close();
-      // A real "input" event (not just setting .value) so the app's own existing input listeners
-      // — narrowing Product Name to the chosen Customer, autofilling Type/PLY — fire exactly as
-      // they would if the person had typed the value themselves. Suppressed on this combobox's
-      // own render() so picking a value doesn't immediately reopen its own panel.
-      suppressNextRender = true;
-      inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-      suppressNextRender = false;
-    }
-    // mousedown/touchstart (not click) fire before the input's blur, and preventDefault on them
-    // stops that blur from happening at all — the standard pattern for a custom dropdown that
-    // shouldn't steal focus away from the field it belongs to.
-    function onPick(ev){
-      var row = ev.target.closest(".comboboxOption");
-      if(!row) return;
-      ev.preventDefault();
-      selectIndex(Number(row.getAttribute("data-idx")));
-    }
-    panel.addEventListener("mousedown", onPick);
-    panel.addEventListener("touchstart", onPick, { passive: false });
-
-    inputEl.addEventListener("focus", render);
-    inputEl.addEventListener("input", render);
-    inputEl.addEventListener("keydown", function(ev){
-      if(panel.hidden) return;
-      if(ev.key === "ArrowDown"){
-        ev.preventDefault();
-        setActive(Math.min(activeIndex + 1, currentOptions.length - 1));
-      } else if(ev.key === "ArrowUp"){
-        ev.preventDefault();
-        setActive(Math.max(activeIndex - 1, 0));
-      } else if(ev.key === "Enter"){
-        if(activeIndex >= 0){ ev.preventDefault(); selectIndex(activeIndex); }
-      } else if(ev.key === "Escape"){
-        close();
-      }
-    });
-    // A blur not already intercepted by onPick's preventDefault (e.g. tapping some other field)
-    // means the person is done here — close after a short delay so a genuine tap on an option
-    // still has time to register first.
-    inputEl.addEventListener("blur", function(){ setTimeout(close, 150); });
-
-    var api = { render: render, close: close, refreshIfOpen: function(){ if(!panel.hidden) render(); } };
-    return api;
+    html += '<option value="' + ADD_NEW_VALUE + '">+ Add new…</option>';
+    return html;
   }
-  var customerCombo = makeCombobox(el.f_clientname, function(){
-    return Object.keys(state.catalog.customers || {}).sort(catalogSortCmp).map(formatCustomerName);
-  });
-  var productCombo = makeCombobox(el.f_product, function(){
+  function buildCustomerOptionsHtml(rawSelected){
+    var names = Object.keys(state.catalog.customers || {}).sort(catalogSortCmp);
+    return buildCatalogOptionsHtml(names, formatCustomerName, findCanonicalCustomer, rawSelected);
+  }
+  function buildProductOptionsHtml(canonicalCustomer, rawSelected){
+    var names = canonicalCustomer ? Object.keys((state.catalog.customers[canonicalCustomer] || {}).products || {}) : [];
+    names.sort(catalogSortCmp);
+    return buildCatalogOptionsHtml(names, formatProductName, function(typed){ return findCanonicalProduct(canonicalCustomer, typed); }, rawSelected);
+  }
+  // Rebuilds a select's options while preserving whatever it currently holds (used both for a
+  // fresh Firestore snapshot arriving and for the general refresh calls elsewhere in the file) —
+  // plain innerHTML replacement would otherwise silently reset the selection.
+  function refreshCustomerNameOptions(){
+    var current = el.f_clientname.value;
+    el.f_clientname.innerHTML = buildCustomerOptionsHtml(current);
+    el.f_clientname.value = current;
+  }
+  function refreshProductNameOptions(){
     var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
-    var products = canonicalCustomer ? Object.keys((state.catalog.customers[canonicalCustomer] || {}).products || {}) : [];
-    return products.sort(catalogSortCmp).map(formatProductName);
-  });
-  // Closing on scroll (rather than continuously repositioning) keeps this simple: the modal body
-  // itself scrolls (see .modal{overflow-y:auto}), which would otherwise leave a fixed-position
-  // panel visually detached from the field it belongs to.
-  el.entryForm.addEventListener("scroll", function(){ customerCombo.close(); productCombo.close(); }, { passive: true });
-  window.addEventListener("resize", function(){ customerCombo.close(); productCombo.close(); });
-  // Kept as thin wrappers (rather than updating every call site below and in subscribeCatalog) —
-  // a Firestore snapshot can arrive while one of the dropdowns happens to already be open, and
-  // this keeps it showing up-to-date suggestions instead of a stale list.
-  function refreshCustomerNameOptions(){ customerCombo.refreshIfOpen(); }
-  function refreshProductNameOptions(){ productCombo.refreshIfOpen(); }
+    var current = el.f_product.value;
+    el.f_product.innerHTML = buildProductOptionsHtml(canonicalCustomer, current);
+    el.f_product.value = current;
+  }
+  // Used by openModal (and anywhere else that needs to set these fields programmatically, rather
+  // than via the person picking from the list) — rebuilds the options around the raw value FIRST
+  // so it's guaranteed to be selectable, then resolves it to its formatted canonical form when
+  // one exists (so an older entry saved with different casing still displays the clean, current
+  // formatting rather than its own raw casing).
+  function setClientNameField(rawValue){
+    var raw = rawValue || "";
+    el.f_clientname.innerHTML = buildCustomerOptionsHtml(raw);
+    var canonical = findCanonicalCustomer(raw);
+    el.f_clientname.value = canonical ? formatCustomerName(canonical) : raw;
+  }
+  function setProductField(rawValue){
+    var raw = rawValue || "";
+    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
+    el.f_product.innerHTML = buildProductOptionsHtml(canonicalCustomer, raw);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, raw);
+    el.f_product.value = canonicalProduct ? formatProductName(canonicalProduct) : raw;
+  }
+  // Adds a new option (just before the "+ Add new…" sentinel) if the select doesn't already have
+  // one with this exact value, then selects it.
+  function addOptionAndSelect(selectEl, value){
+    var already = Array.prototype.some.call(selectEl.options, function(o){ return o.value === value; });
+    if(!already){
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value;
+      var sentinel = selectEl.querySelector('option[value="' + ADD_NEW_VALUE + '"]');
+      selectEl.insertBefore(opt, sentinel);
+    }
+    selectEl.value = value;
+  }
+  var lastClientNameValue = "";
+  var lastProductValue = "";
+  function handleClientNameChange(){
+    if(el.f_clientname.value === ADD_NEW_VALUE){
+      var name = window.prompt("Enter the new customer's name:", "");
+      if(name && name.trim()){
+        addOptionAndSelect(el.f_clientname, formatCustomerName(name));
+      } else {
+        el.f_clientname.value = lastClientNameValue; // cancelled/blank — revert instead of leaving the sentinel selected
+      }
+    }
+    lastClientNameValue = el.f_clientname.value;
+    refreshProductNameOptions();
+    applyCatalogAutofill();
+  }
+  function handleProductChange(){
+    if(el.f_product.value === ADD_NEW_VALUE){
+      var name = window.prompt("Enter the new product's name:", "");
+      if(name && name.trim()){
+        addOptionAndSelect(el.f_product, formatProductName(name));
+      } else {
+        el.f_product.value = lastProductValue;
+      }
+    }
+    lastProductValue = el.f_product.value;
+    applyCatalogAutofill();
+  }
+  el.f_clientname.addEventListener("change", handleClientNameChange);
+  el.f_product.addEventListener("change", handleProductChange);
   // Called whenever either field changes — handles picking Customer then Product, or (less
   // common, but harmless to support) typing/pasting a known Product before choosing its Customer.
   function applyCatalogAutofill(){
@@ -2123,11 +2093,6 @@
       if(window.console) console.error("Catalog subscription failed:", err);
     });
   }
-  el.f_clientname.addEventListener("input", function(){
-    refreshProductNameOptions();
-    applyCatalogAutofill();
-  });
-  el.f_product.addEventListener("input", applyCatalogAutofill);
   // QC has the right to stop and hold a job at ANY production stage if something fails — every
   // stage except the two non-production department columns (House keeping, HR_Man Power) gets
   // the Hold switch.
@@ -3699,7 +3664,6 @@
     el.f_shift.value = entry ? entry.shift : state.shift;
     el.f_stage.value = targetStage;
     el.f_stage.disabled = deviceLocked && allowedStages.length <= 1;
-    el.f_product.value = entry ? (entry.productName||"") : "";
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
     el.f_artworkno.value = entry ? (entry.artworkNo||"") : "";
     el.artworkCheckNoDisplay.textContent = (entry && entry.artworkNo) ? entry.artworkNo : "—";
@@ -3727,7 +3691,13 @@
     // unlike the Pass/Fail switches, it's a problem flag, not something that starts out "passed".
     el.f_hold.checked = !!(entry && entry.onHold);
     el.f_remarks.value = entry ? (entry.remarks||"") : "";
-    el.f_clientname.value = entry ? (entry.clientName || "") : "";
+    // Customer Name is set before Product Name deliberately — Product Name's option list is
+    // scoped to whichever Customer is currently selected (see buildProductOptionsHtml), so it has
+    // to be resolved first for the entry's own product to end up selectable.
+    setClientNameField(entry ? (entry.clientName || "") : "");
+    setProductField(entry ? (entry.productName || "") : "");
+    lastClientNameValue = el.f_clientname.value;
+    lastProductValue = el.f_product.value;
     el.f_invoiceno.value = entry ? (entry.invoiceNo || "") : "";
     el.f_vehicleno.value = entry ? (entry.vehicleNumber || "") : "";
     el.f_driver.value = entry ? (entry.driver || "") : "";
@@ -3799,10 +3769,6 @@
     state.editingId = null;
     el.entryForm.reset();
     syncFDateLabel();
-    // The Customer Name/Product Name suggestion panels are appended to <body>, outside the modal
-    // itself, so hiding the modal alone wouldn't hide an open one — close explicitly.
-    customerCombo.close();
-    productCombo.close();
   }
   // Cancel/Escape/overlay-click all abandon the edit rather than save it, so any brand-new
   // attachment upload from this session (never referenced by a saved entry) gets cleaned up —
