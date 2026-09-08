@@ -391,6 +391,15 @@
   .attachmentThumb{max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line-strong);display:block;}
   .attachmentFileLink{font-size:13px;color:var(--accent);text-decoration:none;}
   .attachmentFileLink:hover{text-decoration:underline;}
+  /* Multi-page PDF capture: every page rendered as its own image, shown as a small scrollable
+     row of thumbnails (see capturePdfPages / renderPreview in the script). */
+  .attachmentPageRow{display:flex;gap:8px;flex-wrap:wrap;max-width:420px;}
+  .attachmentPageThumbWrap{position:relative;display:block;flex:none;}
+  .attachmentPageThumbWrap .attachmentThumb{max-width:90px;max-height:90px;}
+  .attachmentPageNo{
+    position:absolute;right:2px;bottom:2px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;
+    line-height:1;padding:2px 4px;border-radius:4px;
+  }
   .attachmentRemoveBtn{
     border:1px solid var(--line-strong);background:var(--surface);color:var(--crit);border-radius:999px;
     width:22px;height:22px;line-height:1;cursor:pointer;font-size:13px;flex:none;
@@ -954,6 +963,9 @@
 <!-- Firebase (self-hosted backend — replaces Claude's live db) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- pdf.js: renders each page of an uploaded PDF to an image so it can be captured/saved the same
+     way a photo is (see capturePdfPages below) instead of relying on each device's own PDF viewer. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <script>
 (function(){
@@ -974,6 +986,9 @@
   // files saved directly as fields on the Firestore entry document — see makeAttachmentController
   // below for why (Firebase Storage now requires a paid Blaze plan) and the size limit that keeps
   // this within Firestore's 1MB per-document cap.
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
 
   // Ask the browser to treat this site's local storage (device stage/login setup) as
   // persistent rather than "best-effort" — on mobile Chrome/Android in particular, best-effort
@@ -1114,6 +1129,10 @@
       attach_capture_btn: "📷 Capture", attach_upload_btn: "📎 Upload",
       attach_uploading: "Uploading…", attach_err_filetype: "Only images or PDF files are allowed.",
       attach_err_toolarge: "File is too large (max 600KB).", attach_err_upload: "Could not read this file. Please try again.",
+      attach_processing_pdf: "Capturing pages…", attach_err_pdflib: "PDF tools failed to load. Check your connection and try again.",
+      attach_err_pdf_source_toolarge: "This PDF is too large to process (max 20MB).",
+      attach_err_pdf_toomanypages: "This PDF has too many pages (max {max}). Please split it and upload separately.",
+      attach_err_pdf_rendered_toolarge: "Captured pages are too large to save. Try a shorter PDF or fewer pages.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
@@ -1230,6 +1249,10 @@
       attach_capture_btn: "📷 कैप्चर करें", attach_upload_btn: "📎 अपलोड करें",
       attach_uploading: "अपलोड हो रहा है…", attach_err_filetype: "केवल इमेज या PDF फ़ाइलें ही मान्य हैं।",
       attach_err_toolarge: "फ़ाइल बहुत बड़ी है (अधिकतम 600KB)।", attach_err_upload: "इस फ़ाइल को पढ़ा नहीं जा सका। कृपया फिर से कोशिश करें।",
+      attach_processing_pdf: "पेज कैप्चर हो रहे हैं…", attach_err_pdflib: "PDF टूल्स लोड नहीं हो पाए। कृपया अपना कनेक्शन जांचें और फिर से कोशिश करें।",
+      attach_err_pdf_source_toolarge: "यह PDF प्रोसेस करने के लिए बहुत बड़ी है (अधिकतम 20MB)।",
+      attach_err_pdf_toomanypages: "इस PDF में बहुत ज़्यादा पेज हैं (अधिकतम {max})। कृपया इसे अलग-अलग करके अपलोड करें।",
+      attach_err_pdf_rendered_toolarge: "कैप्चर किए गए पेज सेव करने के लिए बहुत बड़े हैं। कोई छोटी PDF या कम पेज आज़माएं।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
@@ -1346,6 +1369,10 @@
       attach_capture_btn: "📷 క్యాప్చర్", attach_upload_btn: "📎 అప్‌లోడ్",
       attach_uploading: "అప్‌లోడ్ అవుతోంది…", attach_err_filetype: "చిత్రాలు లేదా PDF ఫైళ్లు మాత్రమే అనుమతించబడతాయి.",
       attach_err_toolarge: "ఫైల్ చాలా పెద్దది (గరిష్టం 600KB).", attach_err_upload: "ఈ ఫైల్‌ను చదవలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      attach_processing_pdf: "పేజీలు క్యాప్చర్ అవుతున్నాయి…", attach_err_pdflib: "PDF టూల్స్ లోడ్ కాలేదు. దయచేసి మీ కనెక్షన్‌ని చెక్ చేసి మళ్లీ ప్రయత్నించండి.",
+      attach_err_pdf_source_toolarge: "ఈ PDF ప్రాసెస్ చేయడానికి చాలా పెద్దది (గరిష్టం 20MB).",
+      attach_err_pdf_toomanypages: "ఈ PDF‌లో పేజీలు ఎక్కువగా ఉన్నాయి (గరిష్టం {max}). దయచేసి దీన్ని వేరు చేసి విడివిడిగా అప్‌లోడ్ చేయండి.",
+      attach_err_pdf_rendered_toolarge: "క్యాప్చర్ చేసిన పేజీలు సేవ్ చేయడానికి చాలా పెద్దవి. చిన్న PDF లేదా తక్కువ పేజీలు ప్రయత్నించండి.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
@@ -2672,16 +2699,41 @@
     var result = pass === false ? t("pf_fail") : t("pf_pass");
     return (clientVal || "—") + " / " + (visipakVal || "—") + " (" + result + ")";
   }
-  // Images render fine when opened this way in a new tab; PDFs don't reliably in every browser
-  // (some show a blank tab instead of the PDF viewer for a data: URL opened via target="_blank"),
-  // so a PDF link forces a real download instead — that always works.
+  // A PDF attachment is captured page-by-page as images (see capturePdfPages) and saved as a
+  // JSON string — {v:2, pages:[dataUrl, ...]} — inside the same flat field a plain data: URL used
+  // to live in, so the existing Firestore single-field exemption still covers it with no extra
+  // console setup. Anything that isn't that JSON shape (a plain "data:...;base64,..." string) is
+  // either an image (never wrapped) or a PDF saved before page-capture existed — both are handled
+  // by their callers as a single legacy value instead.
+  function parseAttachmentPages(data, type){
+    if(!data || (type && type.indexOf("image/") === 0)) return null;
+    try {
+      var parsed = JSON.parse(data);
+      if(parsed && parsed.pages && parsed.pages.length) return parsed.pages;
+    } catch(e){ /* not JSON — a legacy raw PDF data: URL */ }
+    return null;
+  }
+  // Images render fine when opened this way in a new tab. A captured (page-images) PDF links to
+  // each page's image the same way. A legacy PDF saved before page-capture existed still uses a
+  // "download" link instead — some browsers show a blank tab rather than the PDF viewer for a
+  // data: URL opened via target="_blank", but a forced download always works.
   function attachmentLinkHtml(data, name, type){
     if(!data) return "";
     var isImage = type && type.indexOf("image/") === 0;
-    var label = name || (isImage ? "view" : "download");
-    return isImage
-      ? '<a href="' + esc(data) + '" target="_blank" rel="noopener">📎 ' + esc(label) + '</a>'
-      : '<a href="' + esc(data) + '" download="' + esc(name || "file.pdf") + '">📎 ' + esc(label) + '</a>';
+    if(isImage){
+      return '<a href="' + esc(data) + '" target="_blank" rel="noopener">📎 ' + esc(name || "view") + '</a>';
+    }
+    var pages = parseAttachmentPages(data, type);
+    if(pages){
+      var first = '<a href="' + esc(pages[0]) + '" target="_blank" rel="noopener">📎 ' + esc(name || "page") +
+        (pages.length > 1 ? " (1/" + pages.length + ")" : "") + '</a>';
+      if(pages.length === 1) return first;
+      var rest = pages.slice(1).map(function(pageData, i){
+        return '<a href="' + esc(pageData) + '" target="_blank" rel="noopener">' + (i + 2) + '</a>';
+      }).join(" ");
+      return first + " " + rest;
+    }
+    return '<a href="' + esc(data) + '" download="' + esc(name || "file.pdf") + '">📎 ' + esc(name || "download") + '</a>';
   }
   // Wrapped in a hoisted function (rather than a plain "var X = {...}") and cached on first call:
   // applyDeviceStage() below calls renderLog() synchronously during page init, before the script
@@ -3070,18 +3122,92 @@
   // involved at all) and saved directly as a field on the Firestore entry document. Firestore
   // caps a whole document at 1MB, so the file-size limit below is deliberately small.
   //
-  // Saved value shape: { data, name, type } | null — data is a "data:<mime>;base64,...." string,
-  // directly usable as an <img src> or an <a href> with no separate download step.
+  // Saved value shape: { data, name, type } | null.
+  //   - Image: data is a plain "data:image/...;base64,...." string, usable directly as an <img src>.
+  //   - PDF: every page is captured as its own JPEG image (see capturePdfPages) rather than saving
+  //     the raw PDF bytes, so it always opens as pictures instead of depending on whatever PDF
+  //     viewer (or lack of one) a factory-floor device happens to have. data is the JSON string
+  //     '{"v":2,"pages":["data:image/jpeg;base64,...", ...]}' — still just one string field as far
+  //     as Firestore is concerned. A PDF saved before this existed is still a raw
+  //     "data:application/pdf;base64,...." string; parseAttachmentPages()'s JSON.parse fails on
+  //     that (it's not JSON) and callers fall back to treating it as one legacy value.
   //
   // IMPORTANT — this field must be exempted from Firestore's automatic single-field indexing
   // (Firestore Console -> Firestore Database -> Indexes -> Single field -> Add exemption, field
   // path exactly matching the flat field name used below, e.g. "artworkCheckAttachmentData").
   // Without that exemption Firestore rejects any write containing a value over 1,500 bytes in an
-  // indexed field, and a base64 photo is always far larger than that.
+  // indexed field, and a base64 photo (or a page-images JSON string) is always far larger than that.
   //
   // Because nothing is written anywhere until the whole entry is saved (unlike the old Storage
   // version, there's no separate remote file to leave orphaned), commit()/discard()/discardAll()
   // below are just simple local bookkeeping now — no network cleanup calls needed.
+  var PDF_CAPTURE_MAX_PAGES = 8;
+  var PDF_CAPTURE_SCALE = 1.15;
+  var PDF_CAPTURE_JPEG_QUALITY = 0.55;
+  // Combined budget for every page image together, left well under Firestore's 1MB document cap
+  // once the rest of the entry's own fields are added on top.
+  var PDF_CAPTURE_MAX_TOTAL_BYTES = 700 * 1024;
+  // Guards against trying to load an absurdly large source PDF into the browser's memory at all —
+  // this is about the original file pdf.js has to parse, not the (much smaller) captured output.
+  var PDF_CAPTURE_MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+
+  // Renders every page of `file` (a PDF) to a JPEG data: URL using pdf.js, entirely client-side —
+  // no network call beyond the one-time pdf.js/worker script load. Calls back(errorMessage) on
+  // failure, or back(null, pagesArray) on success.
+  function capturePdfPages(file, callback){
+    if(!window.pdfjsLib){
+      callback(t("attach_err_pdflib"));
+      return;
+    }
+    var reader = new FileReader();
+    reader.onerror = function(){
+      callback(t("attach_err_upload"));
+    };
+    reader.onload = function(){
+      var loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(reader.result) });
+      loadingTask.promise.then(function(pdf){
+        if(pdf.numPages > PDF_CAPTURE_MAX_PAGES){
+          callback(tf("attach_err_pdf_toomanypages", { max: PDF_CAPTURE_MAX_PAGES }));
+          return;
+        }
+        var pages = [];
+        function renderPage(pageNum){
+          if(pageNum > pdf.numPages){
+            var totalBytes = 0;
+            for(var i = 0; i < pages.length; i++) totalBytes += pages[i].length;
+            if(totalBytes > PDF_CAPTURE_MAX_TOTAL_BYTES){
+              callback(t("attach_err_pdf_rendered_toolarge"));
+              return;
+            }
+            callback(null, pages);
+            return;
+          }
+          pdf.getPage(pageNum).then(function(page){
+            var viewport = page.getViewport({ scale: PDF_CAPTURE_SCALE });
+            var canvas = document.createElement("canvas");
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            page.render({ canvasContext: canvas.getContext("2d"), viewport: viewport }).promise.then(function(){
+              pages.push(canvas.toDataURL("image/jpeg", PDF_CAPTURE_JPEG_QUALITY));
+              renderPage(pageNum + 1);
+            }, function(renderErr){
+              callback(t("attach_err_upload"));
+              if(window.console) console.error("PDF page render failed:", renderErr);
+            });
+          }, function(pageErr){
+            callback(t("attach_err_upload"));
+            if(window.console) console.error("PDF page load failed:", pageErr);
+          });
+        }
+        renderPage(1);
+      }, function(loadErr){
+        callback(t("attach_err_upload"));
+        if(window.console) console.error("PDF load failed:", loadErr);
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
   function makeAttachmentController(cfg){
     var current = null;
     var originalValue = null;
@@ -3103,15 +3229,26 @@
       }
       previewEl.hidden = false;
       var isImage = current.type && current.type.indexOf("image/") === 0;
-      previewEl.innerHTML = (isImage
-        ? '<a href="' + esc(current.data) + '" target="_blank" rel="noopener"><img src="' + esc(current.data) + '" class="attachmentThumb" alt=""></a>'
-        // PDFs use a "download" link rather than target="_blank" — some browsers show a blank
-        // tab instead of rendering a PDF opened this way from a data: URL, but a forced download
-        // always works and the file opens fine once it lands in Downloads.
-        : '<a href="' + esc(current.data) + '" download="' + esc(current.name || "file.pdf") + '" class="attachmentFileLink">📄 ' + esc(current.name || "file.pdf") + ' (download)</a>'
-      ) + '<button type="button" class="attachmentRemoveBtn" title="Remove">✕</button>';
+      var pages = isImage ? null : parseAttachmentPages(current.data, current.type);
+      var bodyHtml;
+      if(isImage){
+        bodyHtml = '<a href="' + esc(current.data) + '" target="_blank" rel="noopener"><img src="' + esc(current.data) + '" class="attachmentThumb" alt=""></a>';
+      } else if(pages){
+        // Captured PDF pages: a small row of page thumbnails, each opening full-size in a new tab.
+        bodyHtml = '<div class="attachmentPageRow">' + pages.map(function(pageData, i){
+          return '<a href="' + esc(pageData) + '" target="_blank" rel="noopener" class="attachmentPageThumbWrap">' +
+            '<img src="' + esc(pageData) + '" class="attachmentThumb" alt="">' +
+            '<span class="attachmentPageNo">' + (i + 1) + '/' + pages.length + '</span></a>';
+        }).join("") + '</div>';
+      } else {
+        // A PDF saved before page-capture existed — still just a forced download. Some browsers
+        // show a blank tab instead of the PDF viewer for a data: URL opened via target="_blank",
+        // but a forced download always works and the file opens fine once it lands in Downloads.
+        bodyHtml = '<a href="' + esc(current.data) + '" download="' + esc(current.name || "file.pdf") + '" class="attachmentFileLink">📄 ' + esc(current.name || "file.pdf") + ' (download)</a>';
+      }
+      previewEl.innerHTML = bodyHtml + '<button type="button" class="attachmentRemoveBtn" title="Remove">✕</button>';
       var removeBtn = previewEl.querySelector(".attachmentRemoveBtn");
-      // Same permission gate as the Capture/Upload buttons — viewing the attachment (the link
+      // Same permission gate as the Capture/Upload buttons — viewing the attachment (the link(s)
       // above) stays available either way, but removing it doesn't when this device can't edit
       // this block's QC-only fields.
       removeBtn.hidden = cameraBtn.disabled;
@@ -3123,27 +3260,44 @@
 
     function upload(file){
       if(!file) return;
-      var okType = file.type === "application/pdf" || file.type.indexOf("image/") === 0;
-      if(!okType){ setStatus(t("attach_err_filetype")); return; }
-      // Kept well under Firestore's 1MB document cap even after base64 inflates the file by
-      // ~33% and the rest of the entry's own fields are added on top.
-      var maxBytes = 600 * 1024;
-      if(file.size > maxBytes){ setStatus(t("attach_err_toolarge")); return; }
-      setStatus(t("attach_uploading"));
+      var isImage = file.type.indexOf("image/") === 0;
+      var isPdf = file.type === "application/pdf";
+      if(!isImage && !isPdf){ setStatus(t("attach_err_filetype")); return; }
+
+      if(isImage){
+        // Kept well under Firestore's 1MB document cap even after base64 inflates the file by
+        // ~33% and the rest of the entry's own fields are added on top.
+        var maxBytes = 600 * 1024;
+        if(file.size > maxBytes){ setStatus(t("attach_err_toolarge")); return; }
+        setStatus(t("attach_uploading"));
+        setBusy(true);
+        var reader = new FileReader();
+        reader.onload = function(){
+          current = { data: reader.result, name: file.name, type: file.type };
+          setStatus("");
+          setBusy(false);
+          renderPreview();
+        };
+        reader.onerror = function(){
+          setStatus(t("attach_err_upload"));
+          setBusy(false);
+          if(window.console) console.error("Attachment read failed:", reader.error);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // PDF: capture every page as an image instead of saving the raw file (see capturePdfPages).
+      if(file.size > PDF_CAPTURE_MAX_SOURCE_BYTES){ setStatus(t("attach_err_pdf_source_toolarge")); return; }
+      setStatus(t("attach_processing_pdf"));
       setBusy(true);
-      var reader = new FileReader();
-      reader.onload = function(){
-        current = { data: reader.result, name: file.name, type: file.type };
+      capturePdfPages(file, function(err, pages){
+        setBusy(false);
+        if(err){ setStatus(err); return; }
+        current = { data: JSON.stringify({ v: 2, pages: pages }), name: file.name, type: file.type };
         setStatus("");
-        setBusy(false);
         renderPreview();
-      };
-      reader.onerror = function(){
-        setStatus(t("attach_err_upload"));
-        setBusy(false);
-        if(window.console) console.error("Attachment read failed:", reader.error);
-      };
-      reader.readAsDataURL(file);
+      });
     }
 
     cameraBtn.addEventListener("click", function(){ cameraInput.click(); });
