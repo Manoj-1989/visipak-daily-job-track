@@ -340,6 +340,17 @@
   }
   .modalOverlay[hidden]{display:none;}
   #deleteConfirmOverlay{z-index:30;}
+  /* Full-size attachment viewer (see openLightbox in the script) — always on top of everything
+     else, including the entry modal and the delete-confirm overlay, since it can be opened from
+     either. */
+  .lightboxOverlay{z-index:40;background:rgba(0,0,0,.8);padding:24px;cursor:zoom-out;}
+  .lightboxBox{position:relative;max-width:100%;max-height:100%;}
+  .lightboxBox img{display:block;max-width:100%;max-height:85vh;border-radius:6px;box-shadow:0 12px 32px rgba(0,0,0,.4);cursor:default;}
+  .lightboxCloseBtn{
+    position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:999px;
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer;
+    font-size:15px;line-height:1;
+  }
   .modal{
     background:var(--surface);border-radius:12px;padding:22px 24px;width:100%;max-width:480px;
     box-shadow:0 12px 32px rgba(0,0,0,.25);border:1px solid var(--line);
@@ -388,7 +399,10 @@
   .attachBtn:disabled{opacity:.55;cursor:not-allowed;}
   .attachStatus{font-size:12px;color:var(--ink-soft);}
   .attachmentPreview{margin-top:8px;display:flex;align-items:center;gap:10px;}
-  .attachmentThumb{max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line-strong);display:block;}
+  .attachmentThumb{max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line-strong);display:block;cursor:zoom-in;}
+  /* Small inline thumbnail used in the Log table (see attachmentLinkHtml) — click opens the same
+     full-size viewer as the modal's thumbnails (see openLightbox / #logBody's click listener). */
+  .logAttachmentThumb{width:28px;height:28px;object-fit:cover;border-radius:5px;border:1px solid var(--line-strong);cursor:zoom-in;vertical-align:middle;margin-right:2px;}
   .attachmentFileLink{font-size:13px;color:var(--accent);text-decoration:none;}
   .attachmentFileLink:hover{text-decoration:underline;}
   /* Multi-page PDF capture: every page rendered as its own image, shown as a small scrollable
@@ -958,6 +972,17 @@
       <button type="submit" class="btn primary" id="saveBtn" data-i18n="generic_save">Save</button>
     </div>
   </form>
+</div>
+
+<!-- Full-size viewer for a Client Specifications attachment (a photo, or one page of a captured
+     PDF) — see openLightbox in the script. Shows the image in place instead of navigating to it,
+     because Chrome can silently fail to open a large data: URL in a new tab (a blank tab) even
+     though the very same data displays fine as an <img>, as it does here. -->
+<div class="modalOverlay lightboxOverlay" id="lightboxOverlay" hidden>
+  <div class="lightboxBox">
+    <img id="lightboxImg" src="" alt="">
+    <button type="button" class="lightboxCloseBtn" id="lightboxCloseBtn" title="Close">✕</button>
+  </div>
 </div>
 
 <!-- Firebase (self-hosted backend — replaces Claude's live db) -->
@@ -1546,6 +1571,9 @@
     exportBtn: document.getElementById("exportBtn"),
     banner: document.getElementById("statusBanner"),
     modalOverlay: document.getElementById("modalOverlay"),
+    lightboxOverlay: document.getElementById("lightboxOverlay"),
+    lightboxImg: document.getElementById("lightboxImg"),
+    lightboxCloseBtn: document.getElementById("lightboxCloseBtn"),
     entryForm: document.getElementById("entryForm"),
     modalTitle: document.getElementById("modalTitle"),
     readOnlyNote: document.getElementById("readOnlyNote"),
@@ -2713,34 +2741,27 @@
     } catch(e){ /* not JSON — a legacy raw PDF data: URL */ }
     return null;
   }
-  // A single small photo (the original attachment type) renders fine opened this way in a new tab.
-  // A captured PDF page image is usually a much larger data: URL (a whole page at a decent
-  // resolution), and Chrome/Chromium in particular can silently fail to navigate a new tab to a
-  // very large data: URL — it opens a blank tab instead of showing the image (the same family of
-  // issue as the earlier raw-PDF blank-tab bug), even though the very same data displays fine as
-  // a small <img> thumbnail. A forced "download" link sidesteps that entirely and always works, so
-  // every per-page link below uses one instead of target="_blank". A legacy PDF saved before
-  // page-capture existed already used a download link for the same reason (some browsers show a
-  // blank tab instead of the PDF viewer for a data: URL opened via target="_blank").
-  function pageImageFileName(name, pageIndex, totalPages){
-    var base = (name || "attachment").replace(/\.pdf$/i, "");
-    return esc(base) + " - page " + (pageIndex + 1) + " of " + totalPages + ".jpg";
-  }
+  // A photo, or one page of a captured PDF, is shown here as a small clickable thumbnail — clicking
+  // it opens the full-size image in the in-page lightbox (see openLightbox and #logBody's click
+  // listener below) rather than navigating to the data: URL directly. Chrome can silently fail to
+  // open a large data: URL in a new tab (a blank tab), even though the very same data displays
+  // fine as an <img> right here, so viewing it in place — instead of downloading it or navigating
+  // to it — is both the most reliable option and the one that actually lets someone glance at it
+  // without managing a downloaded file. A legacy PDF saved before page-capture existed has no
+  // image to show at all, so that one is still just a "download" link (there's no reliable way to
+  // preview a raw PDF's bytes without a PDF-viewer widget, and it's an old-data-only case).
   function attachmentLinkHtml(data, name, type){
     if(!data) return "";
     var isImage = type && type.indexOf("image/") === 0;
     if(isImage){
-      return '<a href="' + esc(data) + '" target="_blank" rel="noopener">📎 ' + esc(name || "view") + '</a>';
+      return '<img src="' + esc(data) + '" class="logAttachmentThumb" data-fullsrc="' + esc(data) + '" title="' + esc(name || "View") + '">';
     }
     var pages = parseAttachmentPages(data, type);
     if(pages){
-      var first = '<a href="' + esc(pages[0]) + '" download="' + pageImageFileName(name, 0, pages.length) + '">📎 ' + esc(name || "page") +
-        (pages.length > 1 ? " (1/" + pages.length + ")" : "") + '</a>';
-      if(pages.length === 1) return first;
-      var rest = pages.slice(1).map(function(pageData, i){
-        return '<a href="' + esc(pageData) + '" download="' + pageImageFileName(name, i + 1, pages.length) + '">' + (i + 2) + '</a>';
-      }).join(" ");
-      return first + " " + rest;
+      return pages.map(function(pageData, i){
+        var pageTitle = (name || "Page") + " — page " + (i + 1) + " of " + pages.length;
+        return '<img src="' + esc(pageData) + '" class="logAttachmentThumb" data-fullsrc="' + esc(pageData) + '" title="' + esc(pageTitle) + '">';
+      }).join("");
     }
     return '<a href="' + esc(data) + '" download="' + esc(name || "file.pdf") + '">📎 ' + esc(name || "download") + '</a>';
   }
@@ -2936,7 +2957,14 @@
         var cls = col.cellClass ? ' class="' + col.cellClass + '"' : "";
         return "<td" + cls + ">" + col.html(e) + "</td>";
       }).join("");
-      tr.addEventListener("click", function(){ openModal(e); });
+      tr.addEventListener("click", function(ev){
+        // A click on an attachment thumbnail (see attachmentLinkHtml / the logBody lightbox
+        // listener below) views that image instead of opening this row for editing — a row's own
+        // listener fires before a listener delegated on its parent tbody would get a chance to
+        // stopPropagation, so the check has to live here instead.
+        if(ev.target.closest && ev.target.closest(".logAttachmentThumb")) return;
+        openModal(e);
+      });
       el.logBody.appendChild(tr);
     });
   }
@@ -3241,29 +3269,33 @@
       var pages = isImage ? null : parseAttachmentPages(current.data, current.type);
       var bodyHtml;
       if(isImage){
-        bodyHtml = '<a href="' + esc(current.data) + '" target="_blank" rel="noopener"><img src="' + esc(current.data) + '" class="attachmentThumb" alt=""></a>';
+        // Clicking opens the in-page lightbox (see below) rather than a new tab — Chrome can
+        // silently fail to navigate a new tab to a large data: URL, even though the same data
+        // displays fine as this <img>.
+        bodyHtml = '<img src="' + esc(current.data) + '" class="attachmentThumb" alt="" data-fullsrc="' + esc(current.data) + '">';
       } else if(pages){
-        // Captured PDF pages: a small row of page thumbnails (these always render fine — the
-        // thumbnail is just an inline <img>). Tapping one downloads the full-size page image
-        // instead of opening it in a new tab — Chrome can silently fail to navigate a new tab to
-        // a large data: URL (blank tab, even though the same data displays fine as a thumbnail
-        // right here), so a forced download is used instead, same fix as the legacy-PDF link below.
+        // Captured PDF pages: a small row of page thumbnails, each opening full-size in the
+        // lightbox on click (same reasoning as the image case above).
         bodyHtml = '<div class="attachmentPageRow">' + pages.map(function(pageData, i){
-          return '<a href="' + esc(pageData) + '" download="' + pageImageFileName(current.name, i, pages.length) + '" class="attachmentPageThumbWrap">' +
-            '<img src="' + esc(pageData) + '" class="attachmentThumb" alt="">' +
-            '<span class="attachmentPageNo">' + (i + 1) + '/' + pages.length + '</span></a>';
+          return '<span class="attachmentPageThumbWrap">' +
+            '<img src="' + esc(pageData) + '" class="attachmentThumb" alt="" data-fullsrc="' + esc(pageData) + '">' +
+            '<span class="attachmentPageNo">' + (i + 1) + '/' + pages.length + '</span></span>';
         }).join("") + '</div>';
       } else {
-        // A PDF saved before page-capture existed — still just a forced download. Some browsers
-        // show a blank tab instead of the PDF viewer for a data: URL opened via target="_blank",
-        // but a forced download always works and the file opens fine once it lands in Downloads.
+        // A PDF saved before page-capture existed — no image to preview, so still just a forced
+        // download. Some browsers show a blank tab instead of the PDF viewer for a data: URL
+        // opened via target="_blank", but a forced download always works and the file opens fine
+        // once it lands in Downloads.
         bodyHtml = '<a href="' + esc(current.data) + '" download="' + esc(current.name || "file.pdf") + '" class="attachmentFileLink">📄 ' + esc(current.name || "file.pdf") + ' (download)</a>';
       }
       previewEl.innerHTML = bodyHtml + '<button type="button" class="attachmentRemoveBtn" title="Remove">✕</button>';
+      previewEl.querySelectorAll(".attachmentThumb[data-fullsrc]").forEach(function(img){
+        img.addEventListener("click", function(){ openLightbox(img.getAttribute("data-fullsrc")); });
+      });
       var removeBtn = previewEl.querySelector(".attachmentRemoveBtn");
-      // Same permission gate as the Capture/Upload buttons — viewing the attachment (the link(s)
-      // above) stays available either way, but removing it doesn't when this device can't edit
-      // this block's QC-only fields.
+      // Same permission gate as the Capture/Upload buttons — viewing the attachment (the
+      // thumbnail(s)/link above) stays available either way, but removing it doesn't when this
+      // device can't edit this block's QC-only fields.
       removeBtn.hidden = cameraBtn.disabled;
       removeBtn.addEventListener("click", function(){
         current = null;
@@ -3505,9 +3537,39 @@
   el.modalOverlay.addEventListener("click", function(ev){
     if(ev.target === el.modalOverlay) cancelModal();
   });
+
+  // ---------- Attachment lightbox (full-size view of a photo or a captured PDF page) ----------
+  // Shows the image in place rather than navigating to its data: URL or downloading it — see the
+  // makeAttachmentController and attachmentLinkHtml comments above for why a new tab isn't
+  // reliable here. Sits above everything else (including the entry modal and delete-confirm
+  // overlay, see .lightboxOverlay's z-index) since it can be opened from either.
+  function openLightbox(src){
+    if(!src) return;
+    el.lightboxImg.src = src;
+    el.lightboxOverlay.hidden = false;
+  }
+  function closeLightbox(){
+    el.lightboxOverlay.hidden = true;
+    el.lightboxImg.src = "";
+  }
+  el.lightboxCloseBtn.addEventListener("click", closeLightbox);
+  el.lightboxOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.lightboxOverlay) closeLightbox();
+  });
+  // Delegated once on the Log table's body (rather than re-attached after every renderLog()) since
+  // attachmentLinkHtml's thumbnails are plain <img> tags inside innerHTML-rendered rows; clicking
+  // one views the attachment instead of also opening that row's entry for editing.
+  el.logBody.addEventListener("click", function(ev){
+    var thumb = ev.target.closest ? ev.target.closest(".logAttachmentThumb") : null;
+    if(!thumb) return;
+    ev.stopPropagation();
+    openLightbox(thumb.getAttribute("data-fullsrc"));
+  });
+
   document.addEventListener("keydown", function(ev){
     if(ev.key !== "Escape") return;
-    if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
+    if(!el.lightboxOverlay.hidden) closeLightbox();
+    else if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
     else if(!el.activityOverlay.hidden) el.activityOverlay.hidden = true;
     else if(!el.modalOverlay.hidden) cancelModal();
     else if(!el.profileMenu.hidden) closeProfileMenu();
