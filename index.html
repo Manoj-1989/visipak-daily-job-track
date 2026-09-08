@@ -1118,6 +1118,7 @@
       attach_capture_btn: "📷 Capture", attach_upload_btn: "📎 Upload",
       attach_uploading: "Uploading…", attach_err_filetype: "Only images or PDF files are allowed.",
       attach_err_toolarge: "File is too large (max 15MB).", attach_err_upload: "Upload failed. Please try again.",
+      attach_err_timeout: "Upload timed out. Check your internet connection, and confirm Firebase Storage is enabled for this project.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
@@ -1234,6 +1235,7 @@
       attach_capture_btn: "📷 कैप्चर करें", attach_upload_btn: "📎 अपलोड करें",
       attach_uploading: "अपलोड हो रहा है…", attach_err_filetype: "केवल इमेज या PDF फ़ाइलें ही मान्य हैं।",
       attach_err_toolarge: "फ़ाइल बहुत बड़ी है (अधिकतम 15MB)।", attach_err_upload: "अपलोड विफल रहा। कृपया फिर से कोशिश करें।",
+      attach_err_timeout: "अपलोड में बहुत समय लग गया। अपना इंटरनेट कनेक्शन जांचें और पुष्टि करें कि इस प्रोजेक्ट के लिए Firebase Storage चालू है।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
@@ -1350,6 +1352,7 @@
       attach_capture_btn: "📷 క్యాప్చర్", attach_upload_btn: "📎 అప్‌లోడ్",
       attach_uploading: "అప్‌లోడ్ అవుతోంది…", attach_err_filetype: "చిత్రాలు లేదా PDF ఫైళ్లు మాత్రమే అనుమతించబడతాయి.",
       attach_err_toolarge: "ఫైల్ చాలా పెద్దది (గరిష్టం 15MB).", attach_err_upload: "అప్‌లోడ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      attach_err_timeout: "అప్‌లోడ్ సమయం ముగిసింది. మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేయండి మరియు ఈ ప్రాజెక్ట్ కోసం Firebase Storage ఎనేబుల్ చేయబడిందని నిర్ధారించుకోండి.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
@@ -3114,17 +3117,40 @@
       var path = cfg.storageFolder + "/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "_" + safeName;
       setStatus(t("attach_uploading"));
       setBusy(true);
+      // A misconfigured or not-yet-enabled Firebase Storage bucket, or a network/firewall that
+      // silently drops the request, can otherwise leave this stuck on "Uploading..." forever with
+      // no error ever reaching the .catch() below — so race the real upload against a timeout and
+      // always land on a visible, actionable message either way.
+      var settled = false;
+      var timeoutMs = 25000;
+      var timeoutId = setTimeout(function(){
+        if(settled) return;
+        settled = true;
+        setStatus(t("attach_err_timeout"));
+        setBusy(false);
+        if(window.console) console.error("Attachment upload timed out after " + timeoutMs + "ms for path:", path);
+      }, timeoutMs);
       var ref = storageRoot.ref(path);
       ref.put(file).then(function(){
         return ref.getDownloadURL();
       }).then(function(url){
+        if(settled) return; // timeout already fired and reset the UI — don't resurrect it
+        settled = true;
+        clearTimeout(timeoutId);
         if(replacing) pendingDeletePaths.push(replacing.path);
         current = { url: url, path: path, name: file.name, type: file.type };
         setStatus("");
         setBusy(false);
         renderPreview();
       }).catch(function(err){
-        setStatus(t("attach_err_upload"));
+        if(settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        // Surface the actual Firebase error code/message alongside the friendly text — this is
+        // the fastest way to tell "Storage not enabled for this project" apart from "no internet"
+        // apart from "rules reject this write" the next time this happens.
+        var detail = err && (err.code || err.message);
+        setStatus(t("attach_err_upload") + (detail ? " (" + detail + ")" : ""));
         setBusy(false);
         if(window.console) console.error("Attachment upload failed:", err);
       });
