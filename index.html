@@ -2713,10 +2713,19 @@
     } catch(e){ /* not JSON — a legacy raw PDF data: URL */ }
     return null;
   }
-  // Images render fine when opened this way in a new tab. A captured (page-images) PDF links to
-  // each page's image the same way. A legacy PDF saved before page-capture existed still uses a
-  // "download" link instead — some browsers show a blank tab rather than the PDF viewer for a
-  // data: URL opened via target="_blank", but a forced download always works.
+  // A single small photo (the original attachment type) renders fine opened this way in a new tab.
+  // A captured PDF page image is usually a much larger data: URL (a whole page at a decent
+  // resolution), and Chrome/Chromium in particular can silently fail to navigate a new tab to a
+  // very large data: URL — it opens a blank tab instead of showing the image (the same family of
+  // issue as the earlier raw-PDF blank-tab bug), even though the very same data displays fine as
+  // a small <img> thumbnail. A forced "download" link sidesteps that entirely and always works, so
+  // every per-page link below uses one instead of target="_blank". A legacy PDF saved before
+  // page-capture existed already used a download link for the same reason (some browsers show a
+  // blank tab instead of the PDF viewer for a data: URL opened via target="_blank").
+  function pageImageFileName(name, pageIndex, totalPages){
+    var base = (name || "attachment").replace(/\.pdf$/i, "");
+    return esc(base) + " - page " + (pageIndex + 1) + " of " + totalPages + ".jpg";
+  }
   function attachmentLinkHtml(data, name, type){
     if(!data) return "";
     var isImage = type && type.indexOf("image/") === 0;
@@ -2725,11 +2734,11 @@
     }
     var pages = parseAttachmentPages(data, type);
     if(pages){
-      var first = '<a href="' + esc(pages[0]) + '" target="_blank" rel="noopener">📎 ' + esc(name || "page") +
+      var first = '<a href="' + esc(pages[0]) + '" download="' + pageImageFileName(name, 0, pages.length) + '">📎 ' + esc(name || "page") +
         (pages.length > 1 ? " (1/" + pages.length + ")" : "") + '</a>';
       if(pages.length === 1) return first;
       var rest = pages.slice(1).map(function(pageData, i){
-        return '<a href="' + esc(pageData) + '" target="_blank" rel="noopener">' + (i + 2) + '</a>';
+        return '<a href="' + esc(pageData) + '" download="' + pageImageFileName(name, i + 1, pages.length) + '">' + (i + 2) + '</a>';
       }).join(" ");
       return first + " " + rest;
     }
@@ -3234,9 +3243,13 @@
       if(isImage){
         bodyHtml = '<a href="' + esc(current.data) + '" target="_blank" rel="noopener"><img src="' + esc(current.data) + '" class="attachmentThumb" alt=""></a>';
       } else if(pages){
-        // Captured PDF pages: a small row of page thumbnails, each opening full-size in a new tab.
+        // Captured PDF pages: a small row of page thumbnails (these always render fine — the
+        // thumbnail is just an inline <img>). Tapping one downloads the full-size page image
+        // instead of opening it in a new tab — Chrome can silently fail to navigate a new tab to
+        // a large data: URL (blank tab, even though the same data displays fine as a thumbnail
+        // right here), so a forced download is used instead, same fix as the legacy-PDF link below.
         bodyHtml = '<div class="attachmentPageRow">' + pages.map(function(pageData, i){
-          return '<a href="' + esc(pageData) + '" target="_blank" rel="noopener" class="attachmentPageThumbWrap">' +
+          return '<a href="' + esc(pageData) + '" download="' + pageImageFileName(current.name, i, pages.length) + '" class="attachmentPageThumbWrap">' +
             '<img src="' + esc(pageData) + '" class="attachmentThumb" alt="">' +
             '<span class="attachmentPageNo">' + (i + 1) + '/' + pages.length + '</span></a>';
         }).join("") + '</div>';
