@@ -319,6 +319,54 @@
   }
   .cardMeta .who{font-weight:500;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
+  /* ---------- Task Board (priority scheduling board, separate from job-card entries) ---------- */
+  .taskBoard{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px;
+  }
+  .taskBoardHead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .taskBoardHead h2{font-size:12px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.07em;}
+  .taskList{display:flex;flex-direction:column;gap:8px;}
+  .taskItem{
+    background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);
+    border-radius:8px;padding:9px 10px 9px 6px;display:flex;align-items:flex-start;gap:6px;
+  }
+  .taskItem.priority-high{border-left-color:var(--crit);}
+  .taskItem.priority-medium{border-left-color:var(--warn);}
+  .taskItem.priority-low{border-left-color:var(--good);}
+  .taskItem.done{opacity:.6;}
+  /* While a task is being dragged it's lifted out of normal flow visually (shadow + slight scale)
+     so it reads clearly as "the thing that's moving" against the rest of the list, which keeps
+     rendering underneath at its live reordered position (see the pointer-based drag handler). */
+  .taskItem.dragging{box-shadow:0 8px 20px rgba(0,0,0,.2);position:relative;z-index:5;background:var(--surface);}
+  /* Drag reorder uses the Pointer Events API (pointerdown/pointermove/pointerup + setPointerCapture)
+     rather than native HTML5 drag-and-drop — HTML5 DnD does not fire reliably on mobile touch
+     browsers, which this app's factory-floor phone users depend on. touch-action:none on the
+     handle stops the browser's own scroll/pan gesture from competing with the drag. */
+  .taskDragHandle{
+    flex:none;width:28px;height:34px;display:flex;align-items:center;justify-content:center;
+    color:var(--ink-faint);cursor:grab;font-size:15px;line-height:1;touch-action:none;user-select:none;
+    border-radius:6px;letter-spacing:-1px;
+  }
+  .taskDragHandle:hover{background:var(--surface-2);color:var(--ink-soft);}
+  .taskCheck{flex:none;margin-top:10px;width:16px;height:16px;accent-color:var(--good);}
+  .taskBody{flex:1;min-width:0;cursor:pointer;padding-top:2px;}
+  .taskTitleRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .taskTitle{font-size:13px;font-weight:600;color:var(--ink);}
+  .taskItem.done .taskTitle{text-decoration:line-through;color:var(--ink-faint);}
+  .priorityBadge{
+    display:inline-block;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    padding:2px 7px;border-radius:20px;white-space:nowrap;
+  }
+  .priorityBadge.high{background:var(--crit-soft);color:var(--crit);}
+  .priorityBadge.medium{background:var(--warn-soft);color:var(--warn);}
+  .priorityBadge.low{background:var(--good-soft);color:var(--good);}
+  .taskSub{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .taskNotes{
+    font-size:11.5px;color:var(--ink-faint);margin-top:3px;
+    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  }
+
   /* ---------- Log view ---------- */
   .logView{display:flex;flex-direction:column;gap:12px;}
   .logControls{display:flex;flex-wrap:wrap;gap:10px;}
@@ -606,6 +654,20 @@
     </div>
   </div>
 
+  <!-- Priority Tasks: a separate day-planning board sitting above the production department
+       columns below. Tasks are independent planning items (not linked to job-card entries),
+       scoped to whichever date is selected up top (state.date), ordered by manual drag position
+       within that date, and each tagged High/Medium/Low priority. Anyone with device access can
+       add/reorder/complete tasks here — same access level as adding a job card. Hidden in Log view. -->
+  <section class="taskBoard" id="taskBoardSection">
+    <div class="taskBoardHead">
+      <h2 data-i18n="tasks_board_heading">Priority Tasks</h2>
+      <button class="btn ghost small" id="addTaskBtn" type="button" data-i18n="btn_add_task">+ Add Task</button>
+    </div>
+    <div class="taskList" id="taskList"></div>
+    <div class="emptyHint" id="taskListEmpty" hidden data-i18n="tasks_empty">No tasks scheduled for this date yet.</div>
+  </section>
+
   <main id="boardView" class="board"></main>
 
   <main id="logView" class="logView" hidden>
@@ -799,8 +861,8 @@
         <select id="f_product"></select>
       </label>
       <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
-      <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
-      <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <!-- Positioned right after Job Card No (rather than after Quantity, where it used to sit) so
+           it reads the same way on every stage that shows it — TYPE_STAGES above lists which. -->
       <label id="fld_type"><span data-i18n="form_type_label">Type</span>
         <select id="f_type">
           <option value="" data-i18n="form_type_select">— select —</option>
@@ -809,6 +871,8 @@
           <option value="Pads" data-i18n="type_pads">Pads</option>
         </select>
       </label>
+      <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
+      <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
       <label id="fld_qtyinstock"><span data-i18n="form_qtyinstock_label">Quantity in Stock</span> <input type="number" id="f_qtyinstock" min="0" step="1"></label>
       <label id="fld_totalbundle"><span data-i18n="form_totalbundle_label">Total Bundle</span> <input type="number" id="f_totalbundle" min="0" step="1"></label>
       <label id="fld_availablestock"><span data-i18n="form_availablestock_label">Available Stock</span> <input type="number" id="f_availablestock" min="0" step="1"></label>
@@ -994,6 +1058,62 @@
       <button type="submit" class="btn primary" id="saveBtn" data-i18n="generic_save">Save</button>
     </div>
   </form>
+</div>
+
+<!-- Priority Tasks modal — a separate, lighter-weight add/edit form from the job-card modal above,
+     since a task is just a planning item (title, priority, optional customer/product, notes). -->
+<div class="modalOverlay" id="taskModalOverlay" hidden>
+  <form class="modal" id="taskForm">
+    <h2 id="taskModalTitle">Add Task</h2>
+    <div class="formGrid">
+      <label><span data-i18n="filter_date">Date</span>
+        <span class="dateFieldWrap">
+          <input type="date" id="t_date" required>
+          <span class="dateFieldLabel" id="t_dateLabel" aria-hidden="true"></span>
+        </span>
+      </label>
+      <label><span data-i18n="task_priority_label">Priority</span>
+        <select id="t_priority">
+          <option value="High" data-i18n="priority_high">High</option>
+          <option value="Medium" selected data-i18n="priority_medium">Medium</option>
+          <option value="Low" data-i18n="priority_low">Low</option>
+        </select>
+      </label>
+      <label class="span2"><span data-i18n="task_title_label">Task</span>
+        <input type="text" id="t_title" required placeholder="e.g. Prepare dispatch schedule" data-i18n-placeholder="task_title_placeholder">
+      </label>
+      <label><span data-i18n="task_customer_optional_label">Customer Name (optional)</span>
+        <select id="t_clientname"></select>
+      </label>
+      <label><span data-i18n="task_product_optional_label">Product Name (optional)</span>
+        <select id="t_product"></select>
+      </label>
+      <label class="span2"><span data-i18n="task_notes_label">Notes</span>
+        <textarea id="t_notes" rows="2" placeholder="Optional notes…" data-i18n-placeholder="task_notes_placeholder"></textarea>
+      </label>
+      <label class="span2"><span data-i18n="task_yourname_label">Your name</span>
+        <input type="text" id="t_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder">
+      </label>
+    </div>
+    <div class="modalActions">
+      <button type="button" class="btn danger" id="taskDeleteBtn" hidden data-i18n="generic_delete">Delete</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn ghost" id="taskCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="taskSaveBtn" data-i18n="generic_save">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="modalOverlay" id="taskDeleteConfirmOverlay" hidden>
+  <div class="modal">
+    <h2 data-i18n="task_del_title">Delete Task?</h2>
+    <p id="taskDeleteConfirmSummary" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;"></p>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="taskDeleteConfirmCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn danger" id="taskDeleteConfirmYesBtn" data-i18n="generic_delete">Delete</button>
+    </div>
+  </div>
 </div>
 
 <!-- Full-size viewer for a Client Specifications attachment (a photo, or one page of a captured
@@ -1211,7 +1331,23 @@
       banner_no_rows_export: "No rows to export.", banner_save_failed_prefix: "Save failed:",
       banner_live_updates_stopped_prefix: "Live updates stopped:",
       banner_log_updates_stopped_prefix: "Log updates stopped:",
-      banner_moved: "Job Card {jc} completed at {from} — moved to {to}."
+      banner_moved: "Job Card {jc} completed at {from} — moved to {to}.",
+      tasks_board_heading: "Priority Tasks", btn_add_task: "+ Add Task",
+      tasks_empty: "No tasks scheduled for this date yet.",
+      task_title_label: "Task", task_title_placeholder: "e.g. Prepare dispatch schedule",
+      task_priority_label: "Priority",
+      priority_high: "High", priority_medium: "Medium", priority_low: "Low",
+      task_notes_label: "Notes", task_notes_placeholder: "Optional notes…",
+      task_customer_optional_label: "Customer Name (optional)",
+      task_product_optional_label: "Product Name (optional)",
+      form_add_task: "Add Task", form_edit_task: "Edit Task",
+      task_mark_done: "Mark done", task_mark_pending: "Mark pending",
+      task_del_title: "Delete Task?", task_del_summary: "This task will be permanently removed. This can't be undone.",
+      task_yourname_label: "Your name",
+      banner_task_save_failed_prefix: "Couldn't save task:",
+      banner_task_delete_failed_prefix: "Couldn't delete task:",
+      banner_task_reorder_failed_prefix: "Couldn't save new order:",
+      task_drag_handle_title: "Drag to reorder"
     },
     hi: {
       generic_cancel: "रद्द करें", generic_delete: "हटाएं", generic_save: "सेव करें", generic_done: "हो गया",
@@ -1331,7 +1467,23 @@
       banner_no_rows_export: "एक्सपोर्ट के लिए कोई पंक्ति नहीं।", banner_save_failed_prefix: "सेव विफल:",
       banner_live_updates_stopped_prefix: "लाइव अपडेट रुक गए:",
       banner_log_updates_stopped_prefix: "लॉग अपडेट रुक गए:",
-      banner_moved: "जॉब कार्ड {jc} {from} पर पूर्ण हुआ — {to} में भेजा गया।"
+      banner_moved: "जॉब कार्ड {jc} {from} पर पूर्ण हुआ — {to} में भेजा गया।",
+      tasks_board_heading: "प्राथमिकता कार्य", btn_add_task: "+ कार्य जोड़ें",
+      tasks_empty: "इस तारीख के लिए अभी तक कोई कार्य निर्धारित नहीं है।",
+      task_title_label: "कार्य", task_title_placeholder: "जैसे, डिस्पैच शेड्यूल तैयार करें",
+      task_priority_label: "प्राथमिकता",
+      priority_high: "उच्च", priority_medium: "मध्यम", priority_low: "कम",
+      task_notes_label: "टिप्पणी", task_notes_placeholder: "वैकल्पिक टिप्पणी…",
+      task_customer_optional_label: "ग्राहक का नाम (वैकल्पिक)",
+      task_product_optional_label: "उत्पाद का नाम (वैकल्पिक)",
+      form_add_task: "कार्य जोड़ें", form_edit_task: "कार्य संपादित करें",
+      task_mark_done: "पूर्ण के रूप में चिह्नित करें", task_mark_pending: "लंबित के रूप में चिह्नित करें",
+      task_del_title: "कार्य हटाएं?", task_del_summary: "यह कार्य स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
+      task_yourname_label: "आपका नाम",
+      banner_task_save_failed_prefix: "कार्य सेव नहीं हो सका:",
+      banner_task_delete_failed_prefix: "कार्य हटाया नहीं जा सका:",
+      banner_task_reorder_failed_prefix: "नया क्रम सेव नहीं हो सका:",
+      task_drag_handle_title: "क्रम बदलने के लिए खींचें"
     },
     te: {
       generic_cancel: "రద్దు చేయండి", generic_delete: "తొలగించండి", generic_save: "సేవ్ చేయండి", generic_done: "పూర్తయింది",
@@ -1451,7 +1603,23 @@
       banner_no_rows_export: "ఎగుమతి చేయడానికి వరుసలు లేవు.", banner_save_failed_prefix: "సేవ్ విఫలమైంది:",
       banner_live_updates_stopped_prefix: "లైవ్ అప్‌డేట్లు ఆగిపోయాయి:",
       banner_log_updates_stopped_prefix: "లాగ్ అప్‌డేట్లు ఆగిపోయాయి:",
-      banner_moved: "జాబ్ కార్డ్ {jc} {from} వద్ద పూర్తయింది — {to}కి తరలించబడింది."
+      banner_moved: "జాబ్ కార్డ్ {jc} {from} వద్ద పూర్తయింది — {to}కి తరలించబడింది.",
+      tasks_board_heading: "ప్రాధాన్యత పనులు", btn_add_task: "+ పని జోడించండి",
+      tasks_empty: "ఈ తేదీకి ఇంకా పనులు షెడ్యూల్ చేయలేదు.",
+      task_title_label: "పని", task_title_placeholder: "ఉదా. డిస్పాచ్ షెడ్యూల్ సిద్ధం చేయండి",
+      task_priority_label: "ప్రాధాన్యత",
+      priority_high: "అధిక", priority_medium: "మధ్యస్థ", priority_low: "తక్కువ",
+      task_notes_label: "గమనికలు", task_notes_placeholder: "ఐచ్ఛిక గమనికలు…",
+      task_customer_optional_label: "కస్టమర్ పేరు (ఐచ్ఛికం)",
+      task_product_optional_label: "ఉత్పత్తి పేరు (ఐచ్ఛికం)",
+      form_add_task: "పని జోడించండి", form_edit_task: "పనిని సవరించండి",
+      task_mark_done: "పూర్తయినట్లు గుర్తించండి", task_mark_pending: "పెండింగ్‌గా గుర్తించండి",
+      task_del_title: "పనిని తొలగించాలా?", task_del_summary: "ఈ పని శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
+      task_yourname_label: "మీ పేరు",
+      banner_task_save_failed_prefix: "పని సేవ్ కాలేదు:",
+      banner_task_delete_failed_prefix: "పని తొలగించబడలేదు:",
+      banner_task_reorder_failed_prefix: "కొత్త క్రమం సేవ్ కాలేదు:",
+      task_drag_handle_title: "క్రమం మార్చడానికి లాగండి"
     }
   };
   function t(key){
@@ -1562,6 +1730,11 @@
     editingId: null,
     unsubBoard: null,
     unsubLog: null,
+    // Priority Tasks board — independent planning items for state.date, separate from job-card
+    // entries above (see subscribeTasks/renderTasks). Kept sorted by `order` (manual drag position).
+    tasks: [],
+    unsubTasks: null,
+    editingTaskId: null,
     // Customer/Product/Type/PLY autofill catalog — kept in sync from Firestore (see
     // subscribeCatalog below), shared by every device. { customers: { "<name>": { products: {
     // "<name>": { type, ply } } } } }; empty until the first snapshot arrives.
@@ -1573,6 +1746,7 @@
     modalReadOnly: false,
     modalCanEditNormal: true,
     modalTitleKey: "form_add_entry",
+    taskModalTitleKey: "form_add_task",
     lang: (function(){ try{ return localStorage.getItem("visipakLanguage") || "en"; }catch(e){ return "en"; } })()
   };
 
@@ -1658,6 +1832,28 @@
     deleteConfirmError: document.getElementById("deleteConfirmError"),
     deleteConfirmCancelBtn: document.getElementById("deleteConfirmCancelBtn"),
     deleteConfirmYesBtn: document.getElementById("deleteConfirmYesBtn"),
+    taskBoardSection: document.getElementById("taskBoardSection"),
+    addTaskBtn: document.getElementById("addTaskBtn"),
+    taskList: document.getElementById("taskList"),
+    taskListEmpty: document.getElementById("taskListEmpty"),
+    taskModalOverlay: document.getElementById("taskModalOverlay"),
+    taskForm: document.getElementById("taskForm"),
+    taskModalTitle: document.getElementById("taskModalTitle"),
+    t_date: document.getElementById("t_date"),
+    t_dateLabel: document.getElementById("t_dateLabel"),
+    t_priority: document.getElementById("t_priority"),
+    t_title: document.getElementById("t_title"),
+    t_clientname: document.getElementById("t_clientname"),
+    t_product: document.getElementById("t_product"),
+    t_notes: document.getElementById("t_notes"),
+    t_updatedby: document.getElementById("t_updatedby"),
+    taskDeleteBtn: document.getElementById("taskDeleteBtn"),
+    taskCancelBtn: document.getElementById("taskCancelBtn"),
+    taskSaveBtn: document.getElementById("taskSaveBtn"),
+    taskDeleteConfirmOverlay: document.getElementById("taskDeleteConfirmOverlay"),
+    taskDeleteConfirmSummary: document.getElementById("taskDeleteConfirmSummary"),
+    taskDeleteConfirmCancelBtn: document.getElementById("taskDeleteConfirmCancelBtn"),
+    taskDeleteConfirmYesBtn: document.getElementById("taskDeleteConfirmYesBtn"),
     f_date: document.getElementById("f_date"),
     f_dateLabel: document.getElementById("f_dateLabel"),
     f_shift: document.getElementById("f_shift"),
@@ -1759,6 +1955,7 @@
 
   var syncDateInputLabel = bindDateDisplay(el.dateInput, el.dateInputLabel);
   var syncFDateLabel = bindDateDisplay(el.f_date, el.f_dateLabel);
+  var syncTDateLabel = bindDateDisplay(el.t_date, el.t_dateLabel);
 
   el.dateInput.value = state.date;
   syncDateInputLabel();
@@ -1878,6 +2075,13 @@
   // NOT make Plant a "special" stage — it keeps its usual timing/manpower/status fields too).
   var QC_SPECS_STAGES = ["QC", "Plant"];
   function stageHasQcSpecs(stage){ return QC_SPECS_STAGES.indexOf(stage) !== -1; }
+  // Type (Boxes / Partition / Pads) — this product-classification field started out only on the
+  // stages at the very end of the flow (Ready to Dispatch, Finished Goods, QC), then was asked to
+  // also cover a specific set of earlier stages rather than every production stage across the
+  // board, so it's its own explicit list (like ARTWORKNO_STAGES/QC_SPECS_STAGES above) rather
+  // than a blanket "every non-department stage" rule.
+  var TYPE_STAGES = ["Plant", "Material shifting", "Partition", "QC", "Finished Goods (FG)", "Ready to Dispatch", "Dispatch"];
+  function stageHasType(stage){ return TYPE_STAGES.indexOf(stage) !== -1; }
   // One-time starting data for the Customer/Product catalog (see "Customer / Product catalog"
   // section below) — imported from the Customer_Lists.xlsx Manu provided, cleaned up (trimmed
   // names, normalized PLY spelling/casing, TYPE mapped to this form's own "Boxes" option). Only
@@ -2053,6 +2257,63 @@
     if(info.type && !el.fld_type.hidden) el.f_type.value = info.type;
     if(info.ply && !el.fld_ply.hidden) el.f_ply.value = info.ply;
   }
+  // ---------- Task modal's Customer/Product selects (optional fields, same shared catalog) ----------
+  // Mirrors the main entry form's f_clientname/f_product handling above exactly (same generic
+  // buildCatalogOptionsHtml/buildCustomerOptionsHtml/buildProductOptionsHtml/addOptionAndSelect
+  // helpers, same "+ Add new…" sentinel escape hatch) — kept as its own small set of functions
+  // targeting el.t_clientname/el.t_product rather than generalizing the main form's functions,
+  // since both fields are optional here (a task doesn't need a customer/product at all).
+  function refreshTaskCustomerNameOptions(){
+    var current = el.t_clientname.value;
+    el.t_clientname.innerHTML = buildCustomerOptionsHtml(current);
+    el.t_clientname.value = current;
+  }
+  function refreshTaskProductNameOptions(){
+    var canonicalCustomer = findCanonicalCustomer(el.t_clientname.value);
+    var current = el.t_product.value;
+    el.t_product.innerHTML = buildProductOptionsHtml(canonicalCustomer, current);
+    el.t_product.value = current;
+  }
+  function setTaskClientNameField(rawValue){
+    var raw = rawValue || "";
+    el.t_clientname.innerHTML = buildCustomerOptionsHtml(raw);
+    var canonical = findCanonicalCustomer(raw);
+    el.t_clientname.value = canonical ? formatCustomerName(canonical) : raw;
+  }
+  function setTaskProductField(rawValue){
+    var raw = rawValue || "";
+    var canonicalCustomer = findCanonicalCustomer(el.t_clientname.value);
+    el.t_product.innerHTML = buildProductOptionsHtml(canonicalCustomer, raw);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, raw);
+    el.t_product.value = canonicalProduct ? formatProductName(canonicalProduct) : raw;
+  }
+  var lastTaskClientNameValue = "";
+  var lastTaskProductValue = "";
+  function handleTaskClientNameChange(){
+    if(el.t_clientname.value === ADD_NEW_VALUE){
+      var name = window.prompt("Enter the new customer's name:", "");
+      if(name && name.trim()){
+        addOptionAndSelect(el.t_clientname, formatCustomerName(name));
+      } else {
+        el.t_clientname.value = lastTaskClientNameValue;
+      }
+    }
+    lastTaskClientNameValue = el.t_clientname.value;
+    refreshTaskProductNameOptions();
+  }
+  function handleTaskProductChange(){
+    if(el.t_product.value === ADD_NEW_VALUE){
+      var name = window.prompt("Enter the new product's name:", "");
+      if(name && name.trim()){
+        addOptionAndSelect(el.t_product, formatProductName(name));
+      } else {
+        el.t_product.value = lastTaskProductValue;
+      }
+    }
+    lastTaskProductValue = el.t_product.value;
+  }
+  el.t_clientname.addEventListener("change", handleTaskClientNameChange);
+  el.t_product.addEventListener("change", handleTaskProductChange);
   // Called after an entry saves successfully — adds a brand-new customer/product to the shared
   // catalog, or fills in a Type/PLY that a known product didn't have yet. Never erases an already-
   // known Type/PLY with a blank (a stage that doesn't collect one of those fields simply omits it
@@ -2088,6 +2349,8 @@
       state.catalog = { customers: data.customers || {} };
       refreshCustomerNameOptions();
       refreshProductNameOptions();
+      refreshTaskCustomerNameOptions();
+      refreshTaskProductNameOptions();
       // Only the very first device to see a truly empty catalog seeds it — a stale/incomplete
       // snapshot never re-triggers this because catalogSeedAttempted latches after the first try,
       // and set(..., {merge:true}) is harmless even if more than one device races to do this.
@@ -2291,8 +2554,8 @@
     el.fld_noofbundles.hidden = !(dispatch || readyToDispatch || rejected);
     // Reason for Rejection is Rejected's own field, same idea as Dispatch's Invoice/Vehicle/Driver.
     el.fld_reasonforrejection.hidden = !rejected;
-    // Type (Boxes / Partition / Pads): Ready to Dispatch, Finished Goods, and QC.
-    el.fld_type.hidden = !(readyToDispatch || fg || qc);
+    // Type (Boxes / Partition / Pads): see TYPE_STAGES above for the explicit stage list.
+    el.fld_type.hidden = !stageHasType(stage);
     // Finished Goods-only stock fields.
     el.fld_qtyinstock.hidden = !fg;
     el.fld_totalbundle.hidden = !fg;
@@ -2746,6 +3009,7 @@
       state.view = btn.dataset.view;
       el.boardView.hidden = state.view !== "board";
       el.logView.hidden = state.view !== "log";
+      el.taskBoardSection.hidden = state.view !== "board";
     });
   });
 
@@ -3147,15 +3411,15 @@
     var hr = isHRManpowerStage(stage);
     var rejected = isRejectedStage(stage);
     var special = dispatch || readyToDispatch || fg || qc || hr || rejected;
-    var hasType = readyToDispatch || fg || qc;
+    var hasType = stageHasType(stage);
     var keys = ["date"];
     if(!special) keys.push("shift");
     keys.push("stage");
     if(stageHasCustomerName(stage)) keys.push("clientName");
     if(!hr) keys.push("productName", "jobCardNo");
+    if(hasType) keys.push("type");
     if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck", "artworkAttachment");
     if(!(fg || hr)) keys.push("quantity");
-    if(hasType) keys.push("type");
     if(fg) keys.push("qtyInStock", "totalBundle", "availableStock");
     if(stageHasPly(stage)) keys.push("ply");
     if(stageHasLayers(stage)) keys.push("layers");
@@ -3825,8 +4089,10 @@
     if(ev.key !== "Escape") return;
     if(!el.lightboxOverlay.hidden) closeLightbox();
     else if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
+    else if(!el.taskDeleteConfirmOverlay.hidden) closeTaskDeleteConfirm();
     else if(!el.activityOverlay.hidden) el.activityOverlay.hidden = true;
     else if(!el.modalOverlay.hidden) cancelModal();
+    else if(!el.taskModalOverlay.hidden) closeTaskModal();
     else if(!el.profileMenu.hidden) closeProfileMenu();
   });
 
@@ -3855,7 +4121,7 @@
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = isDispatch || isReadyToDispatch || isFG || isRejected;
     var hasNoOfBundles = isDispatch || isReadyToDispatch || isRejected;
-    var hasType = isReadyToDispatch || isFG || isQC;
+    var hasType = stageHasType(chosenStage);
     var hasQcSpecs = stageHasQcSpecs(chosenStage);
     var hrManpowerData = isHR ? computeHRManpowerData() : null;
     // Saved as three flat fields (not a nested object) so each one can be individually exempted
@@ -4068,9 +4334,260 @@
     });
   }
 
+  // ---------- Priority Tasks board ----------
+  // A separate scheduling board of independent planning items, sitting above the production
+  // department board (see the taskBoard section in the HTML) — NOT linked to job-card `entries`
+  // at all. Scoped to state.date like the rest of the header, so switching the date up top shows
+  // that day's tasks (today by default, but any future date works the same way). Order within a
+  // date is a manual drag position (`order`), completely separate from the High/Medium/Low
+  // `priority` tag — the user explicitly asked for both a manual order and a priority label.
+  function isTaskDone(task){ return !!(task && task.status === "Done"); }
+  function subscribeTasks(){
+    if(state.unsubTasks){ state.unsubTasks(); state.unsubTasks = null; }
+    state.unsubTasks = state.db.collection("tasks").where("date", "==", state.date).onSnapshot(function(snap){
+      state.tasks = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data() || {}); });
+      // Sorted client-side rather than via an orderBy() in the query — the same caution as
+      // subscribeBoard's carry-forward queries above: a where()+orderBy() on two different fields
+      // can require a manually-created composite index in the Firebase console, which isn't
+      // something to risk on a live, unattended app.
+      state.tasks.sort(function(a, b){
+        var ao = typeof a.order === "number" ? a.order : 0;
+        var bo = typeof b.order === "number" ? b.order : 0;
+        if(ao !== bo) return ao - bo;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+      renderTasks();
+    }, function(err){
+      showBanner(t("banner_live_updates_stopped_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  }
+
+  function renderTasks(){
+    el.taskList.innerHTML = "";
+    el.taskListEmpty.hidden = state.tasks.length > 0;
+    state.tasks.forEach(function(task){
+      var pr = (task.priority === "High" || task.priority === "Low") ? task.priority : "Medium";
+      var item = document.createElement("div");
+      item.className = "taskItem priority-" + pr.toLowerCase() + (isTaskDone(task) ? " done" : "");
+      item.dataset.id = task.id;
+      var subLine = (task.clientName || task.productName)
+        ? '<div class="taskSub">' + esc([task.clientName, task.productName].filter(function(s){ return s; }).join(" — ")) + '</div>'
+        : "";
+      item.innerHTML =
+        '<span class="taskDragHandle" title="' + esc(t("task_drag_handle_title")) + '">⠿</span>' +
+        '<input type="checkbox" class="taskCheck"' + (isTaskDone(task) ? " checked" : "") + '>' +
+        '<div class="taskBody">' +
+          '<div class="taskTitleRow">' +
+            '<span class="priorityBadge ' + pr.toLowerCase() + '">' + esc(t("priority_" + pr.toLowerCase())) + '</span>' +
+            '<span class="taskTitle">' + esc(task.title || "") + '</span>' +
+          '</div>' +
+          subLine +
+          (task.notes ? '<div class="taskNotes">' + esc(task.notes) + '</div>' : "") +
+        '</div>';
+      item.querySelector(".taskCheck").addEventListener("click", function(ev){ ev.stopPropagation(); });
+      item.querySelector(".taskCheck").addEventListener("change", function(){
+        var checked = this.checked;
+        state.db.doc("tasks/" + task.id).update({ status: checked ? "Done" : "Pending", updatedAt: Date.now() }).catch(function(err){
+          showBanner(t("banner_task_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+        });
+      });
+      item.querySelector(".taskBody").addEventListener("click", function(){ openTaskModal(task); });
+      attachTaskDragHandlers(item.querySelector(".taskDragHandle"), item);
+      el.taskList.appendChild(item);
+    });
+  }
+
+  // ---------- Task drag-to-reorder ----------
+  // Built on the Pointer Events API (pointerdown/pointermove/pointerup + setPointerCapture)
+  // rather than native HTML5 drag-and-drop, because HTML5 DnD does not fire reliably on mobile
+  // touch browsers — the same class of mobile-compatibility problem already hit twice this
+  // session with the Customer Name/Product Name fields (see their comments above), so it's worth
+  // avoiding a third time here. touch-action:none on .taskDragHandle (see CSS) keeps the browser's
+  // own scroll/pan gesture from competing with the drag on a touchscreen.
+  // Note: the dragged item's own DOM node is deliberately left in place in the document until
+  // drop (endDrag) — moving it mid-drag (e.g. with insertBefore) can silently release its pointer
+  // capture in some browsers, since a DOM move is internally a remove-then-reinsert. Losing
+  // capture mid-drag would hand subsequent pointermove events to whatever element the pointer is
+  // physically over instead of the one still being dragged — exactly the kind of subtle
+  // cross-device drag failure this app has already been bitten by twice this session with the
+  // Customer Name/Product Name fields (see their comments above). So every other task item is
+  // just visually nudged up/down by one card's height with a CSS transform to show where the
+  // drop would land, and the actual DOM (and Firestore order) is only rewritten once, on drop.
+  function taskListGapPx(){
+    var g = window.getComputedStyle(el.taskList).rowGap;
+    var n = parseFloat(g);
+    return isNaN(n) ? 8 : n;
+  }
+  var taskDrag = null; // { item, pointerId, startY, items, itemHeight, fromIndex, targetIndex }
+  function attachTaskDragHandlers(handleEl, itemEl){
+    handleEl.addEventListener("pointerdown", function(ev){
+      ev.preventDefault();
+      try{ handleEl.setPointerCapture(ev.pointerId); }catch(e){}
+      var items = Array.prototype.slice.call(el.taskList.children);
+      taskDrag = {
+        item: itemEl,
+        pointerId: ev.pointerId,
+        startY: ev.clientY,
+        items: items,
+        itemHeight: itemEl.getBoundingClientRect().height + taskListGapPx(),
+        fromIndex: items.indexOf(itemEl),
+        targetIndex: items.indexOf(itemEl)
+      };
+      itemEl.classList.add("dragging");
+    });
+    handleEl.addEventListener("pointermove", function(ev){
+      if(!taskDrag || taskDrag.item !== itemEl) return;
+      var deltaY = ev.clientY - taskDrag.startY;
+      itemEl.style.transform = "translateY(" + deltaY + "px)";
+      var steps = Math.round(deltaY / taskDrag.itemHeight);
+      var targetIndex = Math.max(0, Math.min(taskDrag.items.length - 1, taskDrag.fromIndex + steps));
+      taskDrag.items.forEach(function(otherEl, originalIdx){
+        if(otherEl === itemEl) return;
+        var shift = 0;
+        if(taskDrag.fromIndex < targetIndex && originalIdx > taskDrag.fromIndex && originalIdx <= targetIndex) shift = -1;
+        else if(taskDrag.fromIndex > targetIndex && originalIdx < taskDrag.fromIndex && originalIdx >= targetIndex) shift = 1;
+        otherEl.style.transform = shift ? "translateY(" + (shift * taskDrag.itemHeight) + "px)" : "";
+      });
+      taskDrag.targetIndex = targetIndex;
+    });
+    function endDrag(){
+      if(!taskDrag || taskDrag.item !== itemEl) return;
+      var items = taskDrag.items.slice();
+      items.splice(taskDrag.fromIndex, 1);
+      items.splice(taskDrag.targetIndex, 0, itemEl);
+      items.forEach(function(node){
+        node.style.transform = "";
+        el.taskList.appendChild(node); // reinserts each in final order; a no-op move for nodes already in place
+      });
+      itemEl.classList.remove("dragging");
+      try{ handleEl.releasePointerCapture(taskDrag.pointerId); }catch(e){}
+      taskDrag = null;
+      commitTaskOrder();
+    }
+    handleEl.addEventListener("pointerup", endDrag);
+    handleEl.addEventListener("pointercancel", endDrag);
+  }
+  // Reindexes every task currently shown, in whatever order the drag just left them in the DOM,
+  // and writes only the changed `order` values in one Firestore batch. A full reindex on every
+  // drop (rather than trying to compute a single in-between fractional value) keeps this exact
+  // and simple — a day's task list is always small enough for rewriting all of it to be cheap.
+  function commitTaskOrder(){
+    var ids = Array.prototype.map.call(el.taskList.children, function(n){ return n.dataset.id; });
+    var batch = state.db.batch();
+    var changed = false;
+    ids.forEach(function(id, idx){
+      var task = state.tasks.find(function(tk){ return tk.id === id; });
+      var newOrder = (idx + 1) * 10;
+      if(task && task.order !== newOrder){
+        changed = true;
+        batch.update(state.db.doc("tasks/" + id), { order: newOrder });
+      }
+    });
+    if(!changed) return;
+    batch.commit().catch(function(err){
+      showBanner(t("banner_task_reorder_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  }
+
+  // ---------- Task modal ----------
+  function openTaskModal(task){
+    state.editingTaskId = task ? task.id : null;
+    state.taskModalTitleKey = task ? "form_edit_task" : "form_add_task";
+    el.taskModalTitle.textContent = t(state.taskModalTitleKey);
+    el.t_date.value = task ? task.date : state.date;
+    syncTDateLabel();
+    el.t_priority.value = task ? ((task.priority === "High" || task.priority === "Low") ? task.priority : "Medium") : "Medium";
+    el.t_title.value = task ? (task.title || "") : "";
+    // Customer Name resolved before Product Name, same reason as the entry modal above — Product
+    // Name's option list is scoped to whichever Customer is currently selected.
+    setTaskClientNameField(task ? (task.clientName || "") : "");
+    setTaskProductField(task ? (task.productName || "") : "");
+    lastTaskClientNameValue = el.t_clientname.value;
+    lastTaskProductValue = el.t_product.value;
+    el.t_notes.value = task ? (task.notes || "") : "";
+    el.t_updatedby.value = task ? (task.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
+    el.taskDeleteBtn.hidden = !task;
+    el.taskModalOverlay.hidden = false;
+    el.t_title.focus();
+  }
+  function closeTaskModal(){
+    el.taskModalOverlay.hidden = true;
+    state.editingTaskId = null;
+    el.taskForm.reset();
+    syncTDateLabel();
+  }
+  el.addTaskBtn.addEventListener("click", function(){ openTaskModal(null); });
+  el.taskCancelBtn.addEventListener("click", closeTaskModal);
+  el.taskModalOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.taskModalOverlay) closeTaskModal();
+  });
+
+  el.taskForm.addEventListener("submit", function(ev){
+    ev.preventDefault();
+    el.taskSaveBtn.disabled = true;
+    var payload = {
+      date: el.t_date.value,
+      priority: el.t_priority.value,
+      title: el.t_title.value.trim(),
+      clientName: el.t_clientname.value.trim(),
+      productName: el.t_product.value.trim(),
+      notes: el.t_notes.value.trim(),
+      updatedBy: el.t_updatedby.value.trim(),
+      updatedAt: Date.now()
+    };
+    lastUpdatedBy = payload.updatedBy;
+    var promise;
+    if(state.editingTaskId){
+      promise = state.db.doc("tasks/" + state.editingTaskId).update(payload);
+    } else {
+      payload.status = "Pending";
+      payload.order = (state.tasks.length ? Math.max.apply(null, state.tasks.map(function(tk){ return tk.order || 0; })) : 0) + 10;
+      payload.createdAt = Date.now();
+      promise = state.db.collection("tasks").add(payload);
+    }
+    promise.then(function(){
+      el.taskSaveBtn.disabled = false;
+      upsertCatalogEntry(payload.clientName, payload.productName, "", "");
+      closeTaskModal();
+    }).catch(function(err){
+      el.taskSaveBtn.disabled = false;
+      showBanner(t("banner_task_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  });
+
+  var pendingDeleteTask = null;
+  el.taskDeleteBtn.addEventListener("click", function(){
+    if(!state.editingTaskId) return;
+    var task = state.tasks.find(function(tk){ return tk.id === state.editingTaskId; });
+    pendingDeleteTask = task || { id: state.editingTaskId };
+    el.taskDeleteConfirmSummary.textContent = t("task_del_summary");
+    el.taskDeleteConfirmOverlay.hidden = false;
+  });
+  function closeTaskDeleteConfirm(){
+    el.taskDeleteConfirmOverlay.hidden = true;
+    pendingDeleteTask = null;
+  }
+  el.taskDeleteConfirmCancelBtn.addEventListener("click", closeTaskDeleteConfirm);
+  el.taskDeleteConfirmYesBtn.addEventListener("click", function(){
+    if(!pendingDeleteTask) return;
+    el.taskDeleteConfirmYesBtn.disabled = true;
+    state.db.doc("tasks/" + pendingDeleteTask.id).delete().then(function(){
+      el.taskDeleteConfirmYesBtn.disabled = false;
+      closeTaskDeleteConfirm();
+      closeTaskModal();
+    }).catch(function(err){
+      el.taskDeleteConfirmYesBtn.disabled = false;
+      showBanner(t("banner_task_delete_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  });
+  el.taskDeleteConfirmOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.taskDeleteConfirmOverlay) closeTaskDeleteConfirm();
+  });
+
   el.dateInput.addEventListener("change", function(){
     state.date = el.dateInput.value || todayStr();
     subscribeBoard();
+    subscribeTasks();
   });
   el.boardShiftFilter.addEventListener("change", function(){
     state.shift = el.boardShiftFilter.value;
@@ -4114,8 +4631,10 @@
     el.supAddBtn.textContent = editingSupervisorPhone ? t("sup_save_changes") : t("sup_add_user");
     if(!el.supervisorsOverlay.hidden) applySupervisorFilter();
     if(!el.activityOverlay.hidden) applyActivityFilter();
+    el.taskModalTitle.textContent = t(state.taskModalTitleKey);
     renderBoard();
     renderLog();
+    renderTasks();
   }
   el.langSelect.value = state.lang;
   el.langSelect.addEventListener("change", function(){
@@ -4136,6 +4655,7 @@
   subscribeBoard();
   subscribeLog();
   subscribeCatalog();
+  subscribeTasks();
 })();
 </script>
 </body>
