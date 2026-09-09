@@ -1061,7 +1061,8 @@
 </div>
 
 <!-- Priority Tasks modal — a separate, lighter-weight add/edit form from the job-card modal above,
-     since a task is just a planning item (title, priority, optional customer/product, notes). -->
+     since a task is just a planning item. Customer Name/Product Name are required (same as the
+     main entry form); Type/Ply/Quantity/Assign To are optional extra detail. -->
 <div class="modalOverlay" id="taskModalOverlay" hidden>
   <form class="modal" id="taskForm">
     <h2 id="taskModalTitle">Add Task</h2>
@@ -1082,11 +1083,33 @@
       <label class="span2"><span data-i18n="task_title_label">Task</span>
         <input type="text" id="t_title" required placeholder="e.g. Prepare dispatch schedule" data-i18n-placeholder="task_title_placeholder">
       </label>
-      <label><span data-i18n="task_customer_optional_label">Customer Name (optional)</span>
-        <select id="t_clientname"></select>
+      <label><span data-i18n="form_clientname_label">Customer Name</span>
+        <select id="t_clientname" required></select>
       </label>
-      <label><span data-i18n="task_product_optional_label">Product Name (optional)</span>
-        <select id="t_product"></select>
+      <label><span data-i18n="form_product_label">Product Name</span>
+        <select id="t_product" required></select>
+      </label>
+      <label><span data-i18n="form_type_label">Type</span>
+        <select id="t_type">
+          <option value="" data-i18n="form_type_select">— select —</option>
+          <option value="Boxes" data-i18n="type_boxes">Boxes</option>
+          <option value="Partition" data-i18n="type_partition">Partition</option>
+          <option value="Pads" data-i18n="type_pads">Pads</option>
+        </select>
+      </label>
+      <label><span data-i18n="form_ply_label">PLY</span>
+        <select id="t_ply">
+          <option value="" data-i18n="form_ply_select">— select —</option>
+          <option value="3 Ply">3 Ply</option>
+          <option value="5 Ply">5 Ply</option>
+          <option value="7 Ply">7 Ply</option>
+        </select>
+      </label>
+      <label><span data-i18n="form_qty_label">Quantity</span>
+        <input type="number" id="t_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
+      </label>
+      <label><span data-i18n="task_assignto_label">Assign To</span>
+        <input type="text" id="t_assignto" placeholder="e.g. Raju" data-i18n-placeholder="task_assignto_placeholder">
       </label>
       <label class="span2"><span data-i18n="task_notes_label">Notes</span>
         <textarea id="t_notes" rows="2" placeholder="Optional notes…" data-i18n-placeholder="task_notes_placeholder"></textarea>
@@ -1338,12 +1361,11 @@
       task_priority_label: "Priority",
       priority_high: "High", priority_medium: "Medium", priority_low: "Low",
       task_notes_label: "Notes", task_notes_placeholder: "Optional notes…",
-      task_customer_optional_label: "Customer Name (optional)",
-      task_product_optional_label: "Product Name (optional)",
       form_add_task: "Add Task", form_edit_task: "Edit Task",
       task_mark_done: "Mark done", task_mark_pending: "Mark pending",
       task_del_title: "Delete Task?", task_del_summary: "This task will be permanently removed. This can't be undone.",
       task_yourname_label: "Your name",
+      task_assignto_label: "Assign To", task_assignto_placeholder: "e.g. Raju",
       banner_task_save_failed_prefix: "Couldn't save task:",
       banner_task_delete_failed_prefix: "Couldn't delete task:",
       banner_task_reorder_failed_prefix: "Couldn't save new order:",
@@ -1474,12 +1496,11 @@
       task_priority_label: "प्राथमिकता",
       priority_high: "उच्च", priority_medium: "मध्यम", priority_low: "कम",
       task_notes_label: "टिप्पणी", task_notes_placeholder: "वैकल्पिक टिप्पणी…",
-      task_customer_optional_label: "ग्राहक का नाम (वैकल्पिक)",
-      task_product_optional_label: "उत्पाद का नाम (वैकल्पिक)",
       form_add_task: "कार्य जोड़ें", form_edit_task: "कार्य संपादित करें",
       task_mark_done: "पूर्ण के रूप में चिह्नित करें", task_mark_pending: "लंबित के रूप में चिह्नित करें",
       task_del_title: "कार्य हटाएं?", task_del_summary: "यह कार्य स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
       task_yourname_label: "आपका नाम",
+      task_assignto_label: "सौंपें", task_assignto_placeholder: "जैसे, राजू",
       banner_task_save_failed_prefix: "कार्य सेव नहीं हो सका:",
       banner_task_delete_failed_prefix: "कार्य हटाया नहीं जा सका:",
       banner_task_reorder_failed_prefix: "नया क्रम सेव नहीं हो सका:",
@@ -1610,12 +1631,11 @@
       task_priority_label: "ప్రాధాన్యత",
       priority_high: "అధిక", priority_medium: "మధ్యస్థ", priority_low: "తక్కువ",
       task_notes_label: "గమనికలు", task_notes_placeholder: "ఐచ్ఛిక గమనికలు…",
-      task_customer_optional_label: "కస్టమర్ పేరు (ఐచ్ఛికం)",
-      task_product_optional_label: "ఉత్పత్తి పేరు (ఐచ్ఛికం)",
       form_add_task: "పని జోడించండి", form_edit_task: "పనిని సవరించండి",
       task_mark_done: "పూర్తయినట్లు గుర్తించండి", task_mark_pending: "పెండింగ్‌గా గుర్తించండి",
       task_del_title: "పనిని తొలగించాలా?", task_del_summary: "ఈ పని శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
       task_yourname_label: "మీ పేరు",
+      task_assignto_label: "కేటాయించు", task_assignto_placeholder: "ఉదా. రాజు",
       banner_task_save_failed_prefix: "పని సేవ్ కాలేదు:",
       banner_task_delete_failed_prefix: "పని తొలగించబడలేదు:",
       banner_task_reorder_failed_prefix: "కొత్త క్రమం సేవ్ కాలేదు:",
@@ -1845,6 +1865,10 @@
     t_title: document.getElementById("t_title"),
     t_clientname: document.getElementById("t_clientname"),
     t_product: document.getElementById("t_product"),
+    t_type: document.getElementById("t_type"),
+    t_ply: document.getElementById("t_ply"),
+    t_quantity: document.getElementById("t_quantity"),
+    t_assignto: document.getElementById("t_assignto"),
     t_notes: document.getElementById("t_notes"),
     t_updatedby: document.getElementById("t_updatedby"),
     taskDeleteBtn: document.getElementById("taskDeleteBtn"),
@@ -4373,6 +4397,14 @@
       var subLine = (task.clientName || task.productName)
         ? '<div class="taskSub">' + esc([task.clientName, task.productName].filter(function(s){ return s; }).join(" — ")) + '</div>'
         : "";
+      // Type/Ply/Quantity/Assign To are all optional extra detail (unlike Customer/Product Name,
+      // which are required) — shown together on one compact line, only when at least one is set.
+      var metaBits = [];
+      if(task.type) metaBits.push(task.type);
+      if(task.ply) metaBits.push(task.ply);
+      if(task.quantity != null) metaBits.push(t("card_qty_label") + " " + task.quantity);
+      if(task.assignTo) metaBits.push(t("task_assignto_label") + ": " + task.assignTo);
+      var metaLine = metaBits.length ? '<div class="taskSub">' + esc(metaBits.join(" · ")) + '</div>' : "";
       item.innerHTML =
         '<span class="taskDragHandle" title="' + esc(t("task_drag_handle_title")) + '">⠿</span>' +
         '<input type="checkbox" class="taskCheck"' + (isTaskDone(task) ? " checked" : "") + '>' +
@@ -4382,6 +4414,7 @@
             '<span class="taskTitle">' + esc(task.title || "") + '</span>' +
           '</div>' +
           subLine +
+          metaLine +
           (task.notes ? '<div class="taskNotes">' + esc(task.notes) + '</div>' : "") +
         '</div>';
       item.querySelector(".taskCheck").addEventListener("click", function(ev){ ev.stopPropagation(); });
@@ -4504,6 +4537,10 @@
     setTaskProductField(task ? (task.productName || "") : "");
     lastTaskClientNameValue = el.t_clientname.value;
     lastTaskProductValue = el.t_product.value;
+    el.t_type.value = task ? (task.type || "") : "";
+    el.t_ply.value = task ? (task.ply || "") : "";
+    el.t_quantity.value = task && task.quantity != null ? task.quantity : "";
+    el.t_assignto.value = task ? (task.assignTo || "") : "";
     el.t_notes.value = task ? (task.notes || "") : "";
     el.t_updatedby.value = task ? (task.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
     el.taskDeleteBtn.hidden = !task;
@@ -4531,6 +4568,10 @@
       title: el.t_title.value.trim(),
       clientName: el.t_clientname.value.trim(),
       productName: el.t_product.value.trim(),
+      type: el.t_type.value,
+      ply: el.t_ply.value,
+      quantity: el.t_quantity.value === "" ? null : Number(el.t_quantity.value),
+      assignTo: el.t_assignto.value.trim(),
       notes: el.t_notes.value.trim(),
       updatedBy: el.t_updatedby.value.trim(),
       updatedAt: Date.now()
@@ -4547,7 +4588,7 @@
     }
     promise.then(function(){
       el.taskSaveBtn.disabled = false;
-      upsertCatalogEntry(payload.clientName, payload.productName, "", "");
+      upsertCatalogEntry(payload.clientName, payload.productName, payload.type, payload.ply);
       closeTaskModal();
     }).catch(function(err){
       el.taskSaveBtn.disabled = false;
