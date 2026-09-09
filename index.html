@@ -919,6 +919,13 @@
       <label id="fld_runtime"><span data-i18n="form_runtime_label">Run Time (Hrs)</span> <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5" data-i18n-placeholder="form_runtime_placeholder"></label>
       <label id="fld_manpower"><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
       <label id="fld_palletno"><span data-i18n="form_palletno_label">Pallet No</span> <input type="text" id="f_palletno" placeholder="e.g. PL-014" data-i18n-placeholder="form_palletno_placeholder"></label>
+      <label id="fld_palletarea"><span data-i18n="form_palletarea_label">Pallet Allocation Area</span> <input type="text" id="f_palletarea" placeholder="e.g. Zone A - Rack 3" data-i18n-placeholder="form_palletarea_placeholder"></label>
+      <!-- Ready to Dispatch's own stock-reconciliation trio: Dispatched Qty is typed in by hand,
+           while Opening Stock and No of Days Ageing are auto-calculated (readonly) from the running
+           Customer+Product ledger — see computeRtdLedger/refreshRtdLedgerFields in the script below. -->
+      <label id="fld_dispatchedqty"><span data-i18n="form_dispatchedqty_label">Dispatched Qty</span> <input type="number" id="f_dispatchedqty" min="0" step="1" placeholder="e.g. 4000" data-i18n-placeholder="form_dispatchedqty_placeholder"></label>
+      <label id="fld_openingstock"><span data-i18n="form_openingstock_label">Opening Stock</span> <input type="number" id="f_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_openingstock_placeholder"></label>
+      <label id="fld_ageing"><span data-i18n="form_ageing_label">No of Days Ageing</span> <input type="number" id="f_ageing" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_ageing_placeholder"></label>
       <label><span id="f_updatedbyLabel" data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
       <label id="fld_status"><span data-i18n="filter_status">Status</span>
         <select id="f_status">
@@ -999,7 +1006,7 @@
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_moisture_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
-              <td data-i18n="qc_spec_weight">Weight</td>
+              <td data-i18n="qc_spec_weight">Box Weight</td>
               <td><input type="text" id="f_qc_weight_client"></td>
               <td><input type="text" id="f_qc_weight_visipak"></td>
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_weight_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
@@ -1316,6 +1323,10 @@
       form_qtyinstock_label: "Quantity in Stock", form_totalbundle_label: "Total Bundle",
       form_availablestock_label: "Available Stock",
       form_palletno_label: "Pallet No", form_palletno_placeholder: "e.g. PL-014",
+      form_palletarea_label: "Pallet Allocation Area", form_palletarea_placeholder: "e.g. Zone A - Rack 3",
+      form_dispatchedqty_label: "Dispatched Qty", form_dispatchedqty_placeholder: "e.g. 4000",
+      form_openingstock_label: "Opening Stock", form_openingstock_placeholder: "Auto-calculated",
+      form_ageing_label: "No of Days Ageing", form_ageing_placeholder: "Auto-calculated",
       qc_specs_heading: "Specifications",
       artwork_check_heading: "QC Check",
       log_th_artworkcheck: "Artwork Check",
@@ -1329,7 +1340,7 @@
       attach_err_pdf_rendered_toolarge: "Captured pages are too large to save. Try a shorter PDF or fewer pages.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
-      qc_spec_moisture: "Moisture", qc_spec_weight: "Weight", qc_spec_bct: "BCT",
+      qc_spec_moisture: "Moisture", qc_spec_weight: "Box Weight", qc_spec_bct: "BCT",
       pf_pass: "Pass", pf_fail: "Fail",
       hrmp_heading: "Daily Manpower Count", hrmp_th_dev: "Dev",
       hrmp_th_operator: "Operator", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
@@ -1451,6 +1462,10 @@
       form_qtyinstock_label: "स्टॉक में मात्रा", form_totalbundle_label: "कुल बंडल",
       form_availablestock_label: "उपलब्ध स्टॉक",
       form_palletno_label: "पैलेट नंबर", form_palletno_placeholder: "जैसे PL-014",
+      form_palletarea_label: "पैलेट आवंटन क्षेत्र", form_palletarea_placeholder: "जैसे Zone A - Rack 3",
+      form_dispatchedqty_label: "डिस्पैच की गई मात्रा", form_dispatchedqty_placeholder: "जैसे 4000",
+      form_openingstock_label: "ओपनिंग स्टॉक", form_openingstock_placeholder: "स्वतः गणना",
+      form_ageing_label: "एजिंग के दिनों की संख्या", form_ageing_placeholder: "स्वतः गणना",
       qc_specs_heading: "स्पेसिफिकेशन",
       artwork_check_heading: "QC जांच",
       log_th_artworkcheck: "आर्टवर्क जांच",
@@ -1464,7 +1479,7 @@
       attach_err_pdf_rendered_toolarge: "कैप्चर किए गए पेज सेव करने के लिए बहुत बड़े हैं। कोई छोटी PDF या कम पेज आज़माएं।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
-      qc_spec_moisture: "नमी", qc_spec_weight: "वज़न", qc_spec_bct: "BCT",
+      qc_spec_moisture: "नमी", qc_spec_weight: "बॉक्स वज़न", qc_spec_bct: "BCT",
       pf_pass: "पास", pf_fail: "फेल",
       hrmp_heading: "दैनिक मैनपावर गिनती", hrmp_th_dev: "स्टेज",
       hrmp_th_operator: "ऑपरेटर", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
@@ -1586,6 +1601,10 @@
       form_qtyinstock_label: "స్టాక్‌లో పరిమాణం", form_totalbundle_label: "మొత్తం బండిల్",
       form_availablestock_label: "అందుబాటులో ఉన్న స్టాక్",
       form_palletno_label: "పాలెట్ నంబర్", form_palletno_placeholder: "ఉదా. PL-014",
+      form_palletarea_label: "పాలెట్ కేటాయింపు ప్రాంతం", form_palletarea_placeholder: "ఉదా. జోన్ A - ర్యాక్ 3",
+      form_dispatchedqty_label: "డిస్పాచ్ చేసిన పరిమాణం", form_dispatchedqty_placeholder: "ఉదా. 4000",
+      form_openingstock_label: "ఓపెనింగ్ స్టాక్", form_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      form_ageing_label: "ఏజింగ్ రోజుల సంఖ్య", form_ageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       qc_specs_heading: "స్పెసిఫికేషన్లు",
       artwork_check_heading: "QC చెక్",
       log_th_artworkcheck: "ఆర్ట్‌వర్క్ చెక్",
@@ -1599,7 +1618,7 @@
       attach_err_pdf_rendered_toolarge: "క్యాప్చర్ చేసిన పేజీలు సేవ్ చేయడానికి చాలా పెద్దవి. చిన్న PDF లేదా తక్కువ పేజీలు ప్రయత్నించండి.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
-      qc_spec_moisture: "తేమ", qc_spec_weight: "బరువు", qc_spec_bct: "BCT",
+      qc_spec_moisture: "తేమ", qc_spec_weight: "బాక్స్ బరువు", qc_spec_bct: "BCT",
       pf_pass: "పాస్", pf_fail: "ఫెయిల్",
       hrmp_heading: "రోజువారీ మ్యాన్‌పవర్ లెక్క", hrmp_th_dev: "స్టేజ్",
       hrmp_th_operator: "ఆపరేటర్", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
@@ -1942,6 +1961,14 @@
     fld_availablestock: document.getElementById("fld_availablestock"),
     f_palletno: document.getElementById("f_palletno"),
     fld_palletno: document.getElementById("fld_palletno"),
+    f_palletarea: document.getElementById("f_palletarea"),
+    fld_palletarea: document.getElementById("fld_palletarea"),
+    f_dispatchedqty: document.getElementById("f_dispatchedqty"),
+    fld_dispatchedqty: document.getElementById("fld_dispatchedqty"),
+    f_openingstock: document.getElementById("f_openingstock"),
+    fld_openingstock: document.getElementById("fld_openingstock"),
+    f_ageing: document.getElementById("f_ageing"),
+    fld_ageing: document.getElementById("fld_ageing"),
     fld_qcspecs: document.getElementById("fld_qcspecs"),
     f_qc_boardgsm_client: document.getElementById("f_qc_boardgsm_client"),
     f_qc_boardgsm_visipak: document.getElementById("f_qc_boardgsm_visipak"),
@@ -2053,7 +2080,7 @@
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
-    el.f_qtyperbundle, el.f_noofbundles, el.f_reasonforrejection
+    el.f_qtyperbundle, el.f_noofbundles, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty
   ];
   // Layer Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
@@ -2111,6 +2138,20 @@
   // than a blanket "every non-department stage" rule.
   var TYPE_STAGES = ["Plant", "Material shifting", "Partition", "QC", "Finished Goods (FG)", "Ready to Dispatch", "Dispatch"];
   function stageHasType(stage){ return TYPE_STAGES.indexOf(stage) !== -1; }
+  // Quantity Per Bundle / No of Bundles / Pallet No / Pallet Allocation Area all started as
+  // dispatch-flow/Finished Goods fields, then Bundling was added to each so its own bundling and
+  // pallet-staging work can be logged the same way — its own explicit list per field (matching the
+  // TYPE_STAGES pattern above) since each field's stage set is slightly different.
+  var QTYPERBUNDLE_STAGES = ["Dispatch", "Ready to Dispatch", "Finished Goods (FG)", "Rejected", "Bundling"];
+  function stageHasQtyPerBundle(stage){ return QTYPERBUNDLE_STAGES.indexOf(stage) !== -1; }
+  var NOOFBUNDLES_STAGES = ["Dispatch", "Ready to Dispatch", "Rejected", "Bundling"];
+  function stageHasNoOfBundles(stage){ return NOOFBUNDLES_STAGES.indexOf(stage) !== -1; }
+  var PALLETNO_STAGES = ["Finished Goods (FG)", "Bundling"];
+  function stageHasPalletNo(stage){ return PALLETNO_STAGES.indexOf(stage) !== -1; }
+  // Pallet Allocation Area (where on the floor a bundled pallet is staged) is Bundling-only — it's
+  // a brand-new field with no history on any other stage.
+  var PALLETAREA_STAGES = ["Bundling"];
+  function stageHasPalletArea(stage){ return PALLETAREA_STAGES.indexOf(stage) !== -1; }
   // One-time starting data for the Customer/Product catalog (see "Customer / Product catalog"
   // section below) — imported from the Customer_Lists.xlsx Manu provided, cleaned up (trimmed
   // names, normalized PLY spelling/casing, TYPE mapped to this form's own "Boxes" option). Only
@@ -2258,6 +2299,7 @@
     lastClientNameValue = el.f_clientname.value;
     refreshProductNameOptions();
     applyCatalogAutofill();
+    refreshRtdLedgerFields();
   }
   function handleProductChange(){
     if(el.f_product.value === ADD_NEW_VALUE){
@@ -2270,6 +2312,7 @@
     }
     lastProductValue = el.f_product.value;
     applyCatalogAutofill();
+    refreshRtdLedgerFields();
   }
   el.f_clientname.addEventListener("change", handleClientNameChange);
   el.f_product.addEventListener("change", handleProductChange);
@@ -2545,6 +2588,91 @@
     recalcHRManpowerTotals();
   }
 
+  // ---------- Ready to Dispatch: Opening Stock / Ageing auto-calculation ----------
+  // Ready to Dispatch keeps a running per Customer+Product stock ledger: each entry's own
+  // Quantity is fresh production only, and whatever isn't covered by that entry's (manually typed)
+  // Dispatched Qty carries forward as the Opening Stock the NEXT entry for that same Customer+
+  // Product starts from. No of Days Ageing counts how long the CURRENT leftover balance has been
+  // sitting — it resets to 0 whenever the balance is fully cleared to zero, and otherwise keeps
+  // counting from the date that balance was first left over, even as later entries add more fresh
+  // production on top of it.
+  function daysBetweenDates(laterStr, earlierStr){
+    if(!laterStr || !earlierStr) return 0;
+    var later = new Date(laterStr + "T00:00:00");
+    var earlier = new Date(earlierStr + "T00:00:00");
+    var diff = Math.round((later.getTime() - earlier.getTime()) / 86400000);
+    return diff > 0 ? diff : 0;
+  }
+  // Replays every existing Ready to Dispatch entry for this exact Customer+Product, oldest to
+  // newest, to work out the balance (and the date it originated) carried into a new entry dated
+  // targetDate. Only equality where() clauses are used (no orderBy on a different field), so this
+  // never needs a manual Firestore composite index — the chronological sort happens client-side.
+  function computeRtdLedger(customerName, productName, targetDate){
+    var custKey = (customerName || "").trim();
+    var prodKey = (productName || "").trim();
+    if(!custKey || !prodKey){
+      return Promise.resolve({ openingStock: 0, ageingDays: 0 });
+    }
+    return state.db.collection("entries")
+      .where("stage", "==", "Ready to Dispatch")
+      .where("clientName", "==", custKey)
+      .where("productName", "==", prodKey)
+      .get()
+      .then(function(snap){
+        var rows = [];
+        snap.forEach(function(doc){ rows.push(doc.data()); });
+        rows.sort(function(a, b){
+          if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        });
+        var balance = 0, originDate = null;
+        rows.forEach(function(r){
+          // Only replay history up to the date of the entry being created — a back-dated entry
+          // shouldn't pick up leftover stock from entries logged after it.
+          if(targetDate && r.date > targetDate) return;
+          var opening = balance;
+          var produced = Number(r.quantity) || 0;
+          var dispatched = Number(r.dispatchedQty) || 0;
+          var ending = opening + produced - dispatched;
+          if(ending < 0) ending = 0;
+          originDate = ending > 0 ? (opening > 0 ? originDate : r.date) : null;
+          balance = ending;
+        });
+        var ageing = balance > 0 ? daysBetweenDates(targetDate || todayStr(), originDate) : 0;
+        return { openingStock: balance, ageingDays: ageing };
+      })
+      .catch(function(){
+        // Offline, or this device hasn't got a Firestore read through yet — leave both blank
+        // rather than blocking the form; the entry can still be saved without the auto-fill this time.
+        return { openingStock: 0, ageingDays: 0 };
+      });
+  }
+  // Only auto-fills for a brand-new entry (state.editingId is set at the very top of openModal, so
+  // it's already correct by the time this runs from updateFormFieldsForStage). An existing entry's
+  // Opening Stock/Ageing show the values that were computed and stored when IT was created — see
+  // openModal's population of f_openingstock/f_ageing below — and are never silently recomputed
+  // just because someone reopens it, since later entries may already have carried its old balance
+  // forward.
+  var rtdLedgerRequestToken = 0;
+  function refreshRtdLedgerFields(){
+    if(state.editingId) return;
+    if(!isReadyToDispatchStage(el.f_stage.value)){
+      el.f_openingstock.value = "";
+      el.f_ageing.value = "";
+      return;
+    }
+    var myToken = ++rtdLedgerRequestToken;
+    var customerName = el.f_clientname.value;
+    var productName = el.f_product.value;
+    var targetDate = el.f_date.value;
+    computeRtdLedger(customerName, productName, targetDate).then(function(result){
+      if(myToken !== rtdLedgerRequestToken) return; // superseded by a newer request
+      el.f_openingstock.value = result.openingStock;
+      el.f_ageing.value = result.ageingDays;
+    });
+  }
+  el.f_date.addEventListener("change", refreshRtdLedgerFields);
+
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
     var readyToDispatch = isReadyToDispatchStage(stage);
@@ -2576,11 +2704,16 @@
     // this job is for) — only the two department stages (House keeping, HR_Man Power) don't
     // get it.
     el.fld_clientname.hidden = !stageHasCustomerName(stage);
-    // Quantity Per Bundle: Dispatch, Ready to Dispatch, Finished Goods, and Rejected all track it.
-    el.fld_qtyperbundle.hidden = !(dispatch || readyToDispatch || fg || rejected);
-    // No of Bundles: the two dispatch-flow stages plus Rejected — Finished Goods tracks
-    // "Total Bundle" (its overall stock count) instead, which is a different thing.
-    el.fld_noofbundles.hidden = !(dispatch || readyToDispatch || rejected);
+    // Quantity Per Bundle / No of Bundles / Pallet No / Pallet Allocation Area: see their
+    // respective *_STAGES lists above.
+    el.fld_qtyperbundle.hidden = !stageHasQtyPerBundle(stage);
+    el.fld_noofbundles.hidden = !stageHasNoOfBundles(stage);
+    el.fld_palletno.hidden = !stageHasPalletNo(stage);
+    el.fld_palletarea.hidden = !stageHasPalletArea(stage);
+    // Ready to Dispatch's own stock-reconciliation trio — see computeRtdLedger above the modal code.
+    el.fld_dispatchedqty.hidden = !readyToDispatch;
+    el.fld_openingstock.hidden = !readyToDispatch;
+    el.fld_ageing.hidden = !readyToDispatch;
     // Reason for Rejection is Rejected's own field, same idea as Dispatch's Invoice/Vehicle/Driver.
     el.fld_reasonforrejection.hidden = !rejected;
     // Type (Boxes / Partition / Pads): see TYPE_STAGES above for the explicit stage list.
@@ -2589,7 +2722,6 @@
     el.fld_qtyinstock.hidden = !fg;
     el.fld_totalbundle.hidden = !fg;
     el.fld_availablestock.hidden = !fg;
-    el.fld_palletno.hidden = !fg;
     // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field; HR Man Power
     // has no single quantity at all (its table is the whole entry).
     el.fld_qty.hidden = fg || hr;
@@ -2613,6 +2745,7 @@
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
+    refreshRtdLedgerFields();
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -3180,6 +3313,8 @@
           '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
           '<span>' + esc(t("form_qtyperbundle_label")) + ' ' + esc(e.qtyPerBundle != null ? e.qtyPerBundle : "—") + '</span>' +
           '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+          '<span>' + esc(t("form_openingstock_label")) + ' ' + esc(e.openingStock != null ? e.openingStock : "—") + '</span>' +
+          '<span>' + esc(t("form_ageing_label")) + ' ' + esc(e.ageingDays != null ? e.ageingDays : "—") + '</span>' +
         '</div>';
     } else if(isFG){
       statsHtml =
@@ -3382,6 +3517,14 @@
       html: function(e){ return esc(e.manpower != null ? e.manpower : ""); }, csv: function(e){ return e.manpower != null ? e.manpower : ""; } },
     palletNo: { header: function(){ return t("form_palletno_label"); },
       html: function(e){ return esc(e.palletNo || ""); }, csv: function(e){ return e.palletNo || ""; } },
+    palletAllocationArea: { header: function(){ return t("form_palletarea_label"); },
+      html: function(e){ return esc(e.palletAllocationArea || ""); }, csv: function(e){ return e.palletAllocationArea || ""; } },
+    dispatchedQty: { header: function(){ return t("form_dispatchedqty_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.dispatchedQty != null ? e.dispatchedQty : ""); }, csv: function(e){ return e.dispatchedQty != null ? e.dispatchedQty : ""; } },
+    openingStock: { header: function(){ return t("form_openingstock_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.openingStock != null ? e.openingStock : ""); }, csv: function(e){ return e.openingStock != null ? e.openingStock : ""; } },
+    ageingDays: { header: function(){ return t("form_ageing_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.ageingDays != null ? e.ageingDays : ""); }, csv: function(e){ return e.ageingDays != null ? e.ageingDays : ""; } },
     updatedBy: { header: function(){ return t("th_updatedby"); },
       html: function(e){ return esc(e.updatedBy || ""); }, csv: function(e){ return e.updatedBy || ""; } },
     status: { header: function(){ return t("th_status"); },
@@ -3459,11 +3602,13 @@
     if(stageHasPly(stage)) keys.push("ply");
     if(stageHasLayers(stage)) keys.push("layers");
     if(dispatch) keys.push("invoiceNo", "vehicleNumber", "driver");
-    if(dispatch || readyToDispatch || fg || rejected) keys.push("qtyPerBundle");
-    if(dispatch || readyToDispatch || rejected) keys.push("noOfBundles");
+    if(stageHasQtyPerBundle(stage)) keys.push("qtyPerBundle");
+    if(stageHasNoOfBundles(stage)) keys.push("noOfBundles");
     if(rejected) keys.push("reasonForRejection");
     if(!special) keys.push("startTime", "endTime", "runtimeHrs", "manpower");
-    if(fg) keys.push("palletNo");
+    if(stageHasPalletNo(stage)) keys.push("palletNo");
+    if(stageHasPalletArea(stage)) keys.push("palletAllocationArea");
+    if(readyToDispatch) keys.push("dispatchedQty", "openingStock", "ageingDays");
     keys.push("updatedBy");
     if(!special) keys.push("status", "nextStage");
     if(stageHasHold(stage)) keys.push("hold");
@@ -4017,6 +4162,14 @@
     el.f_totalbundle.value = entry && entry.totalBundle != null ? entry.totalBundle : "";
     el.f_availablestock.value = entry && entry.availableStock != null ? entry.availableStock : "";
     el.f_palletno.value = entry ? (entry.palletNo || "") : "";
+    el.f_palletarea.value = entry ? (entry.palletAllocationArea || "") : "";
+    el.f_dispatchedqty.value = entry && entry.dispatchedQty != null ? entry.dispatchedQty : "";
+    // An existing entry shows the Opening Stock/Ageing it was actually saved with (see the
+    // refreshRtdLedgerFields comment above) — a brand-new entry starts blank and gets these
+    // auto-filled live once Customer Name/Product Name/Date are set, via updateFormFieldsForStage
+    // -> refreshRtdLedgerFields() below.
+    el.f_openingstock.value = entry && entry.openingStock != null ? entry.openingStock : "";
+    el.f_ageing.value = entry && entry.ageingDays != null ? entry.ageingDays : "";
     el.f_qc_boardgsm_client.value = entry ? (entry.qcBoardGsmClient || "") : "";
     el.f_qc_boardgsm_visipak.value = entry ? (entry.qcBoardGsmVisipak || "") : "";
     // Manual Pass/Fail switches: a brand-new entry, and any older saved entry from before this
@@ -4154,8 +4307,11 @@
       movedTo = chosenNextStage;
     }
     var hasClientName = stageHasCustomerName(chosenStage);
-    var hasQtyPerBundle = isDispatch || isReadyToDispatch || isFG || isRejected;
-    var hasNoOfBundles = isDispatch || isReadyToDispatch || isRejected;
+    var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
+    var hasNoOfBundles = stageHasNoOfBundles(chosenStage);
+    var hasPalletNo = stageHasPalletNo(chosenStage);
+    var hasPalletArea = stageHasPalletArea(chosenStage);
+    var hasRtdStock = isReadyToDispatch;
     var hasType = stageHasType(chosenStage);
     var hasQcSpecs = stageHasQcSpecs(chosenStage);
     var hrManpowerData = isHR ? computeHRManpowerData() : null;
@@ -4198,7 +4354,13 @@
       qtyInStock: isFG ? (el.f_qtyinstock.value === "" ? null : Number(el.f_qtyinstock.value)) : null,
       totalBundle: isFG ? (el.f_totalbundle.value === "" ? null : Number(el.f_totalbundle.value)) : null,
       availableStock: isFG ? (el.f_availablestock.value === "" ? null : Number(el.f_availablestock.value)) : null,
-      palletNo: isFG ? el.f_palletno.value.trim() : "",
+      palletNo: hasPalletNo ? el.f_palletno.value.trim() : "",
+      palletAllocationArea: hasPalletArea ? el.f_palletarea.value.trim() : "",
+      dispatchedQty: hasRtdStock ? (el.f_dispatchedqty.value === "" ? null : Number(el.f_dispatchedqty.value)) : null,
+      // Snapshotted from whatever the auto-fill (or, for an existing entry, its own saved values)
+      // is currently showing in the read-only fields — see refreshRtdLedgerFields/computeRtdLedger.
+      openingStock: hasRtdStock ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value)) : null,
+      ageingDays: hasRtdStock ? (el.f_ageing.value === "" ? null : Number(el.f_ageing.value)) : null,
       qcBoardGsmClient: hasQcSpecs ? el.f_qc_boardgsm_client.value.trim() : "",
       qcBoardGsmVisipak: hasQcSpecs ? el.f_qc_boardgsm_visipak.value.trim() : "",
       qcBoardGsmPass: hasQcSpecs ? el.f_qc_boardgsm_pass.checked : null,
