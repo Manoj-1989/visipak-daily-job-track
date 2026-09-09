@@ -289,6 +289,14 @@
     display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
     padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--crit);color:#fff;margin-left:6px;
   }
+  /* Marks a card that isn't actually from the day currently being viewed — it's still pending or
+     on Hold from an earlier date, and automatically keeps showing up on every later day's board
+     until it's completed or taken off Hold (see subscribeBoard). Distinct color from Hold's badge
+     so the two reasons a card needs attention stay visually separate even when both apply. */
+  .carryBadge{
+    display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--warn);color:#fff;margin-left:6px;
+  }
   .cardTop{display:flex;justify-content:space-between;align-items:baseline;gap:6px;}
   .cardStatusRow{margin-top:5px;}
   .jobCard{font-family:var(--font-mono);font-weight:600;font-size:13px;color:var(--accent);}
@@ -2931,6 +2939,7 @@
       '</div>' +
       '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span>' +
         (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") +
+        (isCarriedOverEntry(e) ? '<span class="carryBadge" title="Still pending/on Hold from ' + esc(fmtDateDDMMYYYY(e.date)) + '">' + esc(fmtDateDDMMYYYY(e.date)) + '</span>' : "") +
       '</div>' +
       '<div class="productName">' + esc(isHR ? t("hrmp_report_title") : (e.productName || "(no product name)")) + plyHtml + '</div>' +
       statsHtml +
@@ -4001,18 +4010,48 @@
   });
 
   // ---------- Subscriptions ----------
+  // A job card that's still pending (Not Started/In Progress) or on Hold automatically keeps
+  // showing up on every later day's board — nothing about the saved entry changes, it's purely a
+  // matter of which entries this particular day's board pulls in — until it's marked Completed or
+  // taken off Hold. That's done with two extra live queries (pending-status, on-Hold) alongside
+  // the normal "entries dated today" query, merged together in mergeBoardEntries below; entries
+  // from those two extra queries are only kept if they're actually from an EARLIER date than the
+  // one being viewed, since same-day entries already come from the first query and a future-dated
+  // one shouldn't show up early. Kept as three separate simple queries (rather than one query with
+  // date<range plus a second field filter) because Firestore doesn't allow inequality filters on
+  // two different fields in the same query without a manually-created composite index.
+  var PENDING_STATUSES = ["Not Started", "In Progress"];
+  function isCarriedOverEntry(e){ return !!(e && e.date && e.date < state.date); }
   function subscribeBoard(){
     if(state.unsubBoard){ state.unsubBoard(); state.unsubBoard = null; }
-    var query = state.db.collection("entries").where("date", "==", state.date);
-    state.unsubBoard = query.onSnapshot(function(snap){
-      state.boardEntries = snap.docs.map(function(d){
-        var data = d.data() || {};
-        return Object.assign({ id: d.id }, data);
-      });
+    var todayEntries = [], pendingCarry = [], holdCarry = [];
+    function mapDocs(snap){
+      return snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data() || {}); });
+    }
+    function mergeAndRender(){
+      var byId = {};
+      todayEntries.forEach(function(e){ byId[e.id] = e; });
+      pendingCarry.forEach(function(e){ if(isCarriedOverEntry(e)) byId[e.id] = e; });
+      holdCarry.forEach(function(e){ if(isCarriedOverEntry(e)) byId[e.id] = e; });
+      state.boardEntries = Object.keys(byId).map(function(id){ return byId[id]; });
       renderBoard();
-    }, function(err){
+    }
+    function onErr(err){
       showBanner(t("banner_live_updates_stopped_prefix") + " " + (err && err.message ? err.message : "unknown error"));
-    });
+    }
+    var unsubToday = state.db.collection("entries").where("date", "==", state.date).onSnapshot(function(snap){
+      todayEntries = mapDocs(snap);
+      mergeAndRender();
+    }, onErr);
+    var unsubPending = state.db.collection("entries").where("status", "in", PENDING_STATUSES).onSnapshot(function(snap){
+      pendingCarry = mapDocs(snap);
+      mergeAndRender();
+    }, onErr);
+    var unsubHold = state.db.collection("entries").where("onHold", "==", true).onSnapshot(function(snap){
+      holdCarry = mapDocs(snap);
+      mergeAndRender();
+    }, onErr);
+    state.unsubBoard = function(){ unsubToday(); unsubPending(); unsubHold(); };
   }
 
   function subscribeLog(){
