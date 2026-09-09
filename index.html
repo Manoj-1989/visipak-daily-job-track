@@ -912,7 +912,9 @@
       <label id="fld_vehicleno"><span data-i18n="form_vehicleno_label">Vehicle Number</span> <input type="text" id="f_vehicleno" placeholder="e.g. TS09AB1234" data-i18n-placeholder="form_vehicleno_placeholder"></label>
       <label id="fld_driver"><span data-i18n="form_driver_label">Driver</span> <input type="text" id="f_driver" placeholder="Driver's name" data-i18n-placeholder="form_driver_placeholder"></label>
       <label id="fld_qtyperbundle"><span data-i18n="form_qtyperbundle_label">Quantity Per Bundle</span> <input type="number" id="f_qtyperbundle" min="0" step="1" placeholder="50" data-i18n-placeholder="form_qtyperbundle_placeholder"></label>
-      <label id="fld_noofbundles"><span data-i18n="form_noofbundles_label">No of Bundles</span> <input type="number" id="f_noofbundles" min="0" step="1" placeholder="10" data-i18n-placeholder="form_noofbundles_placeholder"></label>
+      <!-- Auto-calculated (readonly) wherever it's shown: Quantity / Qty Per Bundle, rounded up —
+           see refreshNoOfBundles in the script below. -->
+      <label id="fld_noofbundles"><span data-i18n="form_noofbundles_label">No of Bundles</span> <input type="number" id="f_noofbundles" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_noofbundles_placeholder"></label>
       <label class="span2" id="fld_reasonforrejection"><span data-i18n="form_reasonforrejection_label">Reason for Rejection</span> <textarea id="f_reasonforrejection" rows="2" placeholder="e.g. Print misalignment" data-i18n-placeholder="form_reasonforrejection_placeholder"></textarea></label>
       <label id="fld_starttime"><span data-i18n="form_starttime_label">Start Time</span> <input type="time" id="f_starttime"></label>
       <label id="fld_endtime"><span data-i18n="form_endtime_label">End Time</span> <input type="time" id="f_endtime"></label>
@@ -1118,6 +1120,16 @@
       </label>
       <label><span data-i18n="form_qty_label">Quantity</span>
         <input type="number" id="t_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
+      </label>
+      <!-- Both auto-calculated (readonly): Opening Stock Qty pulls in the current undispatched
+           total from the Ready to Dispatch stage for this same Customer+Product, and Required
+           Stock Qty is this task's own Quantity minus that Opening Stock — see
+           computeRtdOpeningStockTotal/refreshTaskStockFields in the script below. -->
+      <label><span data-i18n="task_openingstock_label">Opening Stock Qty</span>
+        <input type="number" id="t_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_openingstock_placeholder">
+      </label>
+      <label><span data-i18n="task_requiredqty_label">Required Stock Qty</span>
+        <input type="number" id="t_requiredqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_requiredqty_placeholder">
       </label>
       <label><span data-i18n="task_assignto_label">Assign To</span>
         <input type="text" id="t_assignto" placeholder="e.g. Raju" data-i18n-placeholder="task_assignto_placeholder">
@@ -1360,7 +1372,7 @@
       form_reasonforrejection_label: "Reason for Rejection",
       form_clientname_placeholder: "e.g. ABC Traders", form_invoiceno_placeholder: "e.g. INV-1042",
       form_vehicleno_placeholder: "e.g. TS09AB1234", form_driver_placeholder: "Driver's name",
-      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
+      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "Auto-calculated",
       form_reasonforrejection_placeholder: "e.g. Print misalignment",
       form_readonly_prefix: "This entry belongs to {stage} — this device only has access to ",
       form_readonly_suffix: ". Switch this device's stage access (top right, \"Change\") to edit it.",
@@ -1380,6 +1392,8 @@
       task_mark_done: "Mark done", task_mark_pending: "Mark pending",
       task_del_title: "Delete Task?", task_del_summary: "This task will be permanently removed. This can't be undone.",
       task_yourname_label: "Your name",
+      task_openingstock_label: "Opening Stock Qty", task_openingstock_placeholder: "Auto-calculated",
+      task_requiredqty_label: "Required Stock Qty", task_requiredqty_placeholder: "Auto-calculated",
       task_assignto_label: "Assign To", task_assignto_placeholder: "e.g. Raju",
       banner_task_save_failed_prefix: "Couldn't save task:",
       banner_task_delete_failed_prefix: "Couldn't delete task:",
@@ -1499,7 +1513,7 @@
       form_reasonforrejection_label: "अस्वीकृति का कारण",
       form_clientname_placeholder: "जैसे ABC Traders", form_invoiceno_placeholder: "जैसे INV-1042",
       form_vehicleno_placeholder: "जैसे TS09AB1234", form_driver_placeholder: "ड्राइवर का नाम",
-      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
+      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "स्वतः गणना",
       form_reasonforrejection_placeholder: "जैसे प्रिंट मिसअलाइनमेंट",
       form_readonly_prefix: "यह एंट्री {stage} की है — इस डिवाइस को केवल इसका एक्सेस है: ",
       form_readonly_suffix: "। इसे बदलने के लिए ऊपर दाईं ओर \"बदलें\" से डिवाइस की स्टेज एक्सेस बदलें।",
@@ -1519,6 +1533,8 @@
       task_mark_done: "पूर्ण के रूप में चिह्नित करें", task_mark_pending: "लंबित के रूप में चिह्नित करें",
       task_del_title: "कार्य हटाएं?", task_del_summary: "यह कार्य स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
       task_yourname_label: "आपका नाम",
+      task_openingstock_label: "ओपनिंग स्टॉक मात्रा", task_openingstock_placeholder: "स्वतः गणना",
+      task_requiredqty_label: "आवश्यक स्टॉक मात्रा", task_requiredqty_placeholder: "स्वतः गणना",
       task_assignto_label: "सौंपें", task_assignto_placeholder: "जैसे, राजू",
       banner_task_save_failed_prefix: "कार्य सेव नहीं हो सका:",
       banner_task_delete_failed_prefix: "कार्य हटाया नहीं जा सका:",
@@ -1638,7 +1654,7 @@
       form_reasonforrejection_label: "తిరస్కరణకు కారణం",
       form_clientname_placeholder: "ఉదా. ABC Traders", form_invoiceno_placeholder: "ఉదా. INV-1042",
       form_vehicleno_placeholder: "ఉదా. TS09AB1234", form_driver_placeholder: "డ్రైవర్ పేరు",
-      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "10",
+      form_qtyperbundle_placeholder: "50", form_noofbundles_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_reasonforrejection_placeholder: "ఉదా. ప్రింట్ మిస్‌అలైన్‌మెంట్",
       form_readonly_prefix: "ఈ ఎంట్రీ {stage}కి చెందింది — ఈ పరికరానికి ఈ కింది వాటికి మాత్రమే యాక్సెస్ ఉంది: ",
       form_readonly_suffix: "। దీన్ని సవరించడానికి పైన కుడివైపున \"మార్చండి\" ద్వారా పరికర దశ యాక్సెస్‌ను మార్చండి.",
@@ -1658,6 +1674,8 @@
       task_mark_done: "పూర్తయినట్లు గుర్తించండి", task_mark_pending: "పెండింగ్‌గా గుర్తించండి",
       task_del_title: "పనిని తొలగించాలా?", task_del_summary: "ఈ పని శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
       task_yourname_label: "మీ పేరు",
+      task_openingstock_label: "ఓపెనింగ్ స్టాక్ పరిమాణం", task_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      task_requiredqty_label: "అవసరమైన స్టాక్ పరిమాణం", task_requiredqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       task_assignto_label: "కేటాయించు", task_assignto_placeholder: "ఉదా. రాజు",
       banner_task_save_failed_prefix: "పని సేవ్ కాలేదు:",
       banner_task_delete_failed_prefix: "పని తొలగించబడలేదు:",
@@ -1892,6 +1910,8 @@
     t_type: document.getElementById("t_type"),
     t_ply: document.getElementById("t_ply"),
     t_quantity: document.getElementById("t_quantity"),
+    t_openingstock: document.getElementById("t_openingstock"),
+    t_requiredqty: document.getElementById("t_requiredqty"),
     t_assignto: document.getElementById("t_assignto"),
     t_notes: document.getElementById("t_notes"),
     t_updatedby: document.getElementById("t_updatedby"),
@@ -2080,7 +2100,7 @@
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
-    el.f_qtyperbundle, el.f_noofbundles, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty
+    el.f_qtyperbundle, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty
   ];
   // Layer Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
@@ -2299,7 +2319,7 @@
     lastClientNameValue = el.f_clientname.value;
     refreshProductNameOptions();
     applyCatalogAutofill();
-    refreshRtdLedgerFields();
+    refreshRtdAgeing();
   }
   function handleProductChange(){
     if(el.f_product.value === ADD_NEW_VALUE){
@@ -2312,7 +2332,7 @@
     }
     lastProductValue = el.f_product.value;
     applyCatalogAutofill();
-    refreshRtdLedgerFields();
+    refreshRtdAgeing();
   }
   el.f_clientname.addEventListener("change", handleClientNameChange);
   el.f_product.addEventListener("change", handleProductChange);
@@ -2372,6 +2392,7 @@
     }
     lastTaskClientNameValue = el.t_clientname.value;
     refreshTaskProductNameOptions();
+    refreshTaskStockFields();
   }
   function handleTaskProductChange(){
     if(el.t_product.value === ADD_NEW_VALUE){
@@ -2383,9 +2404,68 @@
       }
     }
     lastTaskProductValue = el.t_product.value;
+    refreshTaskStockFields();
   }
   el.t_clientname.addEventListener("change", handleTaskClientNameChange);
   el.t_product.addEventListener("change", handleTaskProductChange);
+  // ---------- Priority Tasks: Opening Stock Qty / Required Stock Qty auto-calculation ----------
+  // Opening Stock Qty is the CURRENT total undispatched stock for this Customer+Product, summed
+  // across every Ready to Dispatch entry logged for it (each entry's own Quantity minus its own
+  // Dispatched Qty, clamped at 0 — nothing marks an older leftover lot as "used up" by a newer one,
+  // so every still-outstanding lot counts). Required Stock Qty is simply this task's own Quantity
+  // minus that Opening Stock: how much still needs to be produced once existing stock is counted
+  // in. Unlike Ready to Dispatch's own Ageing field, this always recomputes live — even reopening
+  // an existing task — since a task is a forward-looking plan, not a historical record, and should
+  // reflect whatever stock actually exists right now.
+  function computeRtdOpeningStockTotal(customerName, productName){
+    var custKey = (customerName || "").trim();
+    var prodKey = (productName || "").trim();
+    if(!custKey || !prodKey) return Promise.resolve(0);
+    return state.db.collection("entries")
+      .where("stage", "==", "Ready to Dispatch")
+      .where("clientName", "==", custKey)
+      .where("productName", "==", prodKey)
+      .get()
+      .then(function(snap){
+        var total = 0;
+        snap.forEach(function(doc){
+          var r = doc.data();
+          var leftover = (Number(r.quantity) || 0) - (Number(r.dispatchedQty) || 0);
+          if(leftover > 0) total += leftover;
+        });
+        return total;
+      })
+      .catch(function(){
+        // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
+        // than blocking the form; the task can still be saved without the auto-fill this time.
+        return 0;
+      });
+  }
+  function refreshTaskRequiredQty(){
+    if(el.t_openingstock.value === "" || el.t_quantity.value === ""){
+      el.t_requiredqty.value = "";
+      return;
+    }
+    var required = Number(el.t_quantity.value) - Number(el.t_openingstock.value);
+    el.t_requiredqty.value = required < 0 ? 0 : required;
+  }
+  var taskStockRequestToken = 0;
+  function refreshTaskStockFields(){
+    var customerName = el.t_clientname.value;
+    var productName = el.t_product.value;
+    if(!customerName || !productName){
+      el.t_openingstock.value = "";
+      refreshTaskRequiredQty();
+      return;
+    }
+    var myToken = ++taskStockRequestToken;
+    computeRtdOpeningStockTotal(customerName, productName).then(function(total){
+      if(myToken !== taskStockRequestToken) return; // superseded by a newer request
+      el.t_openingstock.value = total;
+      refreshTaskRequiredQty();
+    });
+  }
+  el.t_quantity.addEventListener("input", refreshTaskRequiredQty);
   // Called after an entry saves successfully — adds a brand-new customer/product to the shared
   // catalog, or fills in a Type/PLY that a known product didn't have yet. Never erases an already-
   // known Type/PLY with a blank (a stage that doesn't collect one of those fields simply omits it
@@ -2588,14 +2668,29 @@
     recalcHRManpowerTotals();
   }
 
+  // ---------- No of Bundles: auto-calculated wherever it's shown ----------
+  // Quantity / Qty Per Bundle, rounded UP to a whole bundle (a partial remainder still needs its
+  // own bundle) — readonly everywhere NOOFBUNDLES_STAGES shows it, never typed in by hand.
+  function refreshNoOfBundles(){
+    if(!stageHasNoOfBundles(el.f_stage.value) || el.f_qty.value === "" || el.f_qtyperbundle.value === ""){
+      el.f_noofbundles.value = "";
+      return;
+    }
+    var qty = Number(el.f_qty.value);
+    var perBundle = Number(el.f_qtyperbundle.value);
+    if(!perBundle || isNaN(qty)){
+      el.f_noofbundles.value = "";
+      return;
+    }
+    el.f_noofbundles.value = Math.ceil(qty / perBundle);
+  }
+  el.f_qty.addEventListener("input", refreshNoOfBundles);
+  el.f_qtyperbundle.addEventListener("input", refreshNoOfBundles);
+
   // ---------- Ready to Dispatch: Opening Stock / Ageing auto-calculation ----------
-  // Ready to Dispatch keeps a running per Customer+Product stock ledger: each entry's own
-  // Quantity is fresh production only, and whatever isn't covered by that entry's (manually typed)
-  // Dispatched Qty carries forward as the Opening Stock the NEXT entry for that same Customer+
-  // Product starts from. No of Days Ageing counts how long the CURRENT leftover balance has been
-  // sitting — it resets to 0 whenever the balance is fully cleared to zero, and otherwise keeps
-  // counting from the date that balance was first left over, even as later entries add more fresh
-  // production on top of it.
+  // Opening Stock is this entry's OWN Quantity minus its OWN (manually typed) Dispatched Qty —
+  // pure arithmetic on two fields already on the form, so it recomputes live with no lookup at
+  // all, and is just as correct for an existing entry being reopened as for a brand-new one.
   function daysBetweenDates(laterStr, earlierStr){
     if(!laterStr || !earlierStr) return 0;
     var later = new Date(laterStr + "T00:00:00");
@@ -2603,16 +2698,28 @@
     var diff = Math.round((later.getTime() - earlier.getTime()) / 86400000);
     return diff > 0 ? diff : 0;
   }
-  // Replays every existing Ready to Dispatch entry for this exact Customer+Product, oldest to
-  // newest, to work out the balance (and the date it originated) carried into a new entry dated
-  // targetDate. Only equality where() clauses are used (no orderBy on a different field), so this
-  // never needs a manual Firestore composite index — the chronological sort happens client-side.
-  function computeRtdLedger(customerName, productName, targetDate){
+  function refreshRtdOpeningStock(){
+    if(!isReadyToDispatchStage(el.f_stage.value) || el.f_qty.value === "" || el.f_dispatchedqty.value === ""){
+      el.f_openingstock.value = "";
+      return;
+    }
+    var qty = Number(el.f_qty.value) || 0;
+    var dispatched = Number(el.f_dispatchedqty.value) || 0;
+    var balance = qty - dispatched;
+    if(balance < 0) balance = 0;
+    el.f_openingstock.value = balance;
+  }
+  el.f_qty.addEventListener("input", refreshRtdOpeningStock);
+  el.f_dispatchedqty.addEventListener("input", refreshRtdOpeningStock);
+  // No of Days Ageing is the one piece that still needs history: it looks at the single most
+  // recent EARLIER Ready to Dispatch entry for this exact Customer+Product, and — if THAT entry's
+  // own leftover (its Quantity minus its Dispatched Qty) is still above zero — counts how many
+  // days ago it was logged. Only equality where() clauses are used (no orderBy on a different
+  // field), so this never needs a manual Firestore composite index; the sort happens client-side.
+  function computeRtdAgeing(customerName, productName, targetDate){
     var custKey = (customerName || "").trim();
     var prodKey = (productName || "").trim();
-    if(!custKey || !prodKey){
-      return Promise.resolve({ openingStock: 0, ageingDays: 0 });
-    }
+    if(!custKey || !prodKey) return Promise.resolve(0);
     return state.db.collection("entries")
       .where("stage", "==", "Ready to Dispatch")
       .where("clientName", "==", custKey)
@@ -2620,58 +2727,44 @@
       .get()
       .then(function(snap){
         var rows = [];
-        snap.forEach(function(doc){ rows.push(doc.data()); });
+        snap.forEach(function(doc){
+          var r = doc.data();
+          if(!targetDate || r.date <= targetDate) rows.push(r);
+        });
         rows.sort(function(a, b){
-          if(a.date !== b.date) return a.date < b.date ? -1 : 1;
-          return (a.createdAt || 0) - (b.createdAt || 0);
+          if(a.date !== b.date) return a.date < b.date ? 1 : -1; // newest first
+          return (b.createdAt || 0) - (a.createdAt || 0);
         });
-        var balance = 0, originDate = null;
-        rows.forEach(function(r){
-          // Only replay history up to the date of the entry being created — a back-dated entry
-          // shouldn't pick up leftover stock from entries logged after it.
-          if(targetDate && r.date > targetDate) return;
-          var opening = balance;
-          var produced = Number(r.quantity) || 0;
-          var dispatched = Number(r.dispatchedQty) || 0;
-          var ending = opening + produced - dispatched;
-          if(ending < 0) ending = 0;
-          originDate = ending > 0 ? (opening > 0 ? originDate : r.date) : null;
-          balance = ending;
-        });
-        var ageing = balance > 0 ? daysBetweenDates(targetDate || todayStr(), originDate) : 0;
-        return { openingStock: balance, ageingDays: ageing };
+        var latest = rows[0];
+        if(!latest) return 0;
+        var leftover = (Number(latest.quantity) || 0) - (Number(latest.dispatchedQty) || 0);
+        if(leftover <= 0) return 0;
+        return daysBetweenDates(targetDate || todayStr(), latest.date);
       })
       .catch(function(){
-        // Offline, or this device hasn't got a Firestore read through yet — leave both blank
-        // rather than blocking the form; the entry can still be saved without the auto-fill this time.
-        return { openingStock: 0, ageingDays: 0 };
+        // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
+        // than blocking the form; the entry can still be saved without the auto-fill this time.
+        return 0;
       });
   }
   // Only auto-fills for a brand-new entry (state.editingId is set at the very top of openModal, so
   // it's already correct by the time this runs from updateFormFieldsForStage). An existing entry's
-  // Opening Stock/Ageing show the values that were computed and stored when IT was created — see
-  // openModal's population of f_openingstock/f_ageing below — and are never silently recomputed
-  // just because someone reopens it, since later entries may already have carried its old balance
-  // forward.
-  var rtdLedgerRequestToken = 0;
-  function refreshRtdLedgerFields(){
+  // Ageing shows the value it was saved with — see openModal's population of f_ageing below — and
+  // is never silently recomputed just because someone reopens it later.
+  var rtdAgeingRequestToken = 0;
+  function refreshRtdAgeing(){
     if(state.editingId) return;
     if(!isReadyToDispatchStage(el.f_stage.value)){
-      el.f_openingstock.value = "";
       el.f_ageing.value = "";
       return;
     }
-    var myToken = ++rtdLedgerRequestToken;
-    var customerName = el.f_clientname.value;
-    var productName = el.f_product.value;
-    var targetDate = el.f_date.value;
-    computeRtdLedger(customerName, productName, targetDate).then(function(result){
-      if(myToken !== rtdLedgerRequestToken) return; // superseded by a newer request
-      el.f_openingstock.value = result.openingStock;
-      el.f_ageing.value = result.ageingDays;
+    var myToken = ++rtdAgeingRequestToken;
+    computeRtdAgeing(el.f_clientname.value, el.f_product.value, el.f_date.value).then(function(ageing){
+      if(myToken !== rtdAgeingRequestToken) return; // superseded by a newer request
+      el.f_ageing.value = ageing;
     });
   }
-  el.f_date.addEventListener("change", refreshRtdLedgerFields);
+  el.f_date.addEventListener("change", refreshRtdAgeing);
 
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
@@ -2745,7 +2838,9 @@
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
-    refreshRtdLedgerFields();
+    refreshNoOfBundles();
+    refreshRtdOpeningStock();
+    refreshRtdAgeing();
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -4164,11 +4259,12 @@
     el.f_palletno.value = entry ? (entry.palletNo || "") : "";
     el.f_palletarea.value = entry ? (entry.palletAllocationArea || "") : "";
     el.f_dispatchedqty.value = entry && entry.dispatchedQty != null ? entry.dispatchedQty : "";
-    // An existing entry shows the Opening Stock/Ageing it was actually saved with (see the
-    // refreshRtdLedgerFields comment above) — a brand-new entry starts blank and gets these
-    // auto-filled live once Customer Name/Product Name/Date are set, via updateFormFieldsForStage
-    // -> refreshRtdLedgerFields() below.
-    el.f_openingstock.value = entry && entry.openingStock != null ? entry.openingStock : "";
+    // Opening Stock is pure Quantity-minus-Dispatched-Qty math, so it doesn't need populating here
+    // at all — updateFormFieldsForStage below calls refreshRtdOpeningStock(), which (re)computes it
+    // from f_qty/f_dispatchedqty above, correctly for both a new and an existing entry alike.
+    // Ageing is different: an existing entry shows whatever it was actually saved with, and only a
+    // brand-new entry gets it auto-filled live (via that same updateFormFieldsForStage call, see
+    // refreshRtdAgeing's state.editingId guard).
     el.f_ageing.value = entry && entry.ageingDays != null ? entry.ageingDays : "";
     el.f_qc_boardgsm_client.value = entry ? (entry.qcBoardGsmClient || "") : "";
     el.f_qc_boardgsm_visipak.value = entry ? (entry.qcBoardGsmVisipak || "") : "";
@@ -4576,6 +4672,9 @@
       if(task.type) metaBits.push(task.type);
       if(task.ply) metaBits.push(task.ply);
       if(task.quantity != null) metaBits.push(t("card_qty_label") + " " + task.quantity);
+      // Required Qty only means anything alongside its own Quantity target — an opening-stock
+      // lookup with no target quantity has nothing to subtract from.
+      if(task.quantity != null && task.requiredQty != null) metaBits.push(t("task_requiredqty_label") + ": " + task.requiredQty);
       if(task.assignTo) metaBits.push(t("task_assignto_label") + ": " + task.assignTo);
       var metaLine = metaBits.length ? '<div class="taskSub">' + esc(metaBits.join(" · ")) + '</div>' : "";
       // Only the admin device can change anything here — the drag handle is left out of the
@@ -4733,6 +4832,9 @@
     el.t_type.value = task ? (task.type || "") : "";
     el.t_ply.value = task ? (task.ply || "") : "";
     el.t_quantity.value = task && task.quantity != null ? task.quantity : "";
+    // Always recomputed live (see refreshTaskStockFields comment above) rather than read from
+    // whatever was saved — reflects the CURRENT stock position, even for an existing task.
+    refreshTaskStockFields();
     el.t_assignto.value = task ? (task.assignTo || "") : "";
     el.t_notes.value = task ? (task.notes || "") : "";
     el.t_updatedby.value = task ? (task.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
@@ -4768,6 +4870,10 @@
       type: el.t_type.value,
       ply: el.t_ply.value,
       quantity: el.t_quantity.value === "" ? null : Number(el.t_quantity.value),
+      // Snapshotted from what the auto-fill is showing right now — see refreshTaskStockFields —
+      // purely for display on the task card/CSV; reopening the task always recomputes it live.
+      openingStock: el.t_openingstock.value === "" ? null : Number(el.t_openingstock.value),
+      requiredQty: el.t_requiredqty.value === "" ? null : Number(el.t_requiredqty.value),
       assignTo: el.t_assignto.value.trim(),
       notes: el.t_notes.value.trim(),
       updatedBy: el.t_updatedby.value.trim(),
