@@ -349,7 +349,11 @@
     border-radius:6px;letter-spacing:-1px;
   }
   .taskDragHandle:hover{background:var(--surface-2);color:var(--ink-soft);}
+  /* Same width as .taskDragHandle so a non-admin device's read-only rows (no handle at all — see
+     renderTasks) still line up with an admin device's rows instead of shifting everything left. */
+  .taskDragHandleSpacer{flex:none;width:28px;}
   .taskCheck{flex:none;margin-top:10px;width:16px;height:16px;accent-color:var(--good);}
+  .taskCheck:disabled{opacity:.6;cursor:default;}
   .taskBody{flex:1;min-width:0;cursor:pointer;padding-top:2px;}
   .taskTitleRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .taskTitle{font-size:13px;font-weight:600;color:var(--ink);}
@@ -1121,7 +1125,7 @@
     <div class="modalActions">
       <button type="button" class="btn danger" id="taskDeleteBtn" hidden data-i18n="generic_delete">Delete</button>
       <div class="spacer"></div>
-      <button type="button" class="btn ghost" id="taskCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <button type="button" class="btn ghost" id="taskCancelBtn">Cancel</button>
       <button type="submit" class="btn primary" id="taskSaveBtn" data-i18n="generic_save">Save</button>
     </div>
   </form>
@@ -1361,7 +1365,7 @@
       task_priority_label: "Priority",
       priority_high: "High", priority_medium: "Medium", priority_low: "Low",
       task_notes_label: "Notes", task_notes_placeholder: "Optional notes…",
-      form_add_task: "Add Task", form_edit_task: "Edit Task",
+      form_add_task: "Add Task", form_edit_task: "Edit Task", form_view_task: "View Task",
       task_mark_done: "Mark done", task_mark_pending: "Mark pending",
       task_del_title: "Delete Task?", task_del_summary: "This task will be permanently removed. This can't be undone.",
       task_yourname_label: "Your name",
@@ -1496,7 +1500,7 @@
       task_priority_label: "प्राथमिकता",
       priority_high: "उच्च", priority_medium: "मध्यम", priority_low: "कम",
       task_notes_label: "टिप्पणी", task_notes_placeholder: "वैकल्पिक टिप्पणी…",
-      form_add_task: "कार्य जोड़ें", form_edit_task: "कार्य संपादित करें",
+      form_add_task: "कार्य जोड़ें", form_edit_task: "कार्य संपादित करें", form_view_task: "कार्य देखें",
       task_mark_done: "पूर्ण के रूप में चिह्नित करें", task_mark_pending: "लंबित के रूप में चिह्नित करें",
       task_del_title: "कार्य हटाएं?", task_del_summary: "यह कार्य स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
       task_yourname_label: "आपका नाम",
@@ -1631,7 +1635,7 @@
       task_priority_label: "ప్రాధాన్యత",
       priority_high: "అధిక", priority_medium: "మధ్యస్థ", priority_low: "తక్కువ",
       task_notes_label: "గమనికలు", task_notes_placeholder: "ఐచ్ఛిక గమనికలు…",
-      form_add_task: "పని జోడించండి", form_edit_task: "పనిని సవరించండి",
+      form_add_task: "పని జోడించండి", form_edit_task: "పనిని సవరించండి", form_view_task: "పనిని వీక్షించండి",
       task_mark_done: "పూర్తయినట్లు గుర్తించండి", task_mark_pending: "పెండింగ్‌గా గుర్తించండి",
       task_del_title: "పనిని తొలగించాలా?", task_del_summary: "ఈ పని శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
       task_yourname_label: "మీ పేరు",
@@ -1767,6 +1771,7 @@
     modalCanEditNormal: true,
     modalTitleKey: "form_add_entry",
     taskModalTitleKey: "form_add_task",
+    taskModalReadOnly: false,
     lang: (function(){ try{ return localStorage.getItem("visipakLanguage") || "en"; }catch(e){ return "en"; } })()
   };
 
@@ -2677,6 +2682,12 @@
     el.deviceTagWrap.hidden = !state.isAdminDevice && !forceSetupVisible;
     el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
     el.activityLogBtn.hidden = !state.isAdminDevice;
+    // Priority Tasks: every device can still see the board, but only the admin device can add,
+    // edit, delete, or reorder a task — everyone else can open one to read it (see openTaskModal's
+    // read-only mode and renderTasks' drag-handle/checkbox gating below), same admin-only pattern
+    // as Manage Users/Activity Log above.
+    el.addTaskBtn.hidden = !state.isAdminDevice;
+    renderTasks();
     // The profile icon is always available (it's also where Language lives now), independent of
     // the admin-only device tag above. Anyone who logged in with a phone number (admin or regular
     // user, shared device or their own) additionally gets their name, role, and a Log Out option
@@ -4405,9 +4416,14 @@
       if(task.quantity != null) metaBits.push(t("card_qty_label") + " " + task.quantity);
       if(task.assignTo) metaBits.push(t("task_assignto_label") + ": " + task.assignTo);
       var metaLine = metaBits.length ? '<div class="taskSub">' + esc(metaBits.join(" · ")) + '</div>' : "";
+      // Only the admin device can change anything here — the drag handle is left out of the
+      // markup entirely (rather than just hidden) for every other device, and the Done/Pending
+      // checkbox is disabled, so the only thing a non-admin device can do with a task is open it
+      // (read-only — see openTaskModal) to read its full details.
+      var canEdit = state.isAdminDevice;
       item.innerHTML =
-        '<span class="taskDragHandle" title="' + esc(t("task_drag_handle_title")) + '">⠿</span>' +
-        '<input type="checkbox" class="taskCheck"' + (isTaskDone(task) ? " checked" : "") + '>' +
+        (canEdit ? '<span class="taskDragHandle" title="' + esc(t("task_drag_handle_title")) + '">⠿</span>' : '<span class="taskDragHandleSpacer"></span>') +
+        '<input type="checkbox" class="taskCheck"' + (isTaskDone(task) ? " checked" : "") + (canEdit ? "" : " disabled") + '>' +
         '<div class="taskBody">' +
           '<div class="taskTitleRow">' +
             '<span class="priorityBadge ' + pr.toLowerCase() + '">' + esc(t("priority_" + pr.toLowerCase())) + '</span>' +
@@ -4417,15 +4433,17 @@
           metaLine +
           (task.notes ? '<div class="taskNotes">' + esc(task.notes) + '</div>' : "") +
         '</div>';
-      item.querySelector(".taskCheck").addEventListener("click", function(ev){ ev.stopPropagation(); });
-      item.querySelector(".taskCheck").addEventListener("change", function(){
-        var checked = this.checked;
-        state.db.doc("tasks/" + task.id).update({ status: checked ? "Done" : "Pending", updatedAt: Date.now() }).catch(function(err){
-          showBanner(t("banner_task_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+      if(canEdit){
+        item.querySelector(".taskCheck").addEventListener("click", function(ev){ ev.stopPropagation(); });
+        item.querySelector(".taskCheck").addEventListener("change", function(){
+          var checked = this.checked;
+          state.db.doc("tasks/" + task.id).update({ status: checked ? "Done" : "Pending", updatedAt: Date.now() }).catch(function(err){
+            showBanner(t("banner_task_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+          });
         });
-      });
+        attachTaskDragHandlers(item.querySelector(".taskDragHandle"), item);
+      }
       item.querySelector(".taskBody").addEventListener("click", function(){ openTaskModal(task); });
-      attachTaskDragHandlers(item.querySelector(".taskDragHandle"), item);
       el.taskList.appendChild(item);
     });
   }
@@ -4523,9 +4541,22 @@
   }
 
   // ---------- Task modal ----------
+  // Every field a person could change on a task — disabled wholesale when the board is opened
+  // read-only (see openTaskModal), the same "disable the whole group" pattern as
+  // NORMAL_FORM_FIELDS/QC_ONLY_FORM_FIELDS above.
+  var TASK_FORM_FIELDS = [
+    el.t_date, el.t_priority, el.t_title, el.t_clientname, el.t_product,
+    el.t_type, el.t_ply, el.t_quantity, el.t_assignto, el.t_notes, el.t_updatedby
+  ];
   function openTaskModal(task){
+    // Only the admin device may add/edit/delete/reorder a task (see el.addTaskBtn.hidden in
+    // applyDeviceStage and the drag-handle/checkbox gating in renderTasks) — every other device
+    // can still open a task to read it, just with every field disabled and no Save/Delete.
+    var readOnly = !state.isAdminDevice;
+    if(!task && readOnly) return; // defensive: the Add Task button is hidden for these devices anyway
     state.editingTaskId = task ? task.id : null;
-    state.taskModalTitleKey = task ? "form_edit_task" : "form_add_task";
+    state.taskModalReadOnly = readOnly;
+    state.taskModalTitleKey = readOnly ? "form_view_task" : (task ? "form_edit_task" : "form_add_task");
     el.taskModalTitle.textContent = t(state.taskModalTitleKey);
     el.t_date.value = task ? task.date : state.date;
     syncTDateLabel();
@@ -4543,7 +4574,10 @@
     el.t_assignto.value = task ? (task.assignTo || "") : "";
     el.t_notes.value = task ? (task.notes || "") : "";
     el.t_updatedby.value = task ? (task.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
-    el.taskDeleteBtn.hidden = !task;
+    TASK_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
+    el.taskDeleteBtn.hidden = !task || readOnly;
+    el.taskSaveBtn.hidden = readOnly;
+    el.taskCancelBtn.textContent = readOnly ? t("form_close") : t("generic_cancel");
     el.taskModalOverlay.hidden = false;
     el.t_title.focus();
   }
@@ -4561,6 +4595,7 @@
 
   el.taskForm.addEventListener("submit", function(ev){
     ev.preventDefault();
+    if(state.taskModalReadOnly) return;
     el.taskSaveBtn.disabled = true;
     var payload = {
       date: el.t_date.value,
@@ -4598,7 +4633,7 @@
 
   var pendingDeleteTask = null;
   el.taskDeleteBtn.addEventListener("click", function(){
-    if(!state.editingTaskId) return;
+    if(!state.editingTaskId || state.taskModalReadOnly) return;
     var task = state.tasks.find(function(tk){ return tk.id === state.editingTaskId; });
     pendingDeleteTask = task || { id: state.editingTaskId };
     el.taskDeleteConfirmSummary.textContent = t("task_del_summary");
@@ -4673,6 +4708,7 @@
     if(!el.supervisorsOverlay.hidden) applySupervisorFilter();
     if(!el.activityOverlay.hidden) applyActivityFilter();
     el.taskModalTitle.textContent = t(state.taskModalTitleKey);
+    el.taskCancelBtn.textContent = state.taskModalReadOnly ? t("form_close") : t("generic_cancel");
     renderBoard();
     renderLog();
     renderTasks();
