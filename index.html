@@ -915,18 +915,26 @@
       <!-- Auto-calculated (readonly) wherever it's shown: Quantity / Qty Per Bundle, rounded up —
            see refreshNoOfBundles in the script below. -->
       <label id="fld_noofbundles"><span data-i18n="form_noofbundles_label">No of Bundles</span> <input type="number" id="f_noofbundles" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_noofbundles_placeholder"></label>
+      <!-- Pallet No sits right after No of Bundles on every stage that shows it (see PALLETNO_STAGES
+           above) — including Ready to Dispatch, where it's the same document field that then carries
+           forward automatically once the entry advances to Finished Goods, or stays blank for manual
+           entry there if it was never set. -->
+      <label id="fld_palletno"><span data-i18n="form_palletno_label">Pallet No</span> <input type="text" id="f_palletno" placeholder="e.g. PL-014" data-i18n-placeholder="form_palletno_placeholder"></label>
       <label class="span2" id="fld_reasonforrejection"><span data-i18n="form_reasonforrejection_label">Reason for Rejection</span> <textarea id="f_reasonforrejection" rows="2" placeholder="e.g. Print misalignment" data-i18n-placeholder="form_reasonforrejection_placeholder"></textarea></label>
       <label id="fld_starttime"><span data-i18n="form_starttime_label">Start Time</span> <input type="time" id="f_starttime"></label>
       <label id="fld_endtime"><span data-i18n="form_endtime_label">End Time</span> <input type="time" id="f_endtime"></label>
       <label id="fld_runtime"><span data-i18n="form_runtime_label">Run Time (Hrs)</span> <input type="number" id="f_runtime" min="0" step="0.1" placeholder="2.5" data-i18n-placeholder="form_runtime_placeholder"></label>
       <label id="fld_manpower"><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
-      <label id="fld_palletno"><span data-i18n="form_palletno_label">Pallet No</span> <input type="text" id="f_palletno" placeholder="e.g. PL-014" data-i18n-placeholder="form_palletno_placeholder"></label>
       <label id="fld_palletarea"><span data-i18n="form_palletarea_label">Pallet Allocation Area</span> <input type="text" id="f_palletarea" placeholder="e.g. Zone A - Rack 3" data-i18n-placeholder="form_palletarea_placeholder"></label>
-      <!-- Dispatched Qty is Ready to Dispatch's own typed-in field. Opening Stock and No of Days
-           Ageing, though, now live on Finished Goods — undispatched leftover from Ready to Dispatch
-           is physically stock sitting back in the FG warehouse, so FG is where it's surfaced, matched
-           to that same batch by Job Card No — see computeFgStockFromRtd/refreshFgStockFields below. -->
+      <!-- Dispatched Qty and Balance Quantity (Quantity minus Dispatched Qty, live-calculated — see
+           refreshRtdBalanceQty below) are Ready to Dispatch's own fields. Opening Stock and No of
+           Days Ageing, though, live on Finished Goods — undispatched leftover from Ready to Dispatch
+           is physically stock sitting back in the FG warehouse, so FG is where it's surfaced, either
+           carried straight over when this same entry advances there via Next Stage, or matched to
+           that batch by Job Card No when a separate Finished Goods entry references it — see
+           computeFgStockFromRtd/refreshFgStockFields below. -->
       <label id="fld_dispatchedqty"><span data-i18n="form_dispatchedqty_label">Dispatched Qty</span> <input type="number" id="f_dispatchedqty" min="0" step="1" placeholder="e.g. 4000" data-i18n-placeholder="form_dispatchedqty_placeholder"></label>
+      <label id="fld_balanceqty"><span data-i18n="form_balanceqty_label">Balance Quantity</span> <input type="number" id="f_balanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_balanceqty_placeholder"></label>
       <label id="fld_openingstock"><span data-i18n="form_openingstock_label">Opening Stock</span> <input type="number" id="f_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_openingstock_placeholder"></label>
       <label id="fld_ageing"><span data-i18n="form_ageing_label">No of Days Ageing</span> <input type="number" id="f_ageing" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_ageing_placeholder"></label>
       <label><span id="f_updatedbyLabel" data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
@@ -1394,6 +1402,7 @@
       form_palletno_label: "Pallet No", form_palletno_placeholder: "e.g. PL-014",
       form_palletarea_label: "Pallet Allocation Area", form_palletarea_placeholder: "e.g. Zone A - Rack 3",
       form_dispatchedqty_label: "Dispatched Qty", form_dispatchedqty_placeholder: "e.g. 4000",
+      form_balanceqty_label: "Balance Quantity", form_balanceqty_placeholder: "Auto-calculated",
       form_openingstock_label: "Opening Stock", form_openingstock_placeholder: "Auto-calculated",
       form_ageing_label: "No of Days Ageing", form_ageing_placeholder: "Auto-calculated",
       qc_specs_heading: "Specifications",
@@ -1545,6 +1554,7 @@
       form_palletno_label: "पैलेट नंबर", form_palletno_placeholder: "जैसे PL-014",
       form_palletarea_label: "पैलेट आवंटन क्षेत्र", form_palletarea_placeholder: "जैसे Zone A - Rack 3",
       form_dispatchedqty_label: "डिस्पैच की गई मात्रा", form_dispatchedqty_placeholder: "जैसे 4000",
+      form_balanceqty_label: "शेष मात्रा", form_balanceqty_placeholder: "स्वतः गणना",
       form_openingstock_label: "ओपनिंग स्टॉक", form_openingstock_placeholder: "स्वतः गणना",
       form_ageing_label: "एजिंग के दिनों की संख्या", form_ageing_placeholder: "स्वतः गणना",
       qc_specs_heading: "स्पेसिफिकेशन",
@@ -1696,6 +1706,7 @@
       form_palletno_label: "పాలెట్ నంబర్", form_palletno_placeholder: "ఉదా. PL-014",
       form_palletarea_label: "పాలెట్ కేటాయింపు ప్రాంతం", form_palletarea_placeholder: "ఉదా. జోన్ A - ర్యాక్ 3",
       form_dispatchedqty_label: "డిస్పాచ్ చేసిన పరిమాణం", form_dispatchedqty_placeholder: "ఉదా. 4000",
+      form_balanceqty_label: "మిగిలిన పరిమాణం", form_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_openingstock_label: "ఓపెనింగ్ స్టాక్", form_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_ageing_label: "ఏజింగ్ రోజుల సంఖ్య", form_ageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       qc_specs_heading: "స్పెసిఫికేషన్లు",
@@ -2072,6 +2083,8 @@
     fld_palletarea: document.getElementById("fld_palletarea"),
     f_dispatchedqty: document.getElementById("f_dispatchedqty"),
     fld_dispatchedqty: document.getElementById("fld_dispatchedqty"),
+    f_balanceqty: document.getElementById("f_balanceqty"),
+    fld_balanceqty: document.getElementById("fld_balanceqty"),
     f_openingstock: document.getElementById("f_openingstock"),
     fld_openingstock: document.getElementById("fld_openingstock"),
     f_ageing: document.getElementById("f_ageing"),
@@ -2268,12 +2281,20 @@
   function stageHasQtyPerBundle(stage){ return QTYPERBUNDLE_STAGES.indexOf(stage) !== -1; }
   var NOOFBUNDLES_STAGES = ["Dispatch", "Ready to Dispatch", "Rejected", "Bundling"];
   function stageHasNoOfBundles(stage){ return NOOFBUNDLES_STAGES.indexOf(stage) !== -1; }
-  var PALLETNO_STAGES = ["Finished Goods (FG)", "Bundling"];
+  // Ready to Dispatch was added so a Pallet No assigned there carries forward automatically (same
+  // document, same field) when the entry later moves on to Finished Goods — see stageHasNextStage
+  // below — and is left blank/manually entered wherever it wasn't set yet.
+  var PALLETNO_STAGES = ["Finished Goods (FG)", "Bundling", "Ready to Dispatch"];
   function stageHasPalletNo(stage){ return PALLETNO_STAGES.indexOf(stage) !== -1; }
   // Pallet Allocation Area (where on the floor a bundled pallet is staged) is Bundling-only — it's
   // a brand-new field with no history on any other stage.
   var PALLETAREA_STAGES = ["Bundling"];
   function stageHasPalletArea(stage){ return PALLETAREA_STAGES.indexOf(stage) !== -1; }
+  // Next Stage is hidden along with Status on every "special" terminal stage (see the `special`
+  // grouping in updateFormFieldsForStage) — except Ready to Dispatch, which needs to be able to
+  // advance its own leftover into Finished Goods once dispatch settles.
+  var NEXTSTAGE_EXCLUDED_STAGES = ["Dispatch", "Finished Goods (FG)", "QC", "HR_Man Power", "Rejected", "Stock Summary"];
+  function stageHasNextStage(stage){ return NEXTSTAGE_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // One-time starting data for the Customer/Product catalog (see "Customer / Product catalog"
   // section below) — imported from the Customer_Lists.xlsx Manu provided, cleaned up (trimmed
   // names, normalized PLY spelling/casing, TYPE mapped to this form's own "Boxes" option). Only
@@ -2803,7 +2824,6 @@
   el.f_qty.addEventListener("input", refreshNoOfBundles);
   el.f_qtyperbundle.addEventListener("input", refreshNoOfBundles);
 
-  // ---------- Ready to Dispatch: Opening Stock / Ageing auto-calculation ----------
   function daysBetweenDates(laterStr, earlierStr){
     if(!laterStr || !earlierStr) return 0;
     var later = new Date(laterStr + "T00:00:00");
@@ -2811,6 +2831,26 @@
     var diff = Math.round((later.getTime() - earlier.getTime()) / 86400000);
     return diff > 0 ? diff : 0;
   }
+  // ---------- Ready to Dispatch: Balance Quantity auto-calculation ----------
+  // Balance Quantity is this entry's OWN Quantity minus its OWN (manually typed) Dispatched Qty —
+  // pure arithmetic on two fields already on the form, so it recomputes live with no lookup at
+  // all, and is just as correct for an existing entry being reopened as for a brand-new one. This
+  // is the same leftover figure that becomes Finished Goods' Opening Stock once this entry moves
+  // on — either carried over directly (see the submit handler's movingRtdToFg) or looked up later
+  // by Job Card No (see computeFgStockFromRtd below).
+  function refreshRtdBalanceQty(){
+    if(!isReadyToDispatchStage(el.f_stage.value) || el.f_qty.value === "" || el.f_dispatchedqty.value === ""){
+      el.f_balanceqty.value = "";
+      return;
+    }
+    var qty = Number(el.f_qty.value) || 0;
+    var dispatched = Number(el.f_dispatchedqty.value) || 0;
+    var balance = qty - dispatched;
+    if(balance < 0) balance = 0;
+    el.f_balanceqty.value = balance;
+  }
+  el.f_qty.addEventListener("input", refreshRtdBalanceQty);
+  el.f_dispatchedqty.addEventListener("input", refreshRtdBalanceQty);
   // ---------- Finished Goods: Opening Stock Qty / No of Days Ageing, sourced from Ready to
   // Dispatch's leftover ----------
   // A job's undispatched leftover at Ready to Dispatch (that entry's own Quantity minus its own
@@ -2968,7 +3008,10 @@
     el.fld_runtime.hidden = special;
     el.fld_manpower.hidden = special;
     el.fld_status.hidden = special;
-    el.fld_nextstage.hidden = special;
+    // Next Stage is hidden along with Status on every other special/terminal stage, but Ready to
+    // Dispatch is the one exception: its own leftover needs to be able to advance into Finished
+    // Goods once dispatch settles — see stageHasNextStage/NEXTSTAGE_EXCLUDED_STAGES above.
+    el.fld_nextstage.hidden = !stageHasNextStage(stage);
     el.fld_remarks.hidden = special;
 
     // Dispatch-only fields.
@@ -2985,9 +3028,10 @@
     el.fld_noofbundles.hidden = !stageHasNoOfBundles(stage);
     el.fld_palletno.hidden = !stageHasPalletNo(stage);
     el.fld_palletarea.hidden = !stageHasPalletArea(stage);
-    // Dispatched Qty is Ready to Dispatch's own field; Opening Stock/Ageing now live on Finished
-    // Goods instead — see computeFgStockFromRtd above the modal code.
+    // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
+    // live on Finished Goods instead — see computeFgStockFromRtd above the modal code.
     el.fld_dispatchedqty.hidden = !readyToDispatch;
+    el.fld_balanceqty.hidden = !readyToDispatch;
     el.fld_openingstock.hidden = !fg;
     el.fld_ageing.hidden = !fg;
     // Reason for Rejection is Rejected's own field, same idea as Dispatch's Invoice/Vehicle/Driver.
@@ -3027,6 +3071,7 @@
     refreshHoldLabel();
     refreshNextStageHoldLock();
     refreshNoOfBundles();
+    refreshRtdBalanceQty();
     refreshFgStockFields();
     refreshStockOpeningBalance();
     refreshStockSummaryCalc();
@@ -3598,6 +3643,7 @@
           '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
           '<span>' + esc(t("form_qtyperbundle_label")) + ' ' + esc(e.qtyPerBundle != null ? e.qtyPerBundle : "—") + '</span>' +
           '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+          '<span>' + esc(t("form_balanceqty_label")) + ' ' + esc(e.balanceQty != null ? e.balanceQty : "—") + '</span>' +
         '</div>';
     } else if(isFG){
       statsHtml =
@@ -3667,7 +3713,7 @@
       '</div>' +
       '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span>' +
         (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") +
-        (isCarriedOverEntry(e) ? '<span class="carryBadge" title="Still pending/on Hold from ' + esc(fmtDateDDMMYYYY(e.date)) + '">' + esc(fmtDateDDMMYYYY(e.date)) + '</span>' : "") +
+        (isCarriedOverEntry(e) ? '<span class="carryBadge" title="' + esc(isFG ? ("In stock since " + fmtDateDDMMYYYY(e.date)) : ("Still pending/on Hold from " + fmtDateDDMMYYYY(e.date))) + '">' + esc(fmtDateDDMMYYYY(e.date)) + '</span>' : "") +
       '</div>' +
       '<div class="productName">' + esc(isHR ? t("hrmp_report_title") : (e.productName || "(no product name)")) + plyHtml + '</div>' +
       statsHtml +
@@ -3815,6 +3861,8 @@
       html: function(e){ return esc(e.palletAllocationArea || ""); }, csv: function(e){ return e.palletAllocationArea || ""; } },
     dispatchedQty: { header: function(){ return t("form_dispatchedqty_label"); }, cellClass: "num",
       html: function(e){ return esc(e.dispatchedQty != null ? e.dispatchedQty : ""); }, csv: function(e){ return e.dispatchedQty != null ? e.dispatchedQty : ""; } },
+    balanceQty: { header: function(){ return t("form_balanceqty_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.balanceQty != null ? e.balanceQty : ""); }, csv: function(e){ return e.balanceQty != null ? e.balanceQty : ""; } },
     openingStock: { header: function(){ return t("form_openingstock_label"); }, cellClass: "num",
       html: function(e){ return esc(e.openingStock != null ? e.openingStock : ""); }, csv: function(e){ return e.openingStock != null ? e.openingStock : ""; } },
     ageingDays: { header: function(){ return t("form_ageing_label"); }, cellClass: "num",
@@ -3926,13 +3974,15 @@
     if(!special) keys.push("startTime", "endTime", "runtimeHrs", "manpower");
     if(stageHasPalletNo(stage)) keys.push("palletNo");
     if(stageHasPalletArea(stage)) keys.push("palletAllocationArea");
-    if(readyToDispatch) keys.push("dispatchedQty");
+    if(readyToDispatch) keys.push("dispatchedQty", "balanceQty");
     if(stockSummary) keys.push("stockRate", "stockOpeningQty", "stockOpeningValue",
       "stockInwardReason", "stockInwardQty", "stockInwardValue",
       "stockOutwardReason", "stockOutwardQty", "stockOutwardValue",
       "stockClosingQty", "stockClosingValue");
     keys.push("updatedBy");
-    if(!special) keys.push("status", "nextStage");
+    if(!special) keys.push("status");
+    // Next Stage follows Status everywhere except Ready to Dispatch — see stageHasNextStage above.
+    if(stageHasNextStage(stage)) keys.push("nextStage");
     if(stageHasHold(stage)) keys.push("hold");
     if(!special) keys.push("remarks");
     if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment");
@@ -4486,6 +4536,9 @@
     el.f_palletno.value = entry ? (entry.palletNo || "") : "";
     el.f_palletarea.value = entry ? (entry.palletAllocationArea || "") : "";
     el.f_dispatchedqty.value = entry && entry.dispatchedQty != null ? entry.dispatchedQty : "";
+    // Balance Quantity is pure Quantity-minus-Dispatched-Qty math, so it doesn't need populating
+    // here at all — updateFormFieldsForStage below calls refreshRtdBalanceQty(), which (re)computes
+    // it from f_qty/f_dispatchedqty above, correctly for both a new and an existing entry alike.
     // Opening Stock and Ageing (Finished Goods only, sourced from Ready to Dispatch's leftover): an
     // existing entry shows whatever it was actually saved with, and only a brand-new entry gets
     // them auto-filled live (via updateFormFieldsForStage's refreshFgStockFields call below, see
@@ -4634,15 +4687,20 @@
     var isHR = isHRManpowerStage(chosenStage);
     var isRejected = isRejectedStage(chosenStage);
     var isStockSummary = isStockSummaryStage(chosenStage);
-    // These stages have no Status/Next Stage fields of their own — a saved entry there is
-    // always treated as a finished, terminal record rather than something that advances further.
+    // These stages have no Status field of their own — a saved entry there is always treated as a
+    // finished, terminal record rather than something in progress. Next Stage follows the same
+    // rule except for Ready to Dispatch — see stageHasNextStage/NEXTSTAGE_EXCLUDED_STAGES above.
     var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC || isHR || isRejected || isStockSummary;
     var chosenStatus = isSpecial ? "Completed" : el.f_status.value;
-    var chosenNextStage = isSpecial ? "" : el.f_nextstage.value;
+    var chosenNextStage = stageHasNextStage(chosenStage) ? el.f_nextstage.value : "";
     var movedTo = null;
     if(chosenStatus === "Completed" && chosenNextStage && chosenNextStage !== chosenStage){
       movedTo = chosenNextStage;
     }
+    // Ready to Dispatch's own leftover (Balance Quantity) carries straight into the moved
+    // document's Opening Stock/Ageing the moment it advances to Finished Goods — see the
+    // openingStock/ageingDays payload fields below and refreshRtdBalanceQty above the modal code.
+    var movingRtdToFg = isReadyToDispatch && movedTo === "Finished Goods (FG)";
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
     var hasNoOfBundles = stageHasNoOfBundles(chosenStage);
@@ -4694,11 +4752,19 @@
       palletNo: hasPalletNo ? el.f_palletno.value.trim() : "",
       palletAllocationArea: hasPalletArea ? el.f_palletarea.value.trim() : "",
       dispatchedQty: hasRtdStock ? (el.f_dispatchedqty.value === "" ? null : Number(el.f_dispatchedqty.value)) : null,
-      // Opening Stock/Ageing now belong to Finished Goods, not Ready to Dispatch — snapshotted from
-      // whatever the auto-fill (or, for an existing entry, its own saved values) is currently
-      // showing in the read-only fields — see computeFgStockFromRtd/refreshFgStockFields.
-      openingStock: isFG ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value)) : null,
-      ageingDays: isFG ? (el.f_ageing.value === "" ? null : Number(el.f_ageing.value)) : null,
+      // Balance Quantity is Ready to Dispatch's own live Quantity-minus-Dispatched-Qty snapshot —
+      // see refreshRtdBalanceQty above the modal code.
+      balanceQty: hasRtdStock ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null,
+      // Opening Stock/Ageing belong to Finished Goods, normally snapshotted from whatever the
+      // auto-fill (or, for an existing entry, its own saved values) is showing in the read-only
+      // fields — see computeFgStockFromRtd/refreshFgStockFields. The one exception is a Ready to
+      // Dispatch entry advancing straight into Finished Goods via Next Stage: it's the SAME
+      // document moving, not a separate one for computeFgStockFromRtd to look up later, so its own
+      // just-computed Balance Quantity is carried over directly as Finished Goods' Opening Stock,
+      // and Ageing starts at 0 (today is the day it moved).
+      openingStock: isFG ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value))
+        : (movingRtdToFg ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null),
+      ageingDays: isFG ? (el.f_ageing.value === "" ? null : Number(el.f_ageing.value)) : (movingRtdToFg ? 0 : null),
       // Stock Summary's own ledger — see the computeStockOpeningBalance/refreshStockSummaryCalc
       // comment above the modal code. Values are snapshotted from whatever the auto-calc is
       // showing right now, same pattern as Ready to Dispatch's Opening Stock/Ageing above.
@@ -4829,17 +4895,20 @@
   // showing up on every later day's board — nothing about the saved entry changes, it's purely a
   // matter of which entries this particular day's board pulls in — until it's marked Completed or
   // taken off Hold. That's done with two extra live queries (pending-status, on-Hold) alongside
-  // the normal "entries dated today" query, merged together in mergeBoardEntries below; entries
-  // from those two extra queries are only kept if they're actually from an EARLIER date than the
-  // one being viewed, since same-day entries already come from the first query and a future-dated
-  // one shouldn't show up early. Kept as three separate simple queries (rather than one query with
-  // date<range plus a second field filter) because Firestore doesn't allow inequality filters on
-  // two different fields in the same query without a manually-created composite index.
+  // the normal "entries dated today" query, merged together in mergeAndRender below; entries from
+  // those two extra queries are only kept if they're actually from an EARLIER date than the one
+  // being viewed, since same-day entries already come from the first query and a future-dated one
+  // shouldn't show up early. Finished Goods gets its own fourth query on top of that, unconditional
+  // on date: FG is standing warehouse stock rather than a daily job log, so every entry still
+  // sitting there belongs on every day's board for as long as it's there, not just the day it was
+  // logged. Kept as separate simple queries (rather than one query with date<range plus a second
+  // field filter) because Firestore doesn't allow inequality filters on two different fields in the
+  // same query without a manually-created composite index.
   var PENDING_STATUSES = ["Not Started", "In Progress"];
   function isCarriedOverEntry(e){ return !!(e && e.date && e.date < state.date); }
   function subscribeBoard(){
     if(state.unsubBoard){ state.unsubBoard(); state.unsubBoard = null; }
-    var todayEntries = [], pendingCarry = [], holdCarry = [];
+    var todayEntries = [], pendingCarry = [], holdCarry = [], fgStockCarry = [];
     function mapDocs(snap){
       return snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data() || {}); });
     }
@@ -4848,6 +4917,11 @@
       todayEntries.forEach(function(e){ byId[e.id] = e; });
       pendingCarry.forEach(function(e){ if(isCarriedOverEntry(e)) byId[e.id] = e; });
       holdCarry.forEach(function(e){ if(isCarriedOverEntry(e)) byId[e.id] = e; });
+      // Finished Goods is standing warehouse stock, not a daily job log — every entry still sitting
+      // there (its `stage` field hasn't moved on to Dispatch/wherever else) belongs on every day's
+      // board, not just the day it was logged, unlike the pending/on-Hold carry-overs above which
+      // only apply to entries from an EARLIER date than the one being viewed.
+      fgStockCarry.forEach(function(e){ byId[e.id] = e; });
       state.boardEntries = Object.keys(byId).map(function(id){ return byId[id]; });
       renderBoard();
     }
@@ -4866,7 +4940,11 @@
       holdCarry = mapDocs(snap);
       mergeAndRender();
     }, onErr);
-    state.unsubBoard = function(){ unsubToday(); unsubPending(); unsubHold(); };
+    var unsubFgStock = state.db.collection("entries").where("stage", "==", "Finished Goods (FG)").onSnapshot(function(snap){
+      fgStockCarry = mapDocs(snap);
+      mergeAndRender();
+    }, onErr);
+    state.unsubBoard = function(){ unsubToday(); unsubPending(); unsubHold(); unsubFgStock(); };
   }
 
   function subscribeLog(){
