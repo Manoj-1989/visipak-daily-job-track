@@ -877,6 +877,20 @@
       </label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
       <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <!-- Plant-only: before starting production on this (new) Job Card, shows how much of this
+           Customer+Product is already sitting in Finished Goods stock — the exact same "most recent
+           Finished Goods entry" lookup Priority Tasks use for their own Opening Stock Qty/Job Card No
+           (see computeLatestFgStock/refreshPlantStockFields in the script below) — and the Balance
+           Quantity Required to actually produce: this Quantity minus that Opening Stock. -->
+      <label id="fld_plantopeningstock"><span data-i18n="plant_openingstock_label">Opening Stock Qty</span>
+        <input type="number" id="f_plantopeningstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_openingstock_placeholder">
+      </label>
+      <label id="fld_plantopeningstockjobcard"><span data-i18n="plant_openingstockjobcard_label">Opening Stock Job Card No</span>
+        <input type="text" id="f_plantopeningstockjobcard" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_openingstockjobcard_placeholder">
+      </label>
+      <label id="fld_plantbalanceqty"><span data-i18n="plant_balanceqty_label">Balance Quantity Required</span>
+        <input type="number" id="f_plantbalanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_balanceqty_placeholder">
+      </label>
       <label id="fld_qtyinstock"><span data-i18n="form_qtyinstock_label">Quantity in Stock</span> <input type="number" id="f_qtyinstock" min="0" step="1"></label>
       <label id="fld_totalbundle"><span data-i18n="form_totalbundle_label">Total Bundle</span> <input type="number" id="f_totalbundle" min="0" step="1"></label>
       <label id="fld_availablestock"><span data-i18n="form_availablestock_label">Available Stock</span> <input type="number" id="f_availablestock" min="0" step="1"></label>
@@ -940,6 +954,18 @@
       <label id="fld_openingstock"><span data-i18n="form_openingstock_label">Opening Stock</span> <input type="number" id="f_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_openingstock_placeholder"></label>
       <label id="fld_ageing"><span data-i18n="form_ageing_label">No of Days Ageing</span> <input type="number" id="f_ageing" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_ageing_placeholder"></label>
       <label><span id="f_updatedbyLabel" data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
+      <!-- Finished Goods-only: a simple confirmation that whoever's at the FG stage has actually
+           checked in/verified this stock (whether it just arrived via a Ready to Dispatch move or
+           was logged here directly) — a plain informational flag, same widget as Hold but its own
+           wording, with no effect on Status or saving. -->
+      <div class="formGridItem" id="fld_verified">
+        <span data-i18n="form_verified_label">Verified</span>
+        <label class="passFailToggle">
+          <input type="checkbox" id="f_verified">
+          <span class="pfTrack"></span>
+          <span class="pfLabel"></span>
+        </label>
+      </div>
       <label id="fld_status"><span data-i18n="filter_status">Status</span>
         <select id="f_status">
           <option value="Not Started" data-i18n="status_not_started">Not Started</option>
@@ -1188,7 +1214,7 @@
            all come from the single most recent Finished Goods entry for this same Customer+Product
            — Finished Goods is the actual warehouse stock, so that's what to check before deciding
            how much still needs producing. Required Stock Qty is this task's own Quantity minus that
-           Opening Stock — see computeFgStockForTask/refreshTaskStockFields in the script below. -->
+           Opening Stock — see computeLatestFgStock/refreshTaskStockFields in the script below. -->
       <label><span data-i18n="task_openingstock_label">Opening Stock Qty</span>
         <input type="number" id="t_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_openingstock_placeholder">
       </label>
@@ -1447,6 +1473,10 @@
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
       form_hold_label: "Hold", hold_on_label: "On Hold", hold_off_label: "Active",
+      form_verified_label: "Verified", verified_on_label: "Verified", verified_off_label: "Not Verified",
+      plant_openingstock_label: "Opening Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
+      plant_openingstockjobcard_label: "Opening Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
+      plant_balanceqty_label: "Balance Quantity Required", plant_balanceqty_placeholder: "Auto-calculated",
       form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "Your name", form_remarks_placeholder: "Running smoothly, on schedule",
@@ -1601,6 +1631,10 @@
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
       form_hold_label: "होल्ड", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
+      form_verified_label: "सत्यापित", verified_on_label: "सत्यापित", verified_off_label: "असत्यापित",
+      plant_openingstock_label: "ओपनिंग स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
+      plant_openingstockjobcard_label: "ओपनिंग स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
+      plant_balanceqty_label: "आवश्यक शेष मात्रा", plant_balanceqty_placeholder: "स्वतः गणना",
       form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "आपका नाम", form_remarks_placeholder: "सुचारू रूप से चल रहा है, समय पर",
@@ -1755,6 +1789,10 @@
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
       form_hold_label: "హోల్డ్", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
+      form_verified_label: "ధృవీకరించబడింది", verified_on_label: "ధృవీకరించబడింది", verified_off_label: "ధృవీకరించబడలేదు",
+      plant_openingstock_label: "ఓపెనింగ్ స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      plant_openingstockjobcard_label: "ఓపెనింగ్ స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      plant_balanceqty_label: "అవసరమైన మిగులు పరిమాణం", plant_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "మీ పేరు", form_remarks_placeholder: "సాఫీగా జరుగుతోంది, షెడ్యూల్ ప్రకారం",
@@ -2062,6 +2100,8 @@
     f_nextstage: document.getElementById("f_nextstage"),
     f_hold: document.getElementById("f_hold"),
     fld_hold: document.getElementById("fld_hold"),
+    f_verified: document.getElementById("f_verified"),
+    fld_verified: document.getElementById("fld_verified"),
     f_remarks: document.getElementById("f_remarks"),
     f_clientname: document.getElementById("f_clientname"),
     f_invoiceno: document.getElementById("f_invoiceno"),
@@ -2088,6 +2128,12 @@
     fld_qty: document.getElementById("fld_qty"),
     f_type: document.getElementById("f_type"),
     fld_type: document.getElementById("fld_type"),
+    f_plantopeningstock: document.getElementById("f_plantopeningstock"),
+    fld_plantopeningstock: document.getElementById("fld_plantopeningstock"),
+    f_plantopeningstockjobcard: document.getElementById("f_plantopeningstockjobcard"),
+    fld_plantopeningstockjobcard: document.getElementById("fld_plantopeningstockjobcard"),
+    f_plantbalanceqty: document.getElementById("f_plantbalanceqty"),
+    fld_plantbalanceqty: document.getElementById("fld_plantbalanceqty"),
     f_qtyinstock: document.getElementById("f_qtyinstock"),
     fld_qtyinstock: document.getElementById("fld_qtyinstock"),
     f_totalbundle: document.getElementById("f_totalbundle"),
@@ -2228,7 +2274,7 @@
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
     el.f_type, el.f_qtyinstock, el.f_totalbundle, el.f_availablestock, el.f_palletno,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
-    el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
+    el.f_updatedby, el.f_verified, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
     el.f_qtyperbundle, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty,
     el.f_stockrate, el.f_stockinwardreason, el.f_stockinwardqty, el.f_stockoutwardreason, el.f_stockoutwardqty
@@ -2264,6 +2310,7 @@
   function isDispatchStage(stage){ return stage === "Dispatch"; }
   function isReadyToDispatchStage(stage){ return stage === "Ready to Dispatch"; }
   function isFGStage(stage){ return stage === "Finished Goods (FG)"; }
+  function isPlantStage(stage){ return stage === "Plant"; }
   function isQCStage(stage){ return stage === "QC"; }
   function isHRManpowerStage(stage){ return stage === "HR_Man Power"; }
   function isRejectedStage(stage){ return stage === "Rejected"; }
@@ -2484,6 +2531,7 @@
     refreshProductNameOptions();
     applyCatalogAutofill();
     refreshStockOpeningBalance();
+    refreshPlantStockFields();
   }
   function handleProductChange(){
     if(el.f_product.value === ADD_NEW_VALUE){
@@ -2497,6 +2545,7 @@
     lastProductValue = el.f_product.value;
     applyCatalogAutofill();
     refreshStockOpeningBalance();
+    refreshPlantStockFields();
   }
   el.f_clientname.addEventListener("change", handleClientNameChange);
   el.f_product.addEventListener("change", handleProductChange);
@@ -2572,18 +2621,15 @@
   }
   el.t_clientname.addEventListener("change", handleTaskClientNameChange);
   el.t_product.addEventListener("change", handleTaskProductChange);
-  // ---------- Priority Tasks: Opening Stock Qty / Job Card No / Ageing / Required Stock Qty
-  // auto-calculation ----------
-  // Opening Stock Qty, the Job Card No it came from, and its Ageing all come from the single most
-  // recent Finished Goods entry logged for this Customer+Product (same "most recent, as-of-date"
-  // lookup pattern as computeFgOpeningStockFromRtd) — Finished Goods is the actual warehouse stock, so
-  // that's what a task needs to check before deciding how much still needs producing, not Ready to
-  // Dispatch's leftover. Required Stock Qty is simply this task's own Quantity minus that Opening
-  // Stock: how much still needs to be produced once existing stock is counted in. All of it always
-  // recomputes live — even reopening an existing task, and relative to the Task's own Date (so
-  // Ageing reflects "as of the date being planned for") — since a task is a forward-looking plan,
-  // not a historical record, and should reflect whatever stock actually exists as of that date.
-  function computeFgStockForTask(customerName, productName, targetDate){
+  // ---------- Shared lookup: the single most recent Finished Goods entry for a Customer+Product
+  // (as of a given date) ----------
+  // Used by both Priority Tasks (Opening Stock Qty / Job Card No / Ageing / Required Stock Qty,
+  // right below) and Plant (Opening Stock Qty / Job Card No / Balance Quantity Required, see
+  // refreshPlantStockFields further below) — Finished Goods is the actual warehouse stock, so
+  // that's what both need to check before deciding how much still needs producing. Only equality
+  // where() clauses are used (no orderBy on a different field), so this never needs a manual
+  // Firestore composite index; the sort happens client-side.
+  function computeLatestFgStock(customerName, productName, targetDate){
     var custKey = (customerName || "").trim();
     var prodKey = (productName || "").trim();
     if(!custKey || !prodKey) return Promise.resolve({ openingStock: 0, jobCardNo: "", ageingDays: null });
@@ -2616,6 +2662,11 @@
         return { openingStock: 0, jobCardNo: "", ageingDays: null };
       });
   }
+  // Required Stock Qty is simply this task's own Quantity minus that Opening Stock: how much still
+  // needs to be produced once existing stock is counted in. All of it always recomputes live — even
+  // reopening an existing task, and relative to the Task's own Date (so Ageing reflects "as of the
+  // date being planned for") — since a task is a forward-looking plan, not a historical record, and
+  // should reflect whatever stock actually exists as of that date.
   function refreshTaskRequiredQty(){
     if(el.t_openingstock.value === "" || el.t_quantity.value === ""){
       el.t_requiredqty.value = "";
@@ -2636,7 +2687,7 @@
       return;
     }
     var myToken = ++taskStockRequestToken;
-    computeFgStockForTask(customerName, productName, el.t_date.value).then(function(result){
+    computeLatestFgStock(customerName, productName, el.t_date.value).then(function(result){
       if(myToken !== taskStockRequestToken) return; // superseded by a newer request
       el.t_openingstock.value = result.openingStock;
       el.t_openingstockjobcard.value = result.jobCardNo;
@@ -2763,6 +2814,12 @@
     var label = el.f_hold.closest(".passFailToggle").querySelector(".pfLabel");
     label.textContent = el.f_hold.checked ? t("hold_on_label") : t("hold_off_label");
   }
+  // Verified uses the same switch widget too, with its own Verified/Not Verified wording — a plain
+  // informational flag (Finished Goods only), no effect on Status or saving.
+  function refreshVerifiedLabel(){
+    var label = el.f_verified.closest(".passFailToggle").querySelector(".pfLabel");
+    label.textContent = el.f_verified.checked ? t("verified_on_label") : t("verified_off_label");
+  }
   // While a job is on Hold it must not advance to the next stage, so Next Stage is locked
   // (disabled) whenever Hold is checked — on stages where Next Stage doesn't even show (the
   // "special" terminal stages) this is a no-op. Unchecking Hold hands control of Next Stage's
@@ -2880,6 +2937,51 @@
   }
   el.f_qty.addEventListener("input", refreshNoOfBundles);
   el.f_qtyperbundle.addEventListener("input", refreshNoOfBundles);
+
+  // ---------- Plant: Opening Stock Qty / Opening Stock Job Card No / Balance Quantity Required
+  // ----------
+  // Before starting production on a (new) Job Card, Plant shows how much of this Customer+Product
+  // already exists as Finished Goods stock — the same computeLatestFgStock lookup Priority Tasks
+  // use for their own Opening Stock Qty/Job Card No (see the shared-lookup comment above it) — and
+  // Balance Quantity Required, this entry's own Quantity minus that Opening Stock: how much still
+  // actually needs to be produced once existing stock is counted in. Like Priority Tasks (and
+  // unlike Ready to Dispatch's own Opening Stock), this always recomputes live, even reopening an
+  // existing Plant entry, since it reflects whatever stock exists right now — not a frozen snapshot
+  // of what existed the day this entry was first saved.
+  function refreshPlantBalanceQty(){
+    if(!isPlantStage(el.f_stage.value) || el.f_plantopeningstock.value === "" || el.f_qty.value === ""){
+      el.f_plantbalanceqty.value = "";
+      return;
+    }
+    var required = Number(el.f_qty.value) - Number(el.f_plantopeningstock.value);
+    el.f_plantbalanceqty.value = required < 0 ? 0 : required;
+  }
+  var plantStockRequestToken = 0;
+  function refreshPlantStockFields(){
+    if(!isPlantStage(el.f_stage.value)){
+      el.f_plantopeningstock.value = "";
+      el.f_plantopeningstockjobcard.value = "";
+      refreshPlantBalanceQty();
+      return;
+    }
+    var customerName = el.f_clientname.value;
+    var productName = el.f_product.value;
+    if(!customerName || !productName){
+      el.f_plantopeningstock.value = "";
+      el.f_plantopeningstockjobcard.value = "";
+      refreshPlantBalanceQty();
+      return;
+    }
+    var myToken = ++plantStockRequestToken;
+    computeLatestFgStock(customerName, productName, el.f_date.value).then(function(result){
+      if(myToken !== plantStockRequestToken) return; // superseded by a newer request
+      el.f_plantopeningstock.value = result.openingStock;
+      el.f_plantopeningstockjobcard.value = result.jobCardNo;
+      refreshPlantBalanceQty();
+    });
+  }
+  el.f_qty.addEventListener("input", refreshPlantBalanceQty);
+  el.f_date.addEventListener("change", refreshPlantStockFields);
 
   function daysBetweenDates(laterStr, earlierStr){
     if(!laterStr || !earlierStr) return 0;
@@ -3060,6 +3162,7 @@
     var dispatch = isDispatchStage(stage);
     var readyToDispatch = isReadyToDispatchStage(stage);
     var fg = isFGStage(stage);
+    var plant = isPlantStage(stage);
     var qc = isQCStage(stage);
     var hr = isHRManpowerStage(stage);
     var rejected = isRejectedStage(stage);
@@ -3117,6 +3220,11 @@
     // has no single quantity at all (its table is the whole entry); Stock Summary has its own
     // Opening/Inward/Outward/Closing quantities in its own table instead.
     el.fld_qty.hidden = fg || hr || stockSummary;
+    // Plant-only: Opening Stock Qty/Job Card No (from Finished Goods) and the Balance Quantity
+    // Required they leave to produce — see refreshPlantStockFields above the modal code.
+    el.fld_plantopeningstock.hidden = !plant;
+    el.fld_plantopeningstockjobcard.hidden = !plant;
+    el.fld_plantbalanceqty.hidden = !plant;
     // Client Specs vs Visipak Specs comparison table — QC and Plant.
     el.fld_qcspecs.hidden = !stageHasQcSpecs(stage);
     // HR Man Power has no product/job-card of its own — it's a whole-factory daily headcount,
@@ -3137,13 +3245,17 @@
     // Hold stays visible even on the "special" terminal stages (Dispatch, QC, FG...) that just
     // hid Status/Next Stage above — only the two department stages don't get it.
     el.fld_hold.hidden = !stageHasHold(stage);
+    // Verified is Finished Goods-only — see the toggle's own comment in the HTML above.
+    el.fld_verified.hidden = !fg;
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
+    refreshVerifiedLabel();
     refreshNextStageHoldLock();
     refreshNoOfBundles();
     refreshRtdBalanceQty();
     refreshFgStockFields();
+    refreshPlantStockFields();
     refreshStockOpeningBalance();
     refreshStockSummaryCalc();
   }
@@ -3976,6 +4088,15 @@
     hold: { header: function(){ return t("form_hold_label"); },
       html: function(e){ return esc(e.onHold ? t("hold_on_label") : t("hold_off_label")); },
       csv: function(e){ return e.onHold ? t("hold_on_label") : t("hold_off_label"); } },
+    verified: { header: function(){ return t("form_verified_label"); },
+      html: function(e){ return esc(e.verified ? t("verified_on_label") : t("verified_off_label")); },
+      csv: function(e){ return e.verified ? t("verified_on_label") : t("verified_off_label"); } },
+    plantOpeningStock: { header: function(){ return t("plant_openingstock_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.plantOpeningStock != null ? e.plantOpeningStock : ""); }, csv: function(e){ return e.plantOpeningStock != null ? e.plantOpeningStock : ""; } },
+    plantOpeningStockJobCard: { header: function(){ return t("plant_openingstockjobcard_label"); },
+      html: function(e){ return esc(e.plantOpeningStockJobCard || ""); }, csv: function(e){ return e.plantOpeningStockJobCard || ""; } },
+    plantBalanceQtyRequired: { header: function(){ return t("plant_balanceqty_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.plantBalanceQtyRequired != null ? e.plantBalanceQtyRequired : ""); }, csv: function(e){ return e.plantBalanceQtyRequired != null ? e.plantBalanceQtyRequired : ""; } },
     remarks: { header: function(){ return t("th_remarks"); },
       html: function(e){ return esc(e.remarks || ""); }, csv: function(e){ return e.remarks || ""; } },
     qcBoardGsm: { header: function(){ return t("qc_spec_boardgsm"); },
@@ -4023,6 +4144,7 @@
     var dispatch = isDispatchStage(stage);
     var readyToDispatch = isReadyToDispatchStage(stage);
     var fg = isFGStage(stage);
+    var plant = isPlantStage(stage);
     var qc = isQCStage(stage);
     var hr = isHRManpowerStage(stage);
     var rejected = isRejectedStage(stage);
@@ -4038,6 +4160,7 @@
     if(hasType) keys.push("type");
     if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck", "artworkAttachment");
     if(!(fg || hr || stockSummary)) keys.push("quantity");
+    if(plant) keys.push("plantOpeningStock", "plantOpeningStockJobCard", "plantBalanceQtyRequired");
     if(fg) keys.push("qtyInStock", "totalBundle", "availableStock", "openingStock", "ageingDays");
     if(stageHasPly(stage)) keys.push("ply");
     if(stageHasLayers(stage)) keys.push("layers");
@@ -4058,6 +4181,7 @@
     // Next Stage follows Status everywhere except Ready to Dispatch — see stageHasNextStage above.
     if(stageHasNextStage(stage)) keys.push("nextStage");
     if(stageHasHold(stage)) keys.push("hold");
+    if(fg) keys.push("verified");
     if(!special) keys.push("remarks");
     if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment");
     if(hr) keys.push("hrTotalOperator", "hrTotalMh", "hrTotalFh", "hrTotalGrand");
@@ -4284,6 +4408,7 @@
     el[key].addEventListener("change", function(){ refreshPassFailLabel(el[key]); });
   });
   el.f_hold.addEventListener("change", function(){ refreshHoldLabel(); refreshNextStageHoldLock(); });
+  el.f_verified.addEventListener("change", refreshVerifiedLabel);
   // Keep the QC Check block's Artwork No mirror in sync as the stage's own team types it —
   // there's only one Artwork No per entry; this block just surfaces it next to QC's Pass/Fail
   // call rather than asking for it a second time.
@@ -4584,6 +4709,9 @@
     el.f_runtime.value = entry && entry.runtimeHrs != null ? entry.runtimeHrs : "";
     el.f_manpower.value = entry && entry.manpower != null ? entry.manpower : "";
     el.f_updatedby.value = entry ? (entry.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
+    // Verified defaults OFF for a new entry, same reasoning as Hold below — it's a confirmation
+    // someone still needs to actively give, not something that starts out already checked.
+    el.f_verified.checked = !!(entry && entry.verified);
     el.f_status.value = entry ? statusLabel(entry.status) : "In Progress";
     el.f_nextstage.value = entry ? (entry.nextStage || "") : "";
     // Hold defaults OFF for a new entry (and for any older entry saved before Hold existed) —
@@ -4758,6 +4886,7 @@
     var isDispatch = isDispatchStage(chosenStage);
     var isReadyToDispatch = isReadyToDispatchStage(chosenStage);
     var isFG = isFGStage(chosenStage);
+    var isPlant = isPlantStage(chosenStage);
     var isQC = isQCStage(chosenStage);
     var isHR = isHRManpowerStage(chosenStage);
     var isRejected = isRejectedStage(chosenStage);
@@ -4815,6 +4944,9 @@
       status: movedTo ? "Not Started" : chosenStatus,
       nextStage: movedTo ? "" : chosenNextStage,
       onHold: stageHasHold(chosenStage) ? el.f_hold.checked : null,
+      // Plain informational flag, Finished Goods only — see refreshVerifiedLabel above the modal
+      // code and the toggle's own comment in the HTML.
+      verified: isFG ? el.f_verified.checked : null,
       remarks: isSpecial ? "" : el.f_remarks.value.trim(),
       clientName: hasClientName ? el.f_clientname.value.trim() : "",
       invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
@@ -4843,6 +4975,13 @@
       // needs no special-casing for it the way Opening Stock does.
       openingStock: isFG ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value))
         : (movingRtdToFg ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null),
+      // Plant's own Opening Stock Qty/Job Card No/Balance Quantity Required — see
+      // refreshPlantStockFields above the modal code. Snapshotted purely for display on the
+      // card/log; like Ready to Dispatch's Opening Stock, reopening the entry always recomputes
+      // these live rather than reading the snapshot back.
+      plantOpeningStock: isPlant ? (el.f_plantopeningstock.value === "" ? null : Number(el.f_plantopeningstock.value)) : null,
+      plantOpeningStockJobCard: isPlant ? (el.f_plantopeningstockjobcard.value || null) : null,
+      plantBalanceQtyRequired: isPlant ? (el.f_plantbalanceqty.value === "" ? null : Number(el.f_plantbalanceqty.value)) : null,
       // Stock Summary's own ledger — see the computeStockOpeningBalance/refreshStockSummaryCalc
       // comment above the modal code. Values are snapshotted from whatever the auto-calc is
       // showing right now, same pattern as Ready to Dispatch's Opening Stock/Ageing above.
