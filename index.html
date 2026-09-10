@@ -927,12 +927,14 @@
       <label id="fld_manpower"><span data-i18n="th_manpower">Man power</span> <input type="number" id="f_manpower" min="0" step="1" placeholder="3" data-i18n-placeholder="form_manpower_placeholder"></label>
       <label id="fld_palletarea"><span data-i18n="form_palletarea_label">Pallet Allocation Area</span> <input type="text" id="f_palletarea" placeholder="e.g. Zone A - Rack 3" data-i18n-placeholder="form_palletarea_placeholder"></label>
       <!-- Dispatched Qty and Balance Quantity (Quantity minus Dispatched Qty, live-calculated — see
-           refreshRtdBalanceQty below) are Ready to Dispatch's own fields. Opening Stock and No of
-           Days Ageing, though, live on Finished Goods — undispatched leftover from Ready to Dispatch
-           is physically stock sitting back in the FG warehouse, so FG is where it's surfaced, either
-           carried straight over when this same entry advances there via Next Stage, or matched to
-           that batch by Job Card No when a separate Finished Goods entry references it — see
-           computeFgStockFromRtd/refreshFgStockFields below. -->
+           refreshRtdBalanceQty below) are Ready to Dispatch's own fields. Opening Stock, though,
+           lives on Finished Goods — undispatched leftover from Ready to Dispatch is physically stock
+           sitting back in the FG warehouse, so FG is where it's surfaced, either carried straight
+           over when this same entry advances there via Next Stage, or matched to that batch by Job
+           Card No when a separate Finished Goods entry references it — see
+           computeFgOpeningStockFromRtd/refreshFgStockFields below. No of Days Ageing also lives on
+           Finished Goods, but is unrelated to any of this — it's always just today minus that FG
+           entry's own Date, see refreshFgAgeing. -->
       <label id="fld_dispatchedqty"><span data-i18n="form_dispatchedqty_label">Dispatched Qty</span> <input type="number" id="f_dispatchedqty" min="0" step="1" placeholder="e.g. 4000" data-i18n-placeholder="form_dispatchedqty_placeholder"></label>
       <label id="fld_balanceqty"><span data-i18n="form_balanceqty_label">Balance Quantity</span> <input type="number" id="f_balanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_balanceqty_placeholder"></label>
       <label id="fld_openingstock"><span data-i18n="form_openingstock_label">Opening Stock</span> <input type="number" id="f_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_openingstock_placeholder"></label>
@@ -1182,12 +1184,19 @@
       <label><span data-i18n="form_qty_label">Quantity</span>
         <input type="number" id="t_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
       </label>
-      <!-- Both auto-calculated (readonly): Opening Stock Qty pulls in the current undispatched
-           total from the Ready to Dispatch stage for this same Customer+Product, and Required
-           Stock Qty is this task's own Quantity minus that Opening Stock — see
-           computeRtdOpeningStockTotal/refreshTaskStockFields in the script below. -->
+      <!-- All three auto-calculated (readonly): Opening Stock Qty, its Job Card No, and its Ageing
+           all come from the single most recent Finished Goods entry for this same Customer+Product
+           — Finished Goods is the actual warehouse stock, so that's what to check before deciding
+           how much still needs producing. Required Stock Qty is this task's own Quantity minus that
+           Opening Stock — see computeFgStockForTask/refreshTaskStockFields in the script below. -->
       <label><span data-i18n="task_openingstock_label">Opening Stock Qty</span>
         <input type="number" id="t_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_openingstock_placeholder">
+      </label>
+      <label><span data-i18n="task_openingstockjobcard_label">Opening Stock Job Card No</span>
+        <input type="text" id="t_openingstockjobcard" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_openingstockjobcard_placeholder">
+      </label>
+      <label><span data-i18n="task_stockageing_label">No of Days Ageing</span>
+        <input type="number" id="t_stockageing" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_stockageing_placeholder">
       </label>
       <label><span data-i18n="task_requiredqty_label">Required Stock Qty</span>
         <input type="number" id="t_requiredqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_requiredqty_placeholder">
@@ -1469,6 +1478,8 @@
       task_del_title: "Delete Task?", task_del_summary: "This task will be permanently removed. This can't be undone.",
       task_yourname_label: "Your name",
       task_openingstock_label: "Opening Stock Qty", task_openingstock_placeholder: "Auto-calculated",
+      task_openingstockjobcard_label: "Opening Stock Job Card No", task_openingstockjobcard_placeholder: "Auto-calculated",
+      task_stockageing_label: "No of Days Ageing", task_stockageing_placeholder: "Auto-calculated",
       task_requiredqty_label: "Required Stock Qty", task_requiredqty_placeholder: "Auto-calculated",
       task_assignto_label: "Assign To", task_assignto_placeholder: "e.g. Raju",
       banner_task_save_failed_prefix: "Couldn't save task:",
@@ -1621,6 +1632,8 @@
       task_del_title: "कार्य हटाएं?", task_del_summary: "यह कार्य स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
       task_yourname_label: "आपका नाम",
       task_openingstock_label: "ओपनिंग स्टॉक मात्रा", task_openingstock_placeholder: "स्वतः गणना",
+      task_openingstockjobcard_label: "ओपनिंग स्टॉक जॉब कार्ड नंबर", task_openingstockjobcard_placeholder: "स्वतः गणना",
+      task_stockageing_label: "एजिंग के दिनों की संख्या", task_stockageing_placeholder: "स्वतः गणना",
       task_requiredqty_label: "आवश्यक स्टॉक मात्रा", task_requiredqty_placeholder: "स्वतः गणना",
       task_assignto_label: "सौंपें", task_assignto_placeholder: "जैसे, राजू",
       banner_task_save_failed_prefix: "कार्य सेव नहीं हो सका:",
@@ -1773,6 +1786,8 @@
       task_del_title: "పనిని తొలగించాలా?", task_del_summary: "ఈ పని శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
       task_yourname_label: "మీ పేరు",
       task_openingstock_label: "ఓపెనింగ్ స్టాక్ పరిమాణం", task_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      task_openingstockjobcard_label: "ఓపెనింగ్ స్టాక్ జాబ్ కార్డ్ నంబర్", task_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      task_stockageing_label: "ఏజింగ్ రోజుల సంఖ్య", task_stockageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       task_requiredqty_label: "అవసరమైన స్టాక్ పరిమాణం", task_requiredqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       task_assignto_label: "కేటాయించు", task_assignto_placeholder: "ఉదా. రాజు",
       banner_task_save_failed_prefix: "పని సేవ్ కాలేదు:",
@@ -2009,6 +2024,8 @@
     t_ply: document.getElementById("t_ply"),
     t_quantity: document.getElementById("t_quantity"),
     t_openingstock: document.getElementById("t_openingstock"),
+    t_openingstockjobcard: document.getElementById("t_openingstockjobcard"),
+    t_stockageing: document.getElementById("t_stockageing"),
     t_requiredqty: document.getElementById("t_requiredqty"),
     t_assignto: document.getElementById("t_assignto"),
     t_notes: document.getElementById("t_notes"),
@@ -2149,14 +2166,14 @@
   el.dateInput.value = state.date;
   syncDateInputLabel();
 
-  // populate stage selects
+  // populate stage selects. f_nextstage is NOT populated here — its option list depends on which
+  // stage the entry form is currently showing (see populateNextStageOptions, called from
+  // updateFormFieldsForStage below), since Ready to Dispatch only offers a restricted subset.
   STAGES.forEach(function(s){
     var o1 = document.createElement("option"); o1.value=s; o1.textContent=s;
     el.f_stage.appendChild(o1);
     var o2 = document.createElement("option"); o2.value=s; o2.textContent=s;
     el.logStageFilter.appendChild(o2);
-    var o3 = document.createElement("option"); o3.value=s; o3.textContent=s;
-    el.f_nextstage.appendChild(o3);
     var o4 = document.createElement("option"); o4.value=s; o4.textContent=s;
     el.boardStageFilter.appendChild(o4);
     var o5 = document.createElement("option"); o5.value=s; o5.textContent=s;
@@ -2295,6 +2312,30 @@
   // advance its own leftover into Finished Goods once dispatch settles.
   var NEXTSTAGE_EXCLUDED_STAGES = ["Dispatch", "Finished Goods (FG)", "QC", "HR_Man Power", "Rejected", "Stock Summary"];
   function stageHasNextStage(stage){ return NEXTSTAGE_EXCLUDED_STAGES.indexOf(stage) === -1; }
+  // Ready to Dispatch's own leftover only ever goes one of two places next — straight out the door
+  // (Dispatch) or back into warehouse storage (Finished Goods) — so its Next Stage dropdown offers
+  // only those two, instead of every stage like the normal production stages do.
+  var RTD_NEXTSTAGE_OPTIONS = ["Dispatch", "Finished Goods (FG)"];
+  // Rebuilds Next Stage's own option list for the given stage — called from
+  // updateFormFieldsForStage below, since which stages are offered depends on the CURRENT stage,
+  // not just whether Next Stage shows at all (stageHasNextStage above). Preserves whatever's
+  // currently selected if it's still a valid option under the (possibly narrower) new list;
+  // otherwise resets to "— stays here —" rather than silently keeping a choice that's no longer
+  // offered.
+  function populateNextStageOptions(stage){
+    var allowed = isReadyToDispatchStage(stage) ? RTD_NEXTSTAGE_OPTIONS : STAGES;
+    var currentValue = el.f_nextstage.value;
+    el.f_nextstage.innerHTML = "";
+    var stayOpt = document.createElement("option");
+    stayOpt.value = "";
+    stayOpt.textContent = t("form_stays_here");
+    el.f_nextstage.appendChild(stayOpt);
+    allowed.forEach(function(s){
+      var o = document.createElement("option"); o.value = s; o.textContent = s;
+      el.f_nextstage.appendChild(o);
+    });
+    el.f_nextstage.value = allowed.indexOf(currentValue) !== -1 ? currentValue : "";
+  }
   // One-time starting data for the Customer/Product catalog (see "Customer / Product catalog"
   // section below) — imported from the Customer_Lists.xlsx Manu provided, cleaned up (trimmed
   // names, normalized PLY spelling/casing, TYPE mapped to this form's own "Boxes" option). Only
@@ -2531,37 +2572,48 @@
   }
   el.t_clientname.addEventListener("change", handleTaskClientNameChange);
   el.t_product.addEventListener("change", handleTaskProductChange);
-  // ---------- Priority Tasks: Opening Stock Qty / Required Stock Qty auto-calculation ----------
-  // Opening Stock Qty is the CURRENT total undispatched stock for this Customer+Product, summed
-  // across every Ready to Dispatch entry logged for it (each entry's own Quantity minus its own
-  // Dispatched Qty, clamped at 0 — nothing marks an older leftover lot as "used up" by a newer one,
-  // so every still-outstanding lot counts). Required Stock Qty is simply this task's own Quantity
-  // minus that Opening Stock: how much still needs to be produced once existing stock is counted
-  // in. Unlike Ready to Dispatch's own Ageing field, this always recomputes live — even reopening
-  // an existing task — since a task is a forward-looking plan, not a historical record, and should
-  // reflect whatever stock actually exists right now.
-  function computeRtdOpeningStockTotal(customerName, productName){
+  // ---------- Priority Tasks: Opening Stock Qty / Job Card No / Ageing / Required Stock Qty
+  // auto-calculation ----------
+  // Opening Stock Qty, the Job Card No it came from, and its Ageing all come from the single most
+  // recent Finished Goods entry logged for this Customer+Product (same "most recent, as-of-date"
+  // lookup pattern as computeFgOpeningStockFromRtd) — Finished Goods is the actual warehouse stock, so
+  // that's what a task needs to check before deciding how much still needs producing, not Ready to
+  // Dispatch's leftover. Required Stock Qty is simply this task's own Quantity minus that Opening
+  // Stock: how much still needs to be produced once existing stock is counted in. All of it always
+  // recomputes live — even reopening an existing task, and relative to the Task's own Date (so
+  // Ageing reflects "as of the date being planned for") — since a task is a forward-looking plan,
+  // not a historical record, and should reflect whatever stock actually exists as of that date.
+  function computeFgStockForTask(customerName, productName, targetDate){
     var custKey = (customerName || "").trim();
     var prodKey = (productName || "").trim();
-    if(!custKey || !prodKey) return Promise.resolve(0);
+    if(!custKey || !prodKey) return Promise.resolve({ openingStock: 0, jobCardNo: "", ageingDays: null });
     return state.db.collection("entries")
-      .where("stage", "==", "Ready to Dispatch")
+      .where("stage", "==", "Finished Goods (FG)")
       .where("clientName", "==", custKey)
       .where("productName", "==", prodKey)
       .get()
       .then(function(snap){
-        var total = 0;
+        var rows = [];
         snap.forEach(function(doc){
           var r = doc.data();
-          var leftover = (Number(r.quantity) || 0) - (Number(r.dispatchedQty) || 0);
-          if(leftover > 0) total += leftover;
+          if(!targetDate || r.date <= targetDate) rows.push(r);
         });
-        return total;
+        rows.sort(function(a, b){
+          if(a.date !== b.date) return a.date < b.date ? 1 : -1; // newest first
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        var latest = rows[0];
+        if(!latest) return { openingStock: 0, jobCardNo: "", ageingDays: null };
+        return {
+          openingStock: Number(latest.openingStock) || 0,
+          jobCardNo: latest.jobCardNo || "",
+          ageingDays: daysBetweenDates(targetDate || todayStr(), latest.date)
+        };
       })
       .catch(function(){
         // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
         // than blocking the form; the task can still be saved without the auto-fill this time.
-        return 0;
+        return { openingStock: 0, jobCardNo: "", ageingDays: null };
       });
   }
   function refreshTaskRequiredQty(){
@@ -2578,17 +2630,22 @@
     var productName = el.t_product.value;
     if(!customerName || !productName){
       el.t_openingstock.value = "";
+      el.t_openingstockjobcard.value = "";
+      el.t_stockageing.value = "";
       refreshTaskRequiredQty();
       return;
     }
     var myToken = ++taskStockRequestToken;
-    computeRtdOpeningStockTotal(customerName, productName).then(function(total){
+    computeFgStockForTask(customerName, productName, el.t_date.value).then(function(result){
       if(myToken !== taskStockRequestToken) return; // superseded by a newer request
-      el.t_openingstock.value = total;
+      el.t_openingstock.value = result.openingStock;
+      el.t_openingstockjobcard.value = result.jobCardNo;
+      el.t_stockageing.value = result.ageingDays != null ? result.ageingDays : "";
       refreshTaskRequiredQty();
     });
   }
   el.t_quantity.addEventListener("input", refreshTaskRequiredQty);
+  el.t_date.addEventListener("change", refreshTaskStockFields);
   // Called after an entry saves successfully — adds a brand-new customer/product to the shared
   // catalog, or fills in a Type/PLY that a known product didn't have yet. Never erases an already-
   // known Type/PLY with a blank (a stage that doesn't collect one of those fields simply omits it
@@ -2837,7 +2894,7 @@
   // all, and is just as correct for an existing entry being reopened as for a brand-new one. This
   // is the same leftover figure that becomes Finished Goods' Opening Stock once this entry moves
   // on — either carried over directly (see the submit handler's movingRtdToFg) or looked up later
-  // by Job Card No (see computeFgStockFromRtd below).
+  // by Job Card No (see computeFgOpeningStockFromRtd below).
   function refreshRtdBalanceQty(){
     if(!isReadyToDispatchStage(el.f_stage.value) || el.f_qty.value === "" || el.f_dispatchedqty.value === ""){
       el.f_balanceqty.value = "";
@@ -2851,22 +2908,20 @@
   }
   el.f_qty.addEventListener("input", refreshRtdBalanceQty);
   el.f_dispatchedqty.addEventListener("input", refreshRtdBalanceQty);
-  // ---------- Finished Goods: Opening Stock Qty / No of Days Ageing, sourced from Ready to
-  // Dispatch's leftover ----------
-  // A job's undispatched leftover at Ready to Dispatch (that entry's own Quantity minus its own
-  // Dispatched Qty) is physically stock sitting back in the FG warehouse, so it's surfaced here on
-  // Finished Goods rather than on Ready to Dispatch itself. Both values come from the single most
-  // recent EARLIER Ready to Dispatch entry carrying this exact Job Card No — keyed off Job Card No
-  // (rather than Customer+Product) because the same Customer+Product can span several different
-  // production batches/job cards at once, each with its own leftover and its own age; the Job Card
-  // No pins the lookup to this exact batch. Opening Stock Qty is that entry's own leftover, and No
-  // of Days Ageing counts how many days passed between THIS FG entry's own Date and the date that
-  // leftover was logged at Ready to Dispatch — i.e. how long it's been sitting in FG since it moved
-  // there. Only equality where() clauses are used (no orderBy on a different field), so this never
-  // needs a manual Firestore composite index; the sort happens client-side.
-  function computeFgStockFromRtd(jobCardNo, targetDate){
+  // ---------- Finished Goods: Opening Stock Qty (sourced from Ready to Dispatch's leftover) / No
+  // of Days Ageing (always live) ----------
+  // Opening Stock Qty: a job's undispatched leftover at Ready to Dispatch (that entry's own
+  // Quantity minus its own Dispatched Qty) is physically stock sitting back in the FG warehouse, so
+  // it's surfaced here on Finished Goods rather than on Ready to Dispatch itself. It comes from the
+  // single most recent EARLIER Ready to Dispatch entry carrying this exact Job Card No — keyed off
+  // Job Card No (rather than Customer+Product) because the same Customer+Product can span several
+  // different production batches/job cards at once, each with its own leftover; the Job Card No
+  // pins the lookup to this exact batch. Only equality where() clauses are used (no orderBy on a
+  // different field), so this never needs a manual Firestore composite index; the sort happens
+  // client-side.
+  function computeFgOpeningStockFromRtd(jobCardNo, targetDate){
     var jcKey = (jobCardNo || "").trim();
-    if(!jcKey) return Promise.resolve({ openingStock: null, ageingDays: null });
+    if(!jcKey) return Promise.resolve({ openingStock: null });
     return state.db.collection("entries")
       .where("stage", "==", "Ready to Dispatch")
       .where("jobCardNo", "==", jcKey)
@@ -2882,34 +2937,48 @@
           return (b.createdAt || 0) - (a.createdAt || 0);
         });
         var latest = rows[0];
-        if(!latest) return { openingStock: null, ageingDays: null };
+        if(!latest) return { openingStock: null };
         var leftover = (Number(latest.quantity) || 0) - (Number(latest.dispatchedQty) || 0);
-        if(leftover <= 0) return { openingStock: 0, ageingDays: 0 };
-        return { openingStock: leftover, ageingDays: daysBetweenDates(targetDate || todayStr(), latest.date) };
+        return { openingStock: leftover > 0 ? leftover : 0 };
       })
       .catch(function(){
         // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
         // than blocking the form; the entry can still be saved without the auto-fill this time.
-        return { openingStock: null, ageingDays: null };
+        return { openingStock: null };
       });
   }
-  // Only auto-fills for a brand-new entry (state.editingId is set at the very top of openModal, so
-  // it's already correct by the time this runs from updateFormFieldsForStage). An existing entry's
-  // Opening Stock/Ageing show whatever they were actually saved with — see openModal's population
-  // below — and are never silently recomputed just because someone reopens it later.
-  var fgStockRequestToken = 0;
-  function refreshFgStockFields(){
-    if(state.editingId) return;
-    if(!isFGStage(el.f_stage.value)){
-      el.f_openingstock.value = "";
+  // No of Days Ageing is how many days have passed between TODAY (the actual calendar date, not
+  // whatever day is selected on the board) and this entry's own Date field — the day the stock
+  // moved into/was logged at Finished Goods. That means it's never a frozen snapshot the way
+  // Opening Stock is: it recomputes live every time the form is open, for a brand-new entry and an
+  // existing one alike, and keeps climbing day by day even if nobody ever reopens the entry again —
+  // e.g. an entry dated 8-Sep still reads 0 that same day, 2 when the form/board is checked on
+  // 10-Sep, 3 on 11-Sep, and so on. See renderCard/getLogColumns below for the same live formula
+  // used on the board card and the log/CSV.
+  function refreshFgAgeing(){
+    if(!isFGStage(el.f_stage.value) || !el.f_date.value){
       el.f_ageing.value = "";
       return;
     }
+    el.f_ageing.value = daysBetweenDates(todayStr(), el.f_date.value);
+  }
+  // Opening Stock, unlike Ageing, still only auto-fills for a brand-new entry (state.editingId is
+  // set at the very top of openModal, so it's already correct by the time this runs from
+  // updateFormFieldsForStage) — an existing entry's Opening Stock shows whatever it was actually
+  // saved with (see openModal's population below) and is never silently recomputed just because
+  // someone reopens it later.
+  var fgStockRequestToken = 0;
+  function refreshFgStockFields(){
+    refreshFgAgeing();
+    if(state.editingId) return;
+    if(!isFGStage(el.f_stage.value)){
+      el.f_openingstock.value = "";
+      return;
+    }
     var myToken = ++fgStockRequestToken;
-    computeFgStockFromRtd(el.f_jobcard.value, el.f_date.value).then(function(result){
+    computeFgOpeningStockFromRtd(el.f_jobcard.value, el.f_date.value).then(function(result){
       if(myToken !== fgStockRequestToken) return; // superseded by a newer request
       el.f_openingstock.value = result.openingStock != null ? result.openingStock : "";
-      el.f_ageing.value = result.ageingDays != null ? result.ageingDays : "";
     });
   }
   el.f_date.addEventListener("change", refreshFgStockFields);
@@ -3010,8 +3079,10 @@
     el.fld_status.hidden = special;
     // Next Stage is hidden along with Status on every other special/terminal stage, but Ready to
     // Dispatch is the one exception: its own leftover needs to be able to advance into Finished
-    // Goods once dispatch settles — see stageHasNextStage/NEXTSTAGE_EXCLUDED_STAGES above.
+    // Goods once dispatch settles — see stageHasNextStage/NEXTSTAGE_EXCLUDED_STAGES above. Its
+    // OPTION LIST also depends on the stage (see populateNextStageOptions/RTD_NEXTSTAGE_OPTIONS).
     el.fld_nextstage.hidden = !stageHasNextStage(stage);
+    populateNextStageOptions(stage);
     el.fld_remarks.hidden = special;
 
     // Dispatch-only fields.
@@ -3029,7 +3100,7 @@
     el.fld_palletno.hidden = !stageHasPalletNo(stage);
     el.fld_palletarea.hidden = !stageHasPalletArea(stage);
     // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
-    // live on Finished Goods instead — see computeFgStockFromRtd above the modal code.
+    // live on Finished Goods instead — see computeFgOpeningStockFromRtd above the modal code.
     el.fld_dispatchedqty.hidden = !readyToDispatch;
     el.fld_balanceqty.hidden = !readyToDispatch;
     el.fld_openingstock.hidden = !fg;
@@ -3653,7 +3724,7 @@
           '<span>' + esc(t("card_total_label")) + ' ' + esc(e.totalBundle != null ? e.totalBundle : "—") + '</span>' +
           '<span>' + esc(t("card_avail_label")) + ' ' + esc(e.availableStock != null ? e.availableStock : "—") + '</span>' +
           '<span>' + esc(t("form_openingstock_label")) + ' ' + esc(e.openingStock != null ? e.openingStock : "—") + '</span>' +
-          '<span>' + esc(t("form_ageing_label")) + ' ' + esc(e.ageingDays != null ? e.ageingDays : "—") + '</span>' +
+          '<span>' + esc(t("form_ageing_label")) + ' ' + esc(e.date ? daysBetweenDates(todayStr(), e.date) : "—") + '</span>' +
         '</div>';
     } else if(isQC){
       statsHtml =
@@ -3866,7 +3937,10 @@
     openingStock: { header: function(){ return t("form_openingstock_label"); }, cellClass: "num",
       html: function(e){ return esc(e.openingStock != null ? e.openingStock : ""); }, csv: function(e){ return e.openingStock != null ? e.openingStock : ""; } },
     ageingDays: { header: function(){ return t("form_ageing_label"); }, cellClass: "num",
-      html: function(e){ return esc(e.ageingDays != null ? e.ageingDays : ""); }, csv: function(e){ return e.ageingDays != null ? e.ageingDays : ""; } },
+      // Always computed live from this row's own Date field (today minus that date) — see
+      // refreshFgAgeing above the modal code — rather than read from a stored value, so a log/CSV
+      // exported today shows the true up-to-date ageing even for an entry saved days ago.
+      html: function(e){ return esc(e.date ? daysBetweenDates(todayStr(), e.date) : ""); }, csv: function(e){ return e.date ? daysBetweenDates(todayStr(), e.date) : ""; } },
     stockRate: { header: function(){ return t("stock_rate_label"); }, cellClass: "num",
       html: function(e){ return esc(e.stockRate != null ? e.stockRate : ""); }, csv: function(e){ return e.stockRate != null ? e.stockRate : ""; } },
     stockOpeningQty: { header: function(){ return t("stock_row_opening") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
@@ -4539,12 +4613,13 @@
     // Balance Quantity is pure Quantity-minus-Dispatched-Qty math, so it doesn't need populating
     // here at all — updateFormFieldsForStage below calls refreshRtdBalanceQty(), which (re)computes
     // it from f_qty/f_dispatchedqty above, correctly for both a new and an existing entry alike.
-    // Opening Stock and Ageing (Finished Goods only, sourced from Ready to Dispatch's leftover): an
-    // existing entry shows whatever it was actually saved with, and only a brand-new entry gets
-    // them auto-filled live (via updateFormFieldsForStage's refreshFgStockFields call below, see
-    // its state.editingId guard).
+    // Opening Stock (Finished Goods only, sourced from Ready to Dispatch's leftover): an existing
+    // entry shows whatever it was actually saved with, and only a brand-new entry gets it
+    // auto-filled live (via updateFormFieldsForStage's refreshFgStockFields call below, see its
+    // state.editingId guard). No of Days Ageing doesn't need populating here at all — it's never
+    // saved, and that same refreshFgStockFields call (via refreshFgAgeing) always (re)computes it
+    // live from f_date, for a brand-new and an existing entry alike.
     el.f_openingstock.value = entry && entry.openingStock != null ? entry.openingStock : "";
-    el.f_ageing.value = entry && entry.ageingDays != null ? entry.ageingDays : "";
     el.f_qc_boardgsm_client.value = entry ? (entry.qcBoardGsmClient || "") : "";
     el.f_qc_boardgsm_visipak.value = entry ? (entry.qcBoardGsmVisipak || "") : "";
     // Manual Pass/Fail switches: a brand-new entry, and any older saved entry from before this
@@ -4698,8 +4773,10 @@
       movedTo = chosenNextStage;
     }
     // Ready to Dispatch's own leftover (Balance Quantity) carries straight into the moved
-    // document's Opening Stock/Ageing the moment it advances to Finished Goods — see the
-    // openingStock/ageingDays payload fields below and refreshRtdBalanceQty above the modal code.
+    // document's Opening Stock the moment it advances to Finished Goods — see the openingStock
+    // payload field below and refreshRtdBalanceQty above the modal code. Ageing needs no such
+    // carry-over: it's never saved, always computed live from the entry's own Date (see
+    // refreshFgAgeing).
     var movingRtdToFg = isReadyToDispatch && movedTo === "Finished Goods (FG)";
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
@@ -4755,16 +4832,17 @@
       // Balance Quantity is Ready to Dispatch's own live Quantity-minus-Dispatched-Qty snapshot —
       // see refreshRtdBalanceQty above the modal code.
       balanceQty: hasRtdStock ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null,
-      // Opening Stock/Ageing belong to Finished Goods, normally snapshotted from whatever the
-      // auto-fill (or, for an existing entry, its own saved values) is showing in the read-only
-      // fields — see computeFgStockFromRtd/refreshFgStockFields. The one exception is a Ready to
-      // Dispatch entry advancing straight into Finished Goods via Next Stage: it's the SAME
-      // document moving, not a separate one for computeFgStockFromRtd to look up later, so its own
-      // just-computed Balance Quantity is carried over directly as Finished Goods' Opening Stock,
-      // and Ageing starts at 0 (today is the day it moved).
+      // Opening Stock belongs to Finished Goods, normally snapshotted from whatever the auto-fill
+      // (or, for an existing entry, its own saved value) is showing in the read-only field — see
+      // computeFgOpeningStockFromRtd/refreshFgStockFields. The one exception is a Ready to Dispatch
+      // entry advancing straight into Finished Goods via Next Stage: it's the SAME document moving,
+      // not a separate one for computeFgOpeningStockFromRtd to look up later, so its own
+      // just-computed Balance Quantity is carried over directly as Finished Goods' Opening Stock.
+      // No of Days Ageing is never saved at all — see refreshFgAgeing above the modal code — it's
+      // always computed live from this same document's own Date field, so this same-document move
+      // needs no special-casing for it the way Opening Stock does.
       openingStock: isFG ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value))
         : (movingRtdToFg ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null),
-      ageingDays: isFG ? (el.f_ageing.value === "" ? null : Number(el.f_ageing.value)) : (movingRtdToFg ? 0 : null),
       // Stock Summary's own ledger — see the computeStockOpeningBalance/refreshStockSummaryCalc
       // comment above the modal code. Values are snapshotted from whatever the auto-calc is
       // showing right now, same pattern as Ready to Dispatch's Opening Stock/Ageing above.
@@ -5207,6 +5285,8 @@
       // Snapshotted from what the auto-fill is showing right now — see refreshTaskStockFields —
       // purely for display on the task card/CSV; reopening the task always recomputes it live.
       openingStock: el.t_openingstock.value === "" ? null : Number(el.t_openingstock.value),
+      openingStockJobCard: el.t_openingstockjobcard.value || null,
+      stockAgeingDays: el.t_stockageing.value === "" ? null : Number(el.t_stockageing.value),
       requiredQty: el.t_requiredqty.value === "" ? null : Number(el.t_requiredqty.value),
       assignTo: el.t_assignto.value.trim(),
       notes: el.t_notes.value.trim(),
