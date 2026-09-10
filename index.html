@@ -1035,6 +1035,58 @@
           <div class="attachmentPreview" id="attachQcSpecsPreview" hidden></div>
         </div>
       </div>
+      <!-- Stock Summary's own department (Unit Rate + the Opening/Inward/Outward/Closing ledger
+           table) — see stockSummary section of the script below for the auto-calculation. -->
+      <label id="fld_stockrate"><span data-i18n="stock_rate_label">Unit Rate</span> <input type="number" id="f_stockrate" min="0" step="0.01" placeholder="e.g. 12.50" data-i18n-placeholder="stock_rate_placeholder"></label>
+      <div class="span2 qcSpecsBlock" id="fld_stocksummary">
+        <div class="qcSpecsHead" data-i18n="stock_summary_heading">Stock Summary</div>
+        <table class="qcSpecsTable">
+          <thead>
+            <tr><th></th><th data-i18n="stock_th_reason">Reason</th><th data-i18n="stock_th_qty">Quantity</th><th data-i18n="stock_th_value">Value</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-i18n="stock_row_opening">Opening Balance</td>
+              <td></td>
+              <td><input type="number" id="f_stockopeningqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+              <td><input type="number" id="f_stockopeningvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
+            <tr>
+              <td data-i18n="stock_row_inward">Inward Movement</td>
+              <td>
+                <select id="f_stockinwardreason">
+                  <option value="" data-i18n="form_type_select">— select —</option>
+                  <option value="Vendor Purchase" data-i18n="stock_inward_vendor">Vendor Purchase</option>
+                  <option value="Production" data-i18n="stock_inward_production">Production</option>
+                  <option value="Warehouse Transfer" data-i18n="stock_inward_transfer">Warehouse Transfer</option>
+                </select>
+              </td>
+              <td><input type="number" id="f_stockinwardqty" min="0" step="1" placeholder="0"></td>
+              <td><input type="number" id="f_stockinwardvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
+            <tr>
+              <td data-i18n="stock_row_outward">Outward Movement</td>
+              <td>
+                <select id="f_stockoutwardreason">
+                  <option value="" data-i18n="form_type_select">— select —</option>
+                  <option value="Customer Sales" data-i18n="stock_outward_sales">Customer Sales</option>
+                  <option value="Internal Consumption" data-i18n="stock_outward_consumption">Internal Consumption</option>
+                  <option value="Damage" data-i18n="stock_outward_damage">Damage</option>
+                  <option value="Stock Return" data-i18n="stock_outward_return">Stock Return</option>
+                </select>
+              </td>
+              <td><input type="number" id="f_stockoutwardqty" min="0" step="1" placeholder="0"></td>
+              <td><input type="number" id="f_stockoutwardvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
+            <tr>
+              <td data-i18n="stock_row_closing">Closing Balance</td>
+              <td></td>
+              <td><input type="number" id="f_stockclosingqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+              <td><input type="number" id="f_stockclosingvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div class="span2 hrManpowerBlock" id="fld_hrmanpower">
         <div class="qcSpecsHead" data-i18n="hrmp_heading">Daily Manpower Count</div>
         <div class="hrManpowerWrap">
@@ -1235,7 +1287,8 @@
     "Dispatch",
     "Rejected",
     "House keeping",
-    "HR_Man Power"
+    "HR_Man Power",
+    "Stock Summary"
   ];
   // Plant through Rejected are the actual production line — a job card moves through them in
   // order (Rejected being where a job lands if it fails somewhere along the way). House keeping
@@ -1244,7 +1297,10 @@
   // "Departments" heading instead of letting them read as just more stages. This is listed
   // explicitly (rather than derived from STAGES.indexOf("Dispatch")) now that a production stage
   // (Rejected) sits after Dispatch in the list.
-  var DEPARTMENT_STAGES = ["House keeping", "HR_Man Power"];
+  // Stock Summary is grouped with the departments too (it isn't a step in a job card's own
+  // production flow) even though — unlike House keeping/HR_Man Power — it still tracks a specific
+  // Customer+Product, so stageHasCustomerName below carries an explicit exception for it.
+  var DEPARTMENT_STAGES = ["House keeping", "HR_Man Power", "Stock Summary"];
   function boardSectionFor(stage){ return DEPARTMENT_STAGES.indexOf(stage) !== -1 ? "departments" : "production"; }
   var SLOTS = 10;
   // The one phone number that unlocks admin-only UI (Manage Users, Activity Log, the device tag).
@@ -1358,6 +1414,16 @@
       hrmp_th_operator: "Operator", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "Total Man power", hrmp_grand_label: "Grand Total",
       hrmp_report_title: "Daily Manpower Report",
+      stock_rate_label: "Unit Rate", stock_rate_placeholder: "e.g. 12.50",
+      stock_summary_heading: "Stock Summary",
+      stock_th_reason: "Reason", stock_th_qty: "Quantity", stock_th_value: "Value",
+      stock_auto_placeholder: "Auto-calculated",
+      stock_row_opening: "Opening Balance", stock_row_inward: "Inward Movement",
+      stock_row_outward: "Outward Movement", stock_row_closing: "Closing Balance",
+      stock_inward_vendor: "Vendor Purchase", stock_inward_production: "Production",
+      stock_inward_transfer: "Warehouse Transfer",
+      stock_outward_sales: "Customer Sales", stock_outward_consumption: "Internal Consumption",
+      stock_outward_damage: "Damage", stock_outward_return: "Stock Return",
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
@@ -1499,6 +1565,16 @@
       hrmp_th_operator: "ऑपरेटर", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "कुल मैनपावर", hrmp_grand_label: "ग्रैंड टोटल",
       hrmp_report_title: "दैनिक मैनपावर रिपोर्ट",
+      stock_rate_label: "यूनिट दर", stock_rate_placeholder: "जैसे 12.50",
+      stock_summary_heading: "स्टॉक सारांश",
+      stock_th_reason: "कारण", stock_th_qty: "मात्रा", stock_th_value: "मूल्य",
+      stock_auto_placeholder: "स्वतः गणना",
+      stock_row_opening: "प्रारंभिक शेष", stock_row_inward: "आवक",
+      stock_row_outward: "जावक", stock_row_closing: "अंतिम शेष",
+      stock_inward_vendor: "विक्रेता खरीद", stock_inward_production: "उत्पादन",
+      stock_inward_transfer: "गोदाम स्थानांतरण",
+      stock_outward_sales: "ग्राहक बिक्री", stock_outward_consumption: "आंतरिक उपयोग",
+      stock_outward_damage: "क्षतिग्रस्त", stock_outward_return: "स्टॉक वापसी",
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
@@ -1640,6 +1716,16 @@
       hrmp_th_operator: "ఆపరేటర్", hrmp_th_mh: "MH", hrmp_th_fh: "FH",
       hrmp_total_label: "మొత్తం మ్యాన్‌పవర్", hrmp_grand_label: "గ్రాండ్ టోటల్",
       hrmp_report_title: "రోజువారీ మ్యాన్‌పవర్ రిపోర్ట్",
+      stock_rate_label: "యూనిట్ రేటు", stock_rate_placeholder: "ఉదా. 12.50",
+      stock_summary_heading: "స్టాక్ సారాంశం",
+      stock_th_reason: "కారణం", stock_th_qty: "పరిమాణం", stock_th_value: "విలువ",
+      stock_auto_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      stock_row_opening: "ప్రారంభ నిల్వ", stock_row_inward: "ఇన్‌వార్డ్ కదలిక",
+      stock_row_outward: "అవుట్‌వార్డ్ కదలిక", stock_row_closing: "ముగింపు నిల్వ",
+      stock_inward_vendor: "వెండర్ కొనుగోలు", stock_inward_production: "ఉత్పత్తి",
+      stock_inward_transfer: "గోడౌన్ బదిలీ",
+      stock_outward_sales: "కస్టమర్ అమ్మకాలు", stock_outward_consumption: "అంతర్గత వినియోగం",
+      stock_outward_damage: "డ్యామేజ్", stock_outward_return: "స్టాక్ రిటర్న్",
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
@@ -2008,6 +2094,19 @@
     fld_product: document.getElementById("fld_product"),
     fld_jobcard: document.getElementById("fld_jobcard"),
     fld_hrmanpower: document.getElementById("fld_hrmanpower"),
+    fld_stockrate: document.getElementById("fld_stockrate"),
+    f_stockrate: document.getElementById("f_stockrate"),
+    fld_stocksummary: document.getElementById("fld_stocksummary"),
+    f_stockopeningqty: document.getElementById("f_stockopeningqty"),
+    f_stockopeningvalue: document.getElementById("f_stockopeningvalue"),
+    f_stockinwardreason: document.getElementById("f_stockinwardreason"),
+    f_stockinwardqty: document.getElementById("f_stockinwardqty"),
+    f_stockinwardvalue: document.getElementById("f_stockinwardvalue"),
+    f_stockoutwardreason: document.getElementById("f_stockoutwardreason"),
+    f_stockoutwardqty: document.getElementById("f_stockoutwardqty"),
+    f_stockoutwardvalue: document.getElementById("f_stockoutwardvalue"),
+    f_stockclosingqty: document.getElementById("f_stockclosingqty"),
+    f_stockclosingvalue: document.getElementById("f_stockclosingvalue"),
     hrManpowerBody: document.getElementById("hrManpowerBody"),
     hrmpTotalOperator: document.getElementById("hrmpTotalOperator"),
     hrmpTotalMh: document.getElementById("hrmpTotalMh"),
@@ -2100,7 +2199,8 @@
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
-    el.f_qtyperbundle, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty
+    el.f_qtyperbundle, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty,
+    el.f_stockrate, el.f_stockinwardreason, el.f_stockinwardqty, el.f_stockoutwardreason, el.f_stockoutwardqty
   ];
   // Layer Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
@@ -2136,11 +2236,12 @@
   function isQCStage(stage){ return stage === "QC"; }
   function isHRManpowerStage(stage){ return stage === "HR_Man Power"; }
   function isRejectedStage(stage){ return stage === "Rejected"; }
+  function isStockSummaryStage(stage){ return stage === "Stock Summary"; }
   // PLY (board thickness: 3/5/7 Ply) applies to production stages, but not to the stages at the
   // tail end of the flow that aren't really "making" anything — dispatch handling, QC/FG's own
   // specialized fields, Rejected's own outcome fields, and the two manpower/housekeeping
   // bookkeeping stages.
-  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Rejected", "Finished Goods (FG)", "QC", "HR_Man Power", "House keeping"];
+  var PLY_EXCLUDED_STAGES = ["Ready to Dispatch", "Dispatch", "Rejected", "Finished Goods (FG)", "QC", "HR_Man Power", "House keeping", "Stock Summary"];
   function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // Artwork No only applies to the printing/die-cut stages where a job is tied to a specific
   // artwork/plate — it's meaningless once the job has moved past those into gluing, punching, etc.
@@ -2319,7 +2420,7 @@
     lastClientNameValue = el.f_clientname.value;
     refreshProductNameOptions();
     applyCatalogAutofill();
-    refreshRtdAgeing();
+    refreshStockOpeningBalance();
   }
   function handleProductChange(){
     if(el.f_product.value === ADD_NEW_VALUE){
@@ -2332,7 +2433,7 @@
     }
     lastProductValue = el.f_product.value;
     applyCatalogAutofill();
-    refreshRtdAgeing();
+    refreshStockOpeningBalance();
   }
   el.f_clientname.addEventListener("change", handleClientNameChange);
   el.f_product.addEventListener("change", handleProductChange);
@@ -2522,8 +2623,10 @@
   function stageHasHold(stage){ return DEPARTMENT_STAGES.indexOf(stage) === -1; }
   // Client (Customer) Name: every production stage tracks whose order this is, right from Plant
   // through Dispatch — only the two non-production department columns (House keeping,
-  // HR_Man Power) don't get it, same scoping as the Hold switch above.
-  function stageHasCustomerName(stage){ return DEPARTMENT_STAGES.indexOf(stage) === -1; }
+  // HR_Man Power) don't get it, same scoping as the Hold switch above. Stock Summary is also a
+  // department (see DEPARTMENT_STAGES) but still needs Customer+Product to know whose stock it's
+  // tracking, so it's carved back out as an exception here.
+  function stageHasCustomerName(stage){ return stage === "Stock Summary" || DEPARTMENT_STAGES.indexOf(stage) === -1; }
   // Layer Size/GSM/BF rows are Plant-only (not the other Ply stages) — the number of rows shown
   // tracks whichever Ply was picked: 3/5/7 Ply -> that many layers, anything else -> none.
   function stageHasLayers(stage){ return stage === "Plant"; }
@@ -2580,6 +2683,18 @@
   function refreshHoldLabel(){
     var label = el.f_hold.closest(".passFailToggle").querySelector(".pfLabel");
     label.textContent = el.f_hold.checked ? t("hold_on_label") : t("hold_off_label");
+  }
+  // While a job is on Hold it must not advance to the next stage, so Next Stage is locked
+  // (disabled) whenever Hold is checked — on stages where Next Stage doesn't even show (the
+  // "special" terminal stages) this is a no-op. Unchecking Hold hands control of Next Stage's
+  // disabled state back to whatever the normal edit-permission toggle already set.
+  function refreshNextStageHoldLock(){
+    if(el.fld_nextstage.hidden) return;
+    if(el.f_hold.checked){
+      el.f_nextstage.disabled = true;
+    } else {
+      el.f_nextstage.disabled = !state.modalCanEditNormal;
+    }
   }
 
   // ---------- HR Man Power's daily headcount table ----------
@@ -2712,18 +2827,19 @@
   el.f_qty.addEventListener("input", refreshRtdOpeningStock);
   el.f_dispatchedqty.addEventListener("input", refreshRtdOpeningStock);
   // No of Days Ageing is the one piece that still needs history: it looks at the single most
-  // recent EARLIER Ready to Dispatch entry for this exact Customer+Product, and — if THAT entry's
+  // recent EARLIER Ready to Dispatch entry carrying this exact Job Card No, and — if THAT entry's
   // own leftover (its Quantity minus its Dispatched Qty) is still above zero — counts how many
-  // days ago it was logged. Only equality where() clauses are used (no orderBy on a different
-  // field), so this never needs a manual Firestore composite index; the sort happens client-side.
-  function computeRtdAgeing(customerName, productName, targetDate){
-    var custKey = (customerName || "").trim();
-    var prodKey = (productName || "").trim();
-    if(!custKey || !prodKey) return Promise.resolve(0);
+  // days ago it was logged. Keyed off Job Card No (rather than Customer+Product) because the same
+  // Customer+Product can span several different production batches/job cards at once, each with
+  // its own age; the Job Card No pins the lookup to this exact batch. Only equality where()
+  // clauses are used (no orderBy on a different field), so this never needs a manual Firestore
+  // composite index; the sort happens client-side.
+  function computeRtdAgeing(jobCardNo, targetDate){
+    var jcKey = (jobCardNo || "").trim();
+    if(!jcKey) return Promise.resolve(0);
     return state.db.collection("entries")
       .where("stage", "==", "Ready to Dispatch")
-      .where("clientName", "==", custKey)
-      .where("productName", "==", prodKey)
+      .where("jobCardNo", "==", jcKey)
       .get()
       .then(function(snap){
         var rows = [];
@@ -2759,12 +2875,85 @@
       return;
     }
     var myToken = ++rtdAgeingRequestToken;
-    computeRtdAgeing(el.f_clientname.value, el.f_product.value, el.f_date.value).then(function(ageing){
+    computeRtdAgeing(el.f_jobcard.value, el.f_date.value).then(function(ageing){
       if(myToken !== rtdAgeingRequestToken) return; // superseded by a newer request
       el.f_ageing.value = ageing;
     });
   }
   el.f_date.addEventListener("change", refreshRtdAgeing);
+  el.f_jobcard.addEventListener("input", refreshRtdAgeing);
+  el.f_date.addEventListener("change", function(){ refreshStockOpeningBalance(); });
+
+  // ---------- Stock Summary: Opening/Inward/Outward/Closing ledger ----------
+  // A real stock register for one Customer+Product: Opening Balance Qty auto-fills from the most
+  // recent EARLIER Stock Summary entry's own Closing Balance Qty (a running ledger — see
+  // computeStockOpeningBalance), Inward/Outward Qty are typed in by hand with a reason each, and
+  // Closing Balance Qty is Opening + Inward - Outward. One Unit Rate per entry values every row
+  // (Opening/Inward/Outward/Closing Value are each that row's Qty times this same rate).
+  function computeStockOpeningBalance(customerName, productName, targetDate){
+    var custKey = (customerName || "").trim();
+    var prodKey = (productName || "").trim();
+    if(!custKey || !prodKey) return Promise.resolve(0);
+    return state.db.collection("entries")
+      .where("stage", "==", "Stock Summary")
+      .where("clientName", "==", custKey)
+      .where("productName", "==", prodKey)
+      .get()
+      .then(function(snap){
+        var rows = [];
+        snap.forEach(function(doc){
+          var r = doc.data();
+          if(!targetDate || r.date <= targetDate) rows.push(r);
+        });
+        rows.sort(function(a, b){
+          if(a.date !== b.date) return a.date < b.date ? 1 : -1; // newest first
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        var latest = rows[0];
+        return latest ? (Number(latest.stockClosingQty) || 0) : 0;
+      })
+      .catch(function(){
+        // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
+        // than blocking the form; the entry can still be saved without the auto-fill this time.
+        return 0;
+      });
+  }
+  // Only auto-fills for a brand-new entry (state.editingId is set at the very top of openModal, so
+  // it's already correct by the time this runs from updateFormFieldsForStage). An existing entry's
+  // Opening Balance shows the value it was saved with — see openModal's population below.
+  var stockOpeningRequestToken = 0;
+  function refreshStockOpeningBalance(){
+    if(state.editingId) return;
+    if(!isStockSummaryStage(el.f_stage.value)){
+      el.f_stockopeningqty.value = "";
+      refreshStockSummaryCalc();
+      return;
+    }
+    var myToken = ++stockOpeningRequestToken;
+    computeStockOpeningBalance(el.f_clientname.value, el.f_product.value, el.f_date.value).then(function(qty){
+      if(myToken !== stockOpeningRequestToken) return; // superseded by a newer request
+      el.f_stockopeningqty.value = qty;
+      refreshStockSummaryCalc();
+    });
+  }
+  // Pure arithmetic on whatever's currently in the four Qty fields plus Unit Rate — safe to always
+  // recompute (for both a new and an existing entry) since none of it depends on other records.
+  function refreshStockSummaryCalc(){
+    if(!isStockSummaryStage(el.f_stage.value)) return;
+    var rate = el.f_stockrate.value === "" ? null : Number(el.f_stockrate.value);
+    var opening = el.f_stockopeningqty.value === "" ? null : Number(el.f_stockopeningqty.value);
+    var inward = el.f_stockinwardqty.value === "" ? 0 : Number(el.f_stockinwardqty.value);
+    var outward = el.f_stockoutwardqty.value === "" ? 0 : Number(el.f_stockoutwardqty.value);
+    el.f_stockopeningvalue.value = (rate != null && opening != null) ? (opening * rate) : "";
+    el.f_stockinwardvalue.value = (rate != null && el.f_stockinwardqty.value !== "") ? (inward * rate) : "";
+    el.f_stockoutwardvalue.value = (rate != null && el.f_stockoutwardqty.value !== "") ? (outward * rate) : "";
+    var closing = (opening != null ? opening : 0) + inward - outward;
+    el.f_stockclosingqty.value = opening != null ? closing : "";
+    el.f_stockclosingvalue.value = (rate != null && opening != null) ? (closing * rate) : "";
+  }
+  el.f_stockrate.addEventListener("input", refreshStockSummaryCalc);
+  el.f_stockinwardqty.addEventListener("input", refreshStockSummaryCalc);
+  el.f_stockoutwardqty.addEventListener("input", refreshStockSummaryCalc);
 
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
@@ -2773,9 +2962,10 @@
     var qc = isQCStage(stage);
     var hr = isHRManpowerStage(stage);
     var rejected = isRejectedStage(stage);
+    var stockSummary = isStockSummaryStage(stage);
     // These stages all swap out the standard shift/timing/workflow fields for their own
     // specialized field set, and are always treated as a finished, terminal entry on save.
-    var special = dispatch || readyToDispatch || fg || qc || hr || rejected;
+    var special = dispatch || readyToDispatch || fg || qc || hr || rejected || stockSummary;
 
     el.fld_shift.hidden = special;
     // A hidden field can still block native form submission if left "required" (an invisible
@@ -2816,16 +3006,20 @@
     el.fld_totalbundle.hidden = !fg;
     el.fld_availablestock.hidden = !fg;
     // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field; HR Man Power
-    // has no single quantity at all (its table is the whole entry).
-    el.fld_qty.hidden = fg || hr;
+    // has no single quantity at all (its table is the whole entry); Stock Summary has its own
+    // Opening/Inward/Outward/Closing quantities in its own table instead.
+    el.fld_qty.hidden = fg || hr || stockSummary;
     // Client Specs vs Visipak Specs comparison table — QC and Plant.
     el.fld_qcspecs.hidden = !stageHasQcSpecs(stage);
     // HR Man Power has no product/job-card of its own — it's a whole-factory daily headcount,
-    // not tied to a job — so it swaps those out for the manpower table instead.
+    // not tied to a job — so it swaps those out for the manpower table instead. Stock Summary
+    // keeps Product Name (it's tracking one product's stock) but doesn't need a Job Card No either.
     el.fld_product.hidden = hr;
-    el.fld_jobcard.hidden = hr;
-    el.f_jobcard.required = !hr;
+    el.fld_jobcard.hidden = hr || stockSummary;
+    el.f_jobcard.required = !(hr || stockSummary);
     el.fld_hrmanpower.hidden = !hr;
+    el.fld_stockrate.hidden = !stockSummary;
+    el.fld_stocksummary.hidden = !stockSummary;
     el.entryForm.classList.toggle("wide", hr);
 
     el.f_updatedbyLabel.textContent = dispatch ? t("form_checkedby_label") : t("th_updatedby");
@@ -2838,9 +3032,12 @@
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
+    refreshNextStageHoldLock();
     refreshNoOfBundles();
     refreshRtdOpeningStock();
     refreshRtdAgeing();
+    refreshStockOpeningBalance();
+    refreshStockSummaryCalc();
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -3390,6 +3587,7 @@
     var isQC = e.stage === "QC";
     var isHR = e.stage === "HR_Man Power";
     var isRejected = e.stage === "Rejected";
+    var isStockSummary = e.stage === "Stock Summary";
     // These stages don't carry start/end time, run time, or manpower — show the fields that
     // actually apply to each of them instead.
     var statsHtml;
@@ -3431,6 +3629,15 @@
           '<span>' + esc(t("card_qty_label")) + ' ' + esc(e.quantity != null ? e.quantity : "—") + '</span>' +
           '<span>' + esc(t("form_qtyperbundle_label")) + ' ' + esc(e.qtyPerBundle != null ? e.qtyPerBundle : "—") + '</span>' +
           '<span>' + esc(t("card_bundles_label")) + ' ' + esc(e.noOfBundles != null ? e.noOfBundles : "—") + '</span>' +
+        '</div>';
+    } else if(isStockSummary){
+      statsHtml =
+        '<div class="cardStats">' +
+          '<span>' + esc(t("stock_row_opening")) + ' ' + esc(e.stockOpeningQty != null ? e.stockOpeningQty : "—") + '</span>' +
+          '<span>' + esc(t("stock_row_inward")) + ' ' + esc(e.stockInwardQty != null ? e.stockInwardQty : "—") + '</span>' +
+          '<span>' + esc(t("stock_row_outward")) + ' ' + esc(e.stockOutwardQty != null ? e.stockOutwardQty : "—") + '</span>' +
+          '<span>' + esc(t("stock_row_closing")) + ' ' + esc(e.stockClosingQty != null ? e.stockClosingQty : "—") + '</span>' +
+          '<span>' + esc(t("stock_th_value")) + ' ' + esc(e.stockClosingValue != null ? e.stockClosingValue : "—") + '</span>' +
         '</div>';
     } else if(isHR){
       var hrTotal = e.hrManpowerTotal || {};
@@ -3620,6 +3827,28 @@
       html: function(e){ return esc(e.openingStock != null ? e.openingStock : ""); }, csv: function(e){ return e.openingStock != null ? e.openingStock : ""; } },
     ageingDays: { header: function(){ return t("form_ageing_label"); }, cellClass: "num",
       html: function(e){ return esc(e.ageingDays != null ? e.ageingDays : ""); }, csv: function(e){ return e.ageingDays != null ? e.ageingDays : ""; } },
+    stockRate: { header: function(){ return t("stock_rate_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.stockRate != null ? e.stockRate : ""); }, csv: function(e){ return e.stockRate != null ? e.stockRate : ""; } },
+    stockOpeningQty: { header: function(){ return t("stock_row_opening") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockOpeningQty != null ? e.stockOpeningQty : ""); }, csv: function(e){ return e.stockOpeningQty != null ? e.stockOpeningQty : ""; } },
+    stockOpeningValue: { header: function(){ return t("stock_row_opening") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockOpeningValue != null ? e.stockOpeningValue : ""); }, csv: function(e){ return e.stockOpeningValue != null ? e.stockOpeningValue : ""; } },
+    stockInwardReason: { header: function(){ return t("stock_row_inward") + " (" + t("stock_th_reason") + ")"; },
+      html: function(e){ return esc(e.stockInwardReason || ""); }, csv: function(e){ return e.stockInwardReason || ""; } },
+    stockInwardQty: { header: function(){ return t("stock_row_inward") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockInwardQty != null ? e.stockInwardQty : ""); }, csv: function(e){ return e.stockInwardQty != null ? e.stockInwardQty : ""; } },
+    stockInwardValue: { header: function(){ return t("stock_row_inward") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockInwardValue != null ? e.stockInwardValue : ""); }, csv: function(e){ return e.stockInwardValue != null ? e.stockInwardValue : ""; } },
+    stockOutwardReason: { header: function(){ return t("stock_row_outward") + " (" + t("stock_th_reason") + ")"; },
+      html: function(e){ return esc(e.stockOutwardReason || ""); }, csv: function(e){ return e.stockOutwardReason || ""; } },
+    stockOutwardQty: { header: function(){ return t("stock_row_outward") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockOutwardQty != null ? e.stockOutwardQty : ""); }, csv: function(e){ return e.stockOutwardQty != null ? e.stockOutwardQty : ""; } },
+    stockOutwardValue: { header: function(){ return t("stock_row_outward") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockOutwardValue != null ? e.stockOutwardValue : ""); }, csv: function(e){ return e.stockOutwardValue != null ? e.stockOutwardValue : ""; } },
+    stockClosingQty: { header: function(){ return t("stock_row_closing") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockClosingQty != null ? e.stockClosingQty : ""); }, csv: function(e){ return e.stockClosingQty != null ? e.stockClosingQty : ""; } },
+    stockClosingValue: { header: function(){ return t("stock_row_closing") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockClosingValue != null ? e.stockClosingValue : ""); }, csv: function(e){ return e.stockClosingValue != null ? e.stockClosingValue : ""; } },
     updatedBy: { header: function(){ return t("th_updatedby"); },
       html: function(e){ return esc(e.updatedBy || ""); }, csv: function(e){ return e.updatedBy || ""; } },
     status: { header: function(){ return t("th_status"); },
@@ -3683,16 +3912,18 @@
     var qc = isQCStage(stage);
     var hr = isHRManpowerStage(stage);
     var rejected = isRejectedStage(stage);
-    var special = dispatch || readyToDispatch || fg || qc || hr || rejected;
+    var stockSummary = isStockSummaryStage(stage);
+    var special = dispatch || readyToDispatch || fg || qc || hr || rejected || stockSummary;
     var hasType = stageHasType(stage);
     var keys = ["date"];
     if(!special) keys.push("shift");
     keys.push("stage");
     if(stageHasCustomerName(stage)) keys.push("clientName");
-    if(!hr) keys.push("productName", "jobCardNo");
+    if(!hr) keys.push("productName");
+    if(!(hr || stockSummary)) keys.push("jobCardNo");
     if(hasType) keys.push("type");
     if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck", "artworkAttachment");
-    if(!(fg || hr)) keys.push("quantity");
+    if(!(fg || hr || stockSummary)) keys.push("quantity");
     if(fg) keys.push("qtyInStock", "totalBundle", "availableStock");
     if(stageHasPly(stage)) keys.push("ply");
     if(stageHasLayers(stage)) keys.push("layers");
@@ -3704,6 +3935,10 @@
     if(stageHasPalletNo(stage)) keys.push("palletNo");
     if(stageHasPalletArea(stage)) keys.push("palletAllocationArea");
     if(readyToDispatch) keys.push("dispatchedQty", "openingStock", "ageingDays");
+    if(stockSummary) keys.push("stockRate", "stockOpeningQty", "stockOpeningValue",
+      "stockInwardReason", "stockInwardQty", "stockInwardValue",
+      "stockOutwardReason", "stockOutwardQty", "stockOutwardValue",
+      "stockClosingQty", "stockClosingValue");
     keys.push("updatedBy");
     if(!special) keys.push("status", "nextStage");
     if(stageHasHold(stage)) keys.push("hold");
@@ -3932,7 +4167,7 @@
   QC_PASS_FIELDS.forEach(function(key){
     el[key].addEventListener("change", function(){ refreshPassFailLabel(el[key]); });
   });
-  el.f_hold.addEventListener("change", refreshHoldLabel);
+  el.f_hold.addEventListener("change", function(){ refreshHoldLabel(); refreshNextStageHoldLock(); });
   // Keep the QC Check block's Artwork No mirror in sync as the stage's own team types it —
   // there's only one Artwork No per entry; this block just surfaces it next to QC's Pass/Fail
   // call rather than asking for it a second time.
@@ -4284,10 +4519,24 @@
     el.f_qc_bct_visipak.value = entry ? (entry.qcBctVisipak || "") : "";
     el.f_qc_bct_pass.checked = !entry || entry.qcBctPass !== false;
     populateHRManpowerTable(entry);
+    el.f_stockrate.value = entry && entry.stockRate != null ? entry.stockRate : "";
+    // Opening Balance shows what an existing entry was actually saved with — a brand-new entry
+    // starts blank and gets it auto-filled live (via updateFormFieldsForStage below, see
+    // refreshStockOpeningBalance's state.editingId guard). Inward/Outward/Closing are all pure
+    // arithmetic that updateFormFieldsForStage -> refreshStockSummaryCalc() recomputes either way.
+    el.f_stockopeningqty.value = entry && entry.stockOpeningQty != null ? entry.stockOpeningQty : "";
+    el.f_stockinwardreason.value = entry ? (entry.stockInwardReason || "") : "";
+    el.f_stockinwardqty.value = entry && entry.stockInwardQty != null ? entry.stockInwardQty : "";
+    el.f_stockoutwardreason.value = entry ? (entry.stockOutwardReason || "") : "";
+    el.f_stockoutwardqty.value = entry && entry.stockOutwardQty != null ? entry.stockOutwardQty : "";
     updateFormFieldsForStage(targetStage);
 
     NORMAL_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditNormal; });
     QC_ONLY_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditQcSpecs; });
+    // The permission loop above just reset Next Stage's disabled state from canEditNormal alone,
+    // which would wipe out an on-Hold lock — re-apply it so an entry saved with onHold:true opens
+    // with Next Stage already frozen, with no extra Hold toggle needed.
+    refreshNextStageHoldLock();
     // Loaded after the disable loop above so the attachment widgets' Remove button correctly
     // reflects this device's QC-edit access from the moment the modal opens. Reconstructed from
     // the three flat fields the entry is actually saved with (see the submit handler below).
@@ -4393,9 +4642,10 @@
     var isQC = isQCStage(chosenStage);
     var isHR = isHRManpowerStage(chosenStage);
     var isRejected = isRejectedStage(chosenStage);
+    var isStockSummary = isStockSummaryStage(chosenStage);
     // These stages have no Status/Next Stage fields of their own — a saved entry there is
     // always treated as a finished, terminal record rather than something that advances further.
-    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC || isHR || isRejected;
+    var isSpecial = isDispatch || isReadyToDispatch || isFG || isQC || isHR || isRejected || isStockSummary;
     var chosenStatus = isSpecial ? "Completed" : el.f_status.value;
     var chosenNextStage = isSpecial ? "" : el.f_nextstage.value;
     var movedTo = null;
@@ -4421,13 +4671,13 @@
       shift: isSpecial ? "" : el.f_shift.value.trim(),
       stage: movedTo || chosenStage,
       productName: isHR ? "" : el.f_product.value.trim(),
-      jobCardNo: isHR ? "" : el.f_jobcard.value.trim(),
+      jobCardNo: (isHR || isStockSummary) ? "" : el.f_jobcard.value.trim(),
       artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
       artworkCheckPass: stageHasArtworkNo(chosenStage) ? el.f_artworkcheck_pass.checked : null,
       artworkCheckAttachmentData: artworkVal ? artworkVal.data : null,
       artworkCheckAttachmentName: artworkVal ? artworkVal.name : null,
       artworkCheckAttachmentType: artworkVal ? artworkVal.type : null,
-      quantity: (isFG || isHR) ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
+      quantity: (isFG || isHR || isStockSummary) ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
       type: hasType ? el.f_type.value : "",
@@ -4457,6 +4707,20 @@
       // is currently showing in the read-only fields — see refreshRtdLedgerFields/computeRtdLedger.
       openingStock: hasRtdStock ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value)) : null,
       ageingDays: hasRtdStock ? (el.f_ageing.value === "" ? null : Number(el.f_ageing.value)) : null,
+      // Stock Summary's own ledger — see the computeStockOpeningBalance/refreshStockSummaryCalc
+      // comment above the modal code. Values are snapshotted from whatever the auto-calc is
+      // showing right now, same pattern as Ready to Dispatch's Opening Stock/Ageing above.
+      stockRate: isStockSummary ? (el.f_stockrate.value === "" ? null : Number(el.f_stockrate.value)) : null,
+      stockOpeningQty: isStockSummary ? (el.f_stockopeningqty.value === "" ? null : Number(el.f_stockopeningqty.value)) : null,
+      stockOpeningValue: isStockSummary ? (el.f_stockopeningvalue.value === "" ? null : Number(el.f_stockopeningvalue.value)) : null,
+      stockInwardReason: isStockSummary ? el.f_stockinwardreason.value : "",
+      stockInwardQty: isStockSummary ? (el.f_stockinwardqty.value === "" ? null : Number(el.f_stockinwardqty.value)) : null,
+      stockInwardValue: isStockSummary ? (el.f_stockinwardvalue.value === "" ? null : Number(el.f_stockinwardvalue.value)) : null,
+      stockOutwardReason: isStockSummary ? el.f_stockoutwardreason.value : "",
+      stockOutwardQty: isStockSummary ? (el.f_stockoutwardqty.value === "" ? null : Number(el.f_stockoutwardqty.value)) : null,
+      stockOutwardValue: isStockSummary ? (el.f_stockoutwardvalue.value === "" ? null : Number(el.f_stockoutwardvalue.value)) : null,
+      stockClosingQty: isStockSummary ? (el.f_stockclosingqty.value === "" ? null : Number(el.f_stockclosingqty.value)) : null,
+      stockClosingValue: isStockSummary ? (el.f_stockclosingvalue.value === "" ? null : Number(el.f_stockclosingvalue.value)) : null,
       qcBoardGsmClient: hasQcSpecs ? el.f_qc_boardgsm_client.value.trim() : "",
       qcBoardGsmVisipak: hasQcSpecs ? el.f_qc_boardgsm_visipak.value.trim() : "",
       qcBoardGsmPass: hasQcSpecs ? el.f_qc_boardgsm_pass.checked : null,
