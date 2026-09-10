@@ -2693,6 +2693,38 @@
         return { openingStock: 0, jobCardNo: "", ageingDays: null };
       });
   }
+  // The Quantity that was recorded when this Customer + Product's job started at Plant — the
+  // standing order total that Ready to Dispatch's own Balance Quantity Required/Total Quantity to
+  // Dispatch are built from below, the same way computeLatestFgStock above sources Plant's own
+  // Opening Stock. Same shape/sort/catch pattern, just reading Plant's Quantity field instead of
+  // Finished Goods' Opening Stock.
+  function computeLatestPlantQuantity(customerName, productName, targetDate){
+    var custKey = (customerName || "").trim();
+    var prodKey = (productName || "").trim();
+    if(!custKey || !prodKey) return Promise.resolve({ quantity: 0 });
+    return state.db.collection("entries")
+      .where("stage", "==", "Plant")
+      .where("clientName", "==", custKey)
+      .where("productName", "==", prodKey)
+      .get()
+      .then(function(snap){
+        var rows = [];
+        snap.forEach(function(doc){
+          var r = doc.data();
+          if(!targetDate || r.date <= targetDate) rows.push(r);
+        });
+        rows.sort(function(a, b){
+          if(a.date !== b.date) return a.date < b.date ? 1 : -1; // newest first
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        var latest = rows[0];
+        if(!latest) return { quantity: 0 };
+        return { quantity: Number(latest.quantity) || 0 };
+      })
+      .catch(function(){
+        return { quantity: 0 };
+      });
+  }
   // Required Stock Qty is simply this task's own Quantity minus that Opening Stock: how much still
   // needs to be produced once existing stock is counted in. All of it always recomputes live — even
   // reopening an existing task, and relative to the Task's own Date (so Ageing reflects "as of the
@@ -3040,17 +3072,33 @@
     var productName = el.f_product.value;
     if(!customerName || !productName){
       el.f_fgstockavailable.value = "";
+      // Balance Quantity Required is Ready to Dispatch's own auto-calculated field (see below) —
+      // nothing to compute without a Customer + Product chosen yet.
+      el.f_qty.value = "";
       refreshRtdTotalDispatchQty();
+      refreshRtdBalanceQty();
       return;
     }
     var myToken = ++rtdFgStockRequestToken;
-    computeLatestFgStock(customerName, productName, el.f_date.value).then(function(result){
+    Promise.all([
+      computeLatestFgStock(customerName, productName, el.f_date.value),
+      computeLatestPlantQuantity(customerName, productName, el.f_date.value)
+    ]).then(function(results){
       if(myToken !== rtdFgStockRequestToken) return; // superseded by a newer request
-      el.f_fgstockavailable.value = result.openingStock;
+      var fgStock = results[0].openingStock;
+      var plantQty = results[1].quantity;
+      el.f_fgstockavailable.value = fgStock;
+      // Balance Quantity Required mirrors Plant's own Balance Quantity Required formula exactly
+      // (that job's Quantity minus stock already on hand) — auto-calculated, not typed — so Total
+      // Quantity to Dispatch below (Balance Quantity Required + FG Stock Available) always
+      // reconciles back to the very same Quantity that was recorded when the job started at
+      // Plant, instead of drifting from whatever number happened to get typed in here.
+      var required = plantQty - fgStock;
+      el.f_qty.value = required < 0 ? 0 : required;
       refreshRtdTotalDispatchQty();
+      refreshRtdBalanceQty();
     });
   }
-  el.f_qty.addEventListener("input", refreshRtdTotalDispatchQty);
   el.f_date.addEventListener("change", refreshRtdFgStockFields);
 
   function daysBetweenDates(laterStr, earlierStr){
@@ -3276,11 +3324,14 @@
     // fields — see refreshRtdFgStockFields above the modal code.
     el.fld_fgstockavailable.hidden = !readyToDispatch;
     el.fld_totaldispatchqty.hidden = !readyToDispatch;
-    // On Ready to Dispatch, the Quantity field IS the production requirement that Total Quantity
-    // to Dispatch adds FG Stock Available to, so its label reads "Balance Quantity Required" there
-    // (same wording/i18n key as Plant's own Balance Quantity Required) — same field/value, just
-    // relabeled per stage, exactly like Updated By switching to "Checked By" on Dispatch below.
+    // On Ready to Dispatch, the Quantity field becomes Balance Quantity Required — auto-calculated
+    // from that job's own Plant-stage Quantity minus FG Stock Available (see
+    // computeLatestPlantQuantity/refreshRtdFgStockFields above the modal code), the same way
+    // Plant's own Balance Quantity Required auto-calculates, so it's read-only here too rather than
+    // typed. Everywhere else it's still the normal, freely-typed Quantity field.
     el.f_qtyLabel.textContent = readyToDispatch ? t("plant_balanceqty_label") : t("form_qty_label");
+    el.f_qty.readOnly = readyToDispatch;
+    el.f_qty.placeholder = readyToDispatch ? t("plant_balanceqty_placeholder") : t("form_qty_placeholder");
     // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
     // live on Finished Goods instead — see computeFgOpeningStockFromRtd above the modal code.
     el.fld_dispatchedqty.hidden = !readyToDispatch;
