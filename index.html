@@ -876,7 +876,11 @@
         </select>
       </label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
-      <label id="fld_qty"><span data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <!-- The label text itself switches to "Balance Quantity Required" on Ready to Dispatch (see
+           el.f_qtyLabel in updateFormFieldsForStage) — same field, same value, just read there as
+           the production requirement that feeds Total Quantity to Dispatch below, the same way
+           Updated By's own label switches to "Checked By" on Dispatch. -->
+      <label id="fld_qty"><span id="f_qtyLabel" data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
       <!-- Plant-only: before starting production on this (new) Job Card, shows how much of this
            Customer+Product is already sitting in Finished Goods stock — the exact same "most recent
            Finished Goods entry" lookup Priority Tasks use for their own Opening Stock Qty/Job Card No
@@ -2107,6 +2111,7 @@
     artworkCheckNoDisplay: document.getElementById("artworkCheckNoDisplay"),
     f_artworkcheck_pass: document.getElementById("f_artworkcheck_pass"),
     f_qty: document.getElementById("f_qty"),
+    f_qtyLabel: document.getElementById("f_qtyLabel"),
     f_ply: document.getElementById("f_ply"),
     fld_ply: document.getElementById("fld_ply"),
     fld_layers: document.getElementById("fld_layers"),
@@ -3271,6 +3276,11 @@
     // fields — see refreshRtdFgStockFields above the modal code.
     el.fld_fgstockavailable.hidden = !readyToDispatch;
     el.fld_totaldispatchqty.hidden = !readyToDispatch;
+    // On Ready to Dispatch, the Quantity field IS the production requirement that Total Quantity
+    // to Dispatch adds FG Stock Available to, so its label reads "Balance Quantity Required" there
+    // (same wording/i18n key as Plant's own Balance Quantity Required) — same field/value, just
+    // relabeled per stage, exactly like Updated By switching to "Checked By" on Dispatch below.
+    el.f_qtyLabel.textContent = readyToDispatch ? t("plant_balanceqty_label") : t("form_qty_label");
     // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
     // live on Finished Goods instead — see computeFgOpeningStockFromRtd above the modal code.
     el.fld_dispatchedqty.hidden = !readyToDispatch;
