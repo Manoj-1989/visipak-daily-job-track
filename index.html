@@ -899,7 +899,7 @@
            Finished Goods entry" lookup Priority Tasks use for their own Opening Stock Qty/Job Card No
            (see computeLatestFgStock/refreshPlantStockFields in the script below) — and the Balance
            Quantity Required to actually produce: this Quantity minus that Opening Stock. -->
-      <label id="fld_plantopeningstock"><span data-i18n="plant_openingstock_label">Opening Stock Qty</span>
+      <label id="fld_plantopeningstock"><span data-i18n="plant_openingstock_label">Available Stock Qty</span>
         <input type="number" id="f_plantopeningstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_openingstock_placeholder">
       </label>
       <label id="fld_plantopeningstockjobcard"><span data-i18n="plant_openingstockjobcard_label">Opening Stock Job Card No</span>
@@ -908,9 +908,7 @@
       <label id="fld_plantbalanceqty"><span data-i18n="plant_balanceqty_label">Balance Quantity Required</span>
         <input type="number" id="f_plantbalanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_balanceqty_placeholder">
       </label>
-      <label id="fld_qtyinstock"><span data-i18n="form_qtyinstock_label">Quantity in Stock</span> <input type="number" id="f_qtyinstock" min="0" step="1"></label>
       <label id="fld_totalbundle"><span data-i18n="form_totalbundle_label">Total Bundle</span> <input type="number" id="f_totalbundle" min="0" step="1"></label>
-      <label id="fld_availablestock"><span data-i18n="form_availablestock_label">Available Stock</span> <input type="number" id="f_availablestock" min="0" step="1"></label>
       <label id="fld_ply"><span data-i18n="form_ply_label">PLY</span>
         <select id="f_ply">
           <option value="" data-i18n="form_ply_select">— select —</option>
@@ -988,7 +986,7 @@
            entry's own Date, see refreshFgAgeing. -->
       <label id="fld_dispatchedqty"><span data-i18n="form_dispatchedqty_label">Dispatched Qty</span> <input type="number" id="f_dispatchedqty" min="0" step="1" placeholder="e.g. 4000" data-i18n-placeholder="form_dispatchedqty_placeholder"></label>
       <label id="fld_balanceqty"><span data-i18n="form_balanceqty_label">Balance Quantity</span> <input type="number" id="f_balanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_balanceqty_placeholder"></label>
-      <label id="fld_openingstock"><span data-i18n="form_openingstock_label">Opening Stock</span> <input type="number" id="f_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_openingstock_placeholder"></label>
+      <label id="fld_openingstock"><span data-i18n="form_openingstock_label">Available Stock</span> <input type="number" id="f_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_openingstock_placeholder"></label>
       <label id="fld_ageing"><span data-i18n="form_ageing_label">No of Days Ageing</span> <input type="number" id="f_ageing" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_ageing_placeholder"></label>
       <label><span id="f_updatedbyLabel" data-i18n="th_updatedby">Updated By</span> <input type="text" id="f_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder"></label>
       <!-- Finished Goods-only: a simple confirmation that whoever's at the FG stage has actually
@@ -1255,7 +1253,7 @@
            — Finished Goods is the actual warehouse stock, so that's what to check before deciding
            how much still needs producing. Required Stock Qty is this task's own Quantity minus that
            Opening Stock — see computeLatestFgStock/refreshTaskStockFields in the script below. -->
-      <label><span data-i18n="task_openingstock_label">Opening Stock Qty</span>
+      <label><span data-i18n="task_openingstock_label">Available Stock Qty</span>
         <input type="number" id="t_openingstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="task_openingstock_placeholder">
       </label>
       <label><span data-i18n="task_openingstockjobcard_label">Opening Stock Job Card No</span>
@@ -1424,7 +1422,7 @@
       card_qty_label: "Qty", card_start_label: "Start", card_end_label: "End",
       card_hrs_label: "hrs", card_mp_label: "MP",
       card_invoice_label: "Invoice", card_vehicle_label: "Vehicle", card_bundles_label: "Bundles",
-      card_type_label: "Type", card_stock_label: "In Stock", card_total_label: "Total", card_avail_label: "Avail",
+      card_type_label: "Type", card_total_label: "Total",
       board_empty_hint: "No job cards logged here yet for this date.",
       board_section_production: "Production", board_section_departments: "Departments",
       board_empty_hint_dept: "No entries logged here yet for this date.",
@@ -1472,8 +1470,7 @@
       form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
       form_type_label: "Type", form_type_select: "— select —",
       type_boxes: "Boxes", type_partition: "Partition", type_pads: "Pads",
-      form_qtyinstock_label: "Quantity in Stock", form_totalbundle_label: "Total Bundle",
-      form_availablestock_label: "Available Stock",
+      form_totalbundle_label: "Total Bundle",
       form_palletno_label: "Pallet No", form_palletno_placeholder: "e.g. PL-014",
       form_palletarea_label: "Pallet Allocation Area", form_palletarea_placeholder: "e.g. Zone A - Rack 3",
       form_dispatchedqty_label: "Dispatched Qty", form_dispatchedqty_placeholder: "e.g. 4000",
@@ -1481,7 +1478,7 @@
       form_fgstockavailable_label: "FG Stock Available", form_fgstockavailable_placeholder: "Auto-calculated",
       form_fgstockpalletno_label: "FG Stock Pallet No", form_fgstockpalletno_placeholder: "Auto-calculated",
       form_totaldispatchqty_label: "Total Quantity to Dispatch", form_totaldispatchqty_placeholder: "Auto-calculated",
-      form_openingstock_label: "Opening Stock", form_openingstock_placeholder: "Auto-calculated",
+      form_openingstock_label: "Available Stock", form_openingstock_placeholder: "Auto-calculated",
       form_ageing_label: "No of Days Ageing", form_ageing_placeholder: "Auto-calculated",
       qc_specs_heading: "Specifications",
       artwork_check_heading: "QC Check",
@@ -1519,7 +1516,7 @@
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
       form_hold_label: "Status", hold_on_label: "On Hold", hold_off_label: "Active",
       form_verified_label: "Verified", verified_on_label: "Verified", verified_off_label: "Not Verified",
-      plant_openingstock_label: "Opening Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
+      plant_openingstock_label: "Available Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
       plant_openingstockjobcard_label: "Opening Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
       plant_balanceqty_label: "Balance Quantity Required", plant_balanceqty_placeholder: "Auto-calculated",
       form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
@@ -1552,7 +1549,7 @@
       task_mark_done: "Mark done", task_mark_pending: "Mark pending",
       task_del_title: "Delete Task?", task_del_summary: "This task will be permanently removed. This can't be undone.",
       task_yourname_label: "Your name",
-      task_openingstock_label: "Opening Stock Qty", task_openingstock_placeholder: "Auto-calculated",
+      task_openingstock_label: "Available Stock Qty", task_openingstock_placeholder: "Auto-calculated",
       task_openingstockjobcard_label: "Opening Stock Job Card No", task_openingstockjobcard_placeholder: "Auto-calculated",
       task_stockageing_label: "No of Days Ageing", task_stockageing_placeholder: "Auto-calculated",
       task_requiredqty_label: "Required Stock Qty", task_requiredqty_placeholder: "Auto-calculated",
@@ -1587,7 +1584,7 @@
       card_qty_label: "मात्रा", card_start_label: "शुरू", card_end_label: "समाप्ति",
       card_hrs_label: "घंटे", card_mp_label: "MP",
       card_invoice_label: "इनवॉइस", card_vehicle_label: "वाहन", card_bundles_label: "बंडल",
-      card_type_label: "टाइप", card_stock_label: "स्टॉक में", card_total_label: "कुल", card_avail_label: "उपलब्ध",
+      card_type_label: "टाइप", card_total_label: "कुल",
       board_empty_hint: "इस तारीख के लिए यहां अभी तक कोई जॉब कार्ड दर्ज नहीं है।",
       board_section_production: "प्रोडक्शन", board_section_departments: "डिपार्टमेंट्स",
       board_empty_hint_dept: "इस तारीख के लिए यहां अभी तक कोई एंट्री दर्ज नहीं है।",
@@ -1635,8 +1632,7 @@
       form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
       form_type_label: "टाइप", form_type_select: "— चुनें —",
       type_boxes: "बॉक्स", type_partition: "पार्टीशन", type_pads: "पैड",
-      form_qtyinstock_label: "स्टॉक में मात्रा", form_totalbundle_label: "कुल बंडल",
-      form_availablestock_label: "उपलब्ध स्टॉक",
+      form_totalbundle_label: "कुल बंडल",
       form_palletno_label: "पैलेट नंबर", form_palletno_placeholder: "जैसे PL-014",
       form_palletarea_label: "पैलेट आवंटन क्षेत्र", form_palletarea_placeholder: "जैसे Zone A - Rack 3",
       form_dispatchedqty_label: "डिस्पैच की गई मात्रा", form_dispatchedqty_placeholder: "जैसे 4000",
@@ -1644,7 +1640,7 @@
       form_fgstockavailable_label: "एफजी स्टॉक उपलब्ध", form_fgstockavailable_placeholder: "स्वतः गणना",
       form_fgstockpalletno_label: "एफजी स्टॉक पैलेट नंबर", form_fgstockpalletno_placeholder: "स्वतः गणना",
       form_totaldispatchqty_label: "डिस्पैच के लिए कुल मात्रा", form_totaldispatchqty_placeholder: "स्वतः गणना",
-      form_openingstock_label: "ओपनिंग स्टॉक", form_openingstock_placeholder: "स्वतः गणना",
+      form_openingstock_label: "उपलब्ध स्टॉक", form_openingstock_placeholder: "स्वतः गणना",
       form_ageing_label: "एजिंग के दिनों की संख्या", form_ageing_placeholder: "स्वतः गणना",
       qc_specs_heading: "स्पेसिफिकेशन",
       artwork_check_heading: "QC जांच",
@@ -1682,7 +1678,7 @@
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
       form_hold_label: "स्थिति", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
       form_verified_label: "सत्यापित", verified_on_label: "सत्यापित", verified_off_label: "असत्यापित",
-      plant_openingstock_label: "ओपनिंग स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
+      plant_openingstock_label: "उपलब्ध स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
       plant_openingstockjobcard_label: "ओपनिंग स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
       plant_balanceqty_label: "आवश्यक शेष मात्रा", plant_balanceqty_placeholder: "स्वतः गणना",
       form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
@@ -1715,7 +1711,7 @@
       task_mark_done: "पूर्ण के रूप में चिह्नित करें", task_mark_pending: "लंबित के रूप में चिह्नित करें",
       task_del_title: "कार्य हटाएं?", task_del_summary: "यह कार्य स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
       task_yourname_label: "आपका नाम",
-      task_openingstock_label: "ओपनिंग स्टॉक मात्रा", task_openingstock_placeholder: "स्वतः गणना",
+      task_openingstock_label: "उपलब्ध स्टॉक मात्रा", task_openingstock_placeholder: "स्वतः गणना",
       task_openingstockjobcard_label: "ओपनिंग स्टॉक जॉब कार्ड नंबर", task_openingstockjobcard_placeholder: "स्वतः गणना",
       task_stockageing_label: "एजिंग के दिनों की संख्या", task_stockageing_placeholder: "स्वतः गणना",
       task_requiredqty_label: "आवश्यक स्टॉक मात्रा", task_requiredqty_placeholder: "स्वतः गणना",
@@ -1750,7 +1746,7 @@
       card_qty_label: "పరిమాణం", card_start_label: "ప్రారంభం", card_end_label: "ముగింపు",
       card_hrs_label: "గంటలు", card_mp_label: "MP",
       card_invoice_label: "ఇన్వాయిస్", card_vehicle_label: "వాహనం", card_bundles_label: "బండిళ్లు",
-      card_type_label: "టైప్", card_stock_label: "స్టాక్‌లో", card_total_label: "మొత్తం", card_avail_label: "అందుబాటులో",
+      card_type_label: "టైప్", card_total_label: "మొత్తం",
       board_empty_hint: "ఈ తేదీ కోసం ఇక్కడ ఇంకా జాబ్ కార్డులు నమోదు కాలేదు।",
       board_section_production: "ప్రొడక్షన్", board_section_departments: "డిపార్ట్‌మెంట్లు",
       board_empty_hint_dept: "ఈ తేదీ కోసం ఇక్కడ ఇంకా ఎంట్రీలు నమోదు కాలేదు.",
@@ -1798,8 +1794,7 @@
       form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
       form_type_label: "టైప్", form_type_select: "— ఎంచుకోండి —",
       type_boxes: "బాక్సులు", type_partition: "పార్టిషన్", type_pads: "ప్యాడ్స్",
-      form_qtyinstock_label: "స్టాక్‌లో పరిమాణం", form_totalbundle_label: "మొత్తం బండిల్",
-      form_availablestock_label: "అందుబాటులో ఉన్న స్టాక్",
+      form_totalbundle_label: "మొత్తం బండిల్",
       form_palletno_label: "పాలెట్ నంబర్", form_palletno_placeholder: "ఉదా. PL-014",
       form_palletarea_label: "పాలెట్ కేటాయింపు ప్రాంతం", form_palletarea_placeholder: "ఉదా. జోన్ A - ర్యాక్ 3",
       form_dispatchedqty_label: "డిస్పాచ్ చేసిన పరిమాణం", form_dispatchedqty_placeholder: "ఉదా. 4000",
@@ -1807,7 +1802,7 @@
       form_fgstockavailable_label: "ఎఫ్‌జి స్టాక్ అందుబాటులో ఉంది", form_fgstockavailable_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_fgstockpalletno_label: "ఎఫ్‌జి స్టాక్ పాలెట్ నంబర్", form_fgstockpalletno_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_totaldispatchqty_label: "డిస్పాచ్ చేయవలసిన మొత్తం పరిమాణం", form_totaldispatchqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
-      form_openingstock_label: "ఓపెనింగ్ స్టాక్", form_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      form_openingstock_label: "అందుబాటులో ఉన్న స్టాక్", form_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_ageing_label: "ఏజింగ్ రోజుల సంఖ్య", form_ageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       qc_specs_heading: "స్పెసిఫికేషన్లు",
       artwork_check_heading: "QC చెక్",
@@ -1845,7 +1840,7 @@
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
       form_hold_label: "స్థితి", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
       form_verified_label: "ధృవీకరించబడింది", verified_on_label: "ధృవీకరించబడింది", verified_off_label: "ధృవీకరించబడలేదు",
-      plant_openingstock_label: "ఓపెనింగ్ స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      plant_openingstock_label: "అందుబాటులో ఉన్న స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_openingstockjobcard_label: "ఓపెనింగ్ స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_balanceqty_label: "అవసరమైన మిగులు పరిమాణం", plant_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
@@ -1878,7 +1873,7 @@
       task_mark_done: "పూర్తయినట్లు గుర్తించండి", task_mark_pending: "పెండింగ్‌గా గుర్తించండి",
       task_del_title: "పనిని తొలగించాలా?", task_del_summary: "ఈ పని శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
       task_yourname_label: "మీ పేరు",
-      task_openingstock_label: "ఓపెనింగ్ స్టాక్ పరిమాణం", task_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      task_openingstock_label: "అందుబాటులో ఉన్న స్టాక్ పరిమాణం", task_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       task_openingstockjobcard_label: "ఓపెనింగ్ స్టాక్ జాబ్ కార్డ్ నంబర్", task_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       task_stockageing_label: "ఏజింగ్ రోజుల సంఖ్య", task_stockageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       task_requiredqty_label: "అవసరమైన స్టాక్ పరిమాణం", task_requiredqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
@@ -2190,12 +2185,8 @@
     fld_plantopeningstockjobcard: document.getElementById("fld_plantopeningstockjobcard"),
     f_plantbalanceqty: document.getElementById("f_plantbalanceqty"),
     fld_plantbalanceqty: document.getElementById("fld_plantbalanceqty"),
-    f_qtyinstock: document.getElementById("f_qtyinstock"),
-    fld_qtyinstock: document.getElementById("fld_qtyinstock"),
     f_totalbundle: document.getElementById("f_totalbundle"),
     fld_totalbundle: document.getElementById("fld_totalbundle"),
-    f_availablestock: document.getElementById("f_availablestock"),
-    fld_availablestock: document.getElementById("fld_availablestock"),
     f_palletno: document.getElementById("f_palletno"),
     fld_palletno: document.getElementById("fld_palletno"),
     f_palletarea: document.getElementById("f_palletarea"),
@@ -2334,7 +2325,7 @@
   // fields and its QC specs table can end up independently enabled/disabled for the same device.
   var NORMAL_FORM_FIELDS = [
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
-    el.f_type, el.f_qtyinstock, el.f_totalbundle, el.f_availablestock, el.f_palletno,
+    el.f_type, el.f_totalbundle, el.f_palletno,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_verified, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
@@ -3412,9 +3403,7 @@
     // Type (Boxes / Partition / Pads): see TYPE_STAGES above for the explicit stage list.
     el.fld_type.hidden = !stageHasType(stage);
     // Finished Goods-only stock fields.
-    el.fld_qtyinstock.hidden = !fg;
     el.fld_totalbundle.hidden = !fg;
-    el.fld_availablestock.hidden = !fg;
     // Finished Goods uses "Quantity in Stock" instead of the generic Quantity field; HR Man Power
     // has no single quantity at all (its table is the whole entry); Stock Summary has its own
     // Opening/Inward/Outward/Closing quantities in its own table instead.
@@ -4032,9 +4021,7 @@
       statsHtml =
         '<div class="cardStats">' +
           '<span>' + esc(t("card_type_label")) + ' ' + esc(e.type || "—") + '</span>' +
-          '<span>' + esc(t("card_stock_label")) + ' ' + esc(e.qtyInStock != null ? e.qtyInStock : "—") + '</span>' +
           '<span>' + esc(t("card_total_label")) + ' ' + esc(e.totalBundle != null ? e.totalBundle : "—") + '</span>' +
-          '<span>' + esc(t("card_avail_label")) + ' ' + esc(e.availableStock != null ? e.availableStock : "—") + '</span>' +
           '<span>' + esc(t("form_openingstock_label")) + ' ' + esc(e.openingStock != null ? e.openingStock : "—") + '</span>' +
           '<span>' + esc(t("form_ageing_label")) + ' ' + esc(e.date ? daysBetweenDates(todayStr(), e.date) : "—") + '</span>' +
         '</div>';
@@ -4214,12 +4201,8 @@
       html: function(e){ return esc(e.quantity != null ? e.quantity : ""); }, csv: function(e){ return e.quantity != null ? e.quantity : ""; } },
     type: { header: function(){ return t("form_type_label"); },
       html: function(e){ return esc(e.type || ""); }, csv: function(e){ return e.type || ""; } },
-    qtyInStock: { header: function(){ return t("form_qtyinstock_label"); }, cellClass: "num",
-      html: function(e){ return esc(e.qtyInStock != null ? e.qtyInStock : ""); }, csv: function(e){ return e.qtyInStock != null ? e.qtyInStock : ""; } },
     totalBundle: { header: function(){ return t("form_totalbundle_label"); }, cellClass: "num",
       html: function(e){ return esc(e.totalBundle != null ? e.totalBundle : ""); }, csv: function(e){ return e.totalBundle != null ? e.totalBundle : ""; } },
-    availableStock: { header: function(){ return t("form_availablestock_label"); }, cellClass: "num",
-      html: function(e){ return esc(e.availableStock != null ? e.availableStock : ""); }, csv: function(e){ return e.availableStock != null ? e.availableStock : ""; } },
     ply: { header: function(){ return t("form_ply_label"); },
       html: function(e){ return esc(e.ply || ""); }, csv: function(e){ return e.ply || ""; } },
     layers: { header: function(){ return t("layers_heading"); },
@@ -4375,7 +4358,7 @@
     if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck", "artworkAttachment");
     if(!(fg || hr || stockSummary)) keys.push("quantity");
     if(plant) keys.push("plantOpeningStock", "plantOpeningStockJobCard", "plantBalanceQtyRequired");
-    if(fg) keys.push("qtyInStock", "totalBundle", "availableStock", "openingStock", "ageingDays");
+    if(fg) keys.push("totalBundle", "openingStock", "ageingDays");
     if(stageHasPly(stage)) keys.push("ply");
     if(stageHasLayers(stage)) keys.push("layers");
     if(dispatch) keys.push("invoiceNo", "vehicleNumber", "driver");
@@ -5114,9 +5097,7 @@
     el.f_noofbundles.value = entry && entry.noOfBundles != null ? entry.noOfBundles : "";
     el.f_reasonforrejection.value = entry ? (entry.reasonForRejection || "") : "";
     el.f_type.value = entry ? (entry.type || "") : "";
-    el.f_qtyinstock.value = entry && entry.qtyInStock != null ? entry.qtyInStock : "";
     el.f_totalbundle.value = entry && entry.totalBundle != null ? entry.totalBundle : "";
-    el.f_availablestock.value = entry && entry.availableStock != null ? entry.availableStock : "";
     el.f_palletno.value = entry ? (entry.palletNo || "") : "";
     el.f_palletarea.value = entry ? (entry.palletAllocationArea || "") : "";
     el.f_dispatchedqty.value = entry && entry.dispatchedQty != null ? entry.dispatchedQty : "";
@@ -5337,9 +5318,7 @@
       qtyPerBundle: hasQtyPerBundle ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
       noOfBundles: hasNoOfBundles ? (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)) : null,
       reasonForRejection: isRejected ? el.f_reasonforrejection.value.trim() : "",
-      qtyInStock: isFG ? (el.f_qtyinstock.value === "" ? null : Number(el.f_qtyinstock.value)) : null,
       totalBundle: isFG ? (el.f_totalbundle.value === "" ? null : Number(el.f_totalbundle.value)) : null,
-      availableStock: isFG ? (el.f_availablestock.value === "" ? null : Number(el.f_availablestock.value)) : null,
       palletNo: hasPalletNo ? el.f_palletno.value.trim() : "",
       palletAllocationArea: hasPalletArea ? el.f_palletarea.value.trim() : "",
       dispatchedQty: hasRtdStock ? (el.f_dispatchedqty.value === "" ? null : Number(el.f_dispatchedqty.value)) : null,
