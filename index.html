@@ -1013,11 +1013,14 @@
       <label id="fld_nextstage"><span data-i18n="form_nextstage_label">Next Stage</span>
         <select id="f_nextstage"><option value="" data-i18n="form_stays_here">— stays here —</option></select>
       </label>
-      <!-- Hold: QC's right to stop a job at any production stage if it fails. Visible on every
-           production stage (including the "special" terminal ones like Dispatch/QC/FG, unlike
-           Status/Next Stage above) — only House keeping and HR_Man Power don't get it. -->
+      <!-- Hold: QC's right to stop a job at any production stage if it fails — labeled "Status"
+           on the form (Active/On Hold), distinct from the workflow Status dropdown above (Not
+           Started/In Progress/Done/Rejected) even though both now read "Status" as a label.
+           Visible on every production stage (including the "special" terminal ones like
+           Dispatch/QC/FG, unlike the workflow Status/Next Stage above) — only House keeping and
+           HR_Man Power don't get it. -->
       <div class="formGridItem" id="fld_hold">
-        <span data-i18n="form_hold_label">Hold</span>
+        <span data-i18n="form_hold_label">Status</span>
         <label class="passFailToggle holdToggle">
           <input type="checkbox" id="f_hold">
           <span class="pfTrack"></span>
@@ -1512,7 +1515,7 @@
       form_product_label: "Product Name", form_jobcard_label: "Job Card No", form_qty_label: "Quantity",
       form_starttime_label: "Start Time", form_endtime_label: "End Time", form_runtime_label: "Run Time (Hrs)",
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
-      form_hold_label: "Hold", hold_on_label: "On Hold", hold_off_label: "Active",
+      form_hold_label: "Status", hold_on_label: "On Hold", hold_off_label: "Active",
       form_verified_label: "Verified", verified_on_label: "Verified", verified_off_label: "Not Verified",
       plant_openingstock_label: "Opening Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
       plant_openingstockjobcard_label: "Opening Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
@@ -1673,7 +1676,7 @@
       form_product_label: "प्रोडक्ट नाम", form_jobcard_label: "जॉब कार्ड नंबर", form_qty_label: "मात्रा",
       form_starttime_label: "शुरू समय", form_endtime_label: "समाप्ति समय", form_runtime_label: "रन टाइम (घंटे)",
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
-      form_hold_label: "होल्ड", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
+      form_hold_label: "स्थिति", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
       form_verified_label: "सत्यापित", verified_on_label: "सत्यापित", verified_off_label: "असत्यापित",
       plant_openingstock_label: "ओपनिंग स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
       plant_openingstockjobcard_label: "ओपनिंग स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
@@ -1834,7 +1837,7 @@
       form_product_label: "ప్రొడక్ట్ పేరు", form_jobcard_label: "జాబ్ కార్డ్ నంబర్", form_qty_label: "పరిమాణం",
       form_starttime_label: "ప్రారంభ సమయం", form_endtime_label: "ముగింపు సమయం", form_runtime_label: "రన్ టైమ్ (గంటలు)",
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
-      form_hold_label: "హోల్డ్", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
+      form_hold_label: "స్థితి", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
       form_verified_label: "ధృవీకరించబడింది", verified_on_label: "ధృవీకరించబడింది", verified_off_label: "ధృవీకరించబడలేదు",
       plant_openingstock_label: "ఓపెనింగ్ స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_openingstockjobcard_label: "ఓపెనింగ్ స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
@@ -4080,13 +4083,21 @@
     // PLY (board thickness) sits right next to the product name — it's a property of what's
     // being made, not a run stat, so it belongs beside the product rather than in the stats row.
     var plyHtml = (stageHasPly(e.stage) && e.ply) ? ' <span class="plyTag">' + esc(e.ply) + '</span>' : "";
+    // Finished Goods' own dashboard pill: FG stock doesn't move through Not Started/In
+    // Progress/Completed like a production run does, so its card shows this same Hold field
+    // (labeled "Status" on the form — Active/On Hold) as the primary pill instead of the workflow
+    // status text — reusing the completed(green)/not-started(red) pill colors rather than adding
+    // new ones. Every other stage still shows its normal workflow status pill, with the separate
+    // Hold badge alongside it when on Hold, unchanged.
+    var fgStatusPillClass = e.onHold ? "not-started" : "completed";
+    var fgStatusPillText = t("form_hold_label") + ": " + (e.onHold ? t("hold_on_label") : t("hold_off_label"));
     card.innerHTML =
       '<div class="cardTop">' +
         '<span class="jobCard">' + esc(e.jobCardNo || "—") + '</span>' +
         '<span class="shiftTag">' + esc(e.shift || "") + '</span>' +
       '</div>' +
-      '<div class="cardStatusRow"><span class="statusPill ' + sClass + '">' + esc(t_status(statusLabel(e.status))) + '</span>' +
-        (e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") +
+      '<div class="cardStatusRow"><span class="statusPill ' + (isFG ? fgStatusPillClass : sClass) + '">' + esc(isFG ? fgStatusPillText : t_status(statusLabel(e.status))) + '</span>' +
+        (!isFG && e.onHold ? '<span class="holdBadge">' + esc(t("hold_on_label")) + '</span>' : "") +
         (isCarriedOverEntry(e) ? '<span class="carryBadge" title="' + esc(isFG ? ("In stock since " + fmtDateDDMMYYYY(e.date)) : ("Still pending/on Hold from " + fmtDateDDMMYYYY(e.date))) + '">' + esc(fmtDateDDMMYYYY(e.date)) + '</span>' : "") +
       '</div>' +
       '<div class="productName">' + esc(isHR ? t("hrmp_report_title") : (e.productName || "(no product name)")) + plyHtml + '</div>' +
