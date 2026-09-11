@@ -875,11 +875,21 @@
           <option value="Pads" data-i18n="type_pads">Pads</option>
         </select>
       </label>
-      <!-- Ready to Dispatch-only: sits right after Type, ahead of everything else on this form, so
-           whoever opens the entry sees the order's bottom line — how much needs to leave in total —
-           before any of the supporting detail below it. Still the same auto-calculated field it's
-           always been (Balance Quantity Required + FG Stock Available, both further down the form —
-           see refreshRtdFgStockFields/refreshRtdTotalDispatchQty in the script). -->
+      <!-- The label text itself switches to "Balance Quantity Required" on Ready to Dispatch (see
+           el.f_qtyLabel in updateFormFieldsForStage) — same field, same value, just read there as
+           the production requirement that feeds Total Quantity to Dispatch just below, the same way
+           Updated By's own label switches to "Checked By" on Dispatch. This is Quantity's HOME
+           position in the markup — right after Type, same as every other stage — but on Ready to
+           Dispatch specifically, updateFormFieldsForStage physically relocates this same field to
+           sit right after FG Stock Pallet No instead (see the "Quantity's own DOM position" comment
+           there), since a single field can't occupy two spots in the form at once. -->
+      <label id="fld_qty"><span id="f_qtyLabel" data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <!-- Ready to Dispatch-only: sits right after Type (or, on Ready to Dispatch, right after
+           Quantity gets relocated away from here — see above), ahead of everything else on this
+           form, so whoever opens the entry sees the order's bottom line — how much needs to leave
+           in total — before any of the supporting detail below it. Still the same auto-calculated
+           field it's always been (Balance Quantity Required + FG Stock Available, both further down
+           the form — see refreshRtdFgStockFields/refreshRtdTotalDispatchQty in the script). -->
       <label id="fld_totaldispatchqty"><span data-i18n="form_totaldispatchqty_label">Total Quantity to Dispatch</span>
         <input type="number" id="f_totaldispatchqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totaldispatchqty_placeholder">
       </label>
@@ -960,14 +970,12 @@
       <label id="fld_fgstockpalletno"><span data-i18n="form_fgstockpalletno_label">FG Stock Pallet No</span>
         <input type="text" id="f_fgstockpalletno" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_fgstockpalletno_placeholder">
       </label>
-      <!-- The label text itself switches to "Balance Quantity Required" on Ready to Dispatch (see
-           el.f_qtyLabel in updateFormFieldsForStage) — same field, same value, just read there as
-           the production requirement that feeds Total Quantity to Dispatch (near the top of this
-           form) the same way Updated By's own label switches to "Checked By" on Dispatch. Sits
-           right after FG Stock Pallet No on Ready to Dispatch specifically so the two stock-related
-           auto-fills (what's already on hand, and where) read together before the amount still
-           owed by production. -->
-      <label id="fld_qty"><span id="f_qtyLabel" data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
+      <!-- Quantity (labeled Balance Quantity Required here) itself lives right after Type in the
+           markup (see its HOME position comment there) — on Ready to Dispatch specifically, it gets
+           physically relocated to right here, after FG Stock Pallet No, so the two stock-related
+           auto-fills above (what's already on hand, and where) read together before the amount
+           still owed by production — see the "Quantity's own DOM position" relocation in
+           updateFormFieldsForStage below. -->
       <!-- Dispatched Qty and Balance Quantity (Total Quantity to Dispatch minus Dispatched Qty,
            live-calculated — see refreshRtdBalanceQty below) are Ready to Dispatch's own fields.
            Opening Stock, though,
@@ -3358,6 +3366,19 @@
     el.f_qtyLabel.textContent = readyToDispatch ? t("plant_balanceqty_label") : t("form_qty_label");
     el.f_qty.readOnly = readyToDispatch;
     el.f_qty.placeholder = readyToDispatch ? t("plant_balanceqty_placeholder") : t("form_qty_placeholder");
+    // Quantity's own DOM position: its HOME spot in the markup is right after Type (see the
+    // comment there), which is where it needs to render on every other stage. Ready to Dispatch
+    // is the one exception — Quantity (relabeled Balance Quantity Required) needs to render after
+    // FG Stock Pallet No instead, so the two stock auto-fills read together ahead of it. A single
+    // field can't sit in two places in the document at once, so this physically relocates the
+    // actual fld_qty node each time the stage changes — insertAdjacentElement moves an
+    // already-in-the-document element rather than cloning it, so the field's value, id and event
+    // listeners all carry over untouched.
+    if(readyToDispatch){
+      el.fld_fgstockpalletno.insertAdjacentElement("afterend", el.fld_qty);
+    } else {
+      el.fld_type.insertAdjacentElement("afterend", el.fld_qty);
+    }
     // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
     // live on Finished Goods instead — see computeFgOpeningStockFromRtd above the modal code.
     el.fld_dispatchedqty.hidden = !readyToDispatch;
