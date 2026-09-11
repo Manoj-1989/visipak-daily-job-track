@@ -902,7 +902,7 @@
       <label id="fld_plantopeningstock"><span data-i18n="plant_openingstock_label">Available Stock Qty</span>
         <input type="number" id="f_plantopeningstock" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_openingstock_placeholder">
       </label>
-      <label id="fld_plantopeningstockjobcard"><span data-i18n="plant_openingstockjobcard_label">Opening Stock Job Card No</span>
+      <label id="fld_plantopeningstockjobcard"><span data-i18n="plant_openingstockjobcard_label">Available Stock Job Card No</span>
         <input type="text" id="f_plantopeningstockjobcard" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_openingstockjobcard_placeholder">
       </label>
       <label id="fld_plantbalanceqty"><span data-i18n="plant_balanceqty_label">Balance Quantity Required</span>
@@ -1517,7 +1517,7 @@
       form_hold_label: "Status", hold_on_label: "On Hold", hold_off_label: "Active",
       form_verified_label: "Verified", verified_on_label: "Verified", verified_off_label: "Not Verified",
       plant_openingstock_label: "Available Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
-      plant_openingstockjobcard_label: "Opening Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
+      plant_openingstockjobcard_label: "Available Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
       plant_balanceqty_label: "Balance Quantity Required", plant_balanceqty_placeholder: "Auto-calculated",
       form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
@@ -1679,7 +1679,7 @@
       form_hold_label: "स्थिति", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
       form_verified_label: "सत्यापित", verified_on_label: "सत्यापित", verified_off_label: "असत्यापित",
       plant_openingstock_label: "उपलब्ध स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
-      plant_openingstockjobcard_label: "ओपनिंग स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
+      plant_openingstockjobcard_label: "उपलब्ध स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
       plant_balanceqty_label: "आवश्यक शेष मात्रा", plant_balanceqty_placeholder: "स्वतः गणना",
       form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
@@ -1841,7 +1841,7 @@
       form_hold_label: "స్థితి", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
       form_verified_label: "ధృవీకరించబడింది", verified_on_label: "ధృవీకరించబడింది", verified_off_label: "ధృవీకరించబడలేదు",
       plant_openingstock_label: "అందుబాటులో ఉన్న స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
-      plant_openingstockjobcard_label: "ఓపెనింగ్ స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      plant_openingstockjobcard_label: "అందుబాటులో ఉన్న స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_balanceqty_label: "అవసరమైన మిగులు పరిమాణం", plant_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
@@ -3161,17 +3161,19 @@
     el.f_balanceqty.value = balance;
   }
   el.f_dispatchedqty.addEventListener("input", refreshRtdBalanceQty);
-  // ---------- Finished Goods: Opening Stock Qty (sourced from Ready to Dispatch's leftover) / No
-  // of Days Ageing (always live) ----------
-  // Opening Stock Qty: a job's undispatched leftover at Ready to Dispatch (that entry's own
-  // Quantity minus its own Dispatched Qty) is physically stock sitting back in the FG warehouse, so
-  // it's surfaced here on Finished Goods rather than on Ready to Dispatch itself. It comes from the
-  // single most recent EARLIER Ready to Dispatch entry carrying this exact Job Card No — keyed off
-  // Job Card No (rather than Customer+Product) because the same Customer+Product can span several
-  // different production batches/job cards at once, each with its own leftover; the Job Card No
-  // pins the lookup to this exact batch. Only equality where() clauses are used (no orderBy on a
-  // different field), so this never needs a manual Firestore composite index; the sort happens
-  // client-side.
+  // ---------- Finished Goods: Available Stock (sourced from Ready to Dispatch's own Balance
+  // Quantity) / No of Days Ageing (always live) ----------
+  // Available Stock: a job's undispatched leftover at Ready to Dispatch — that entry's own Balance
+  // Quantity (Total Quantity to Dispatch minus Dispatched Qty, see refreshRtdBalanceQty above) — is
+  // physically stock sitting back in the FG warehouse, so it's surfaced here on Finished Goods
+  // rather than on Ready to Dispatch itself. It's read directly from that entry's own saved Balance
+  // Quantity rather than re-derived from its Quantity/Dispatched Qty, so this always matches
+  // whatever Ready to Dispatch itself showed. It comes from the single most recent EARLIER Ready to
+  // Dispatch entry carrying this exact Job Card No — keyed off Job Card No (rather than
+  // Customer+Product) because the same Customer+Product can span several different production
+  // batches/job cards at once, each with its own leftover; the Job Card No pins the lookup to this
+  // exact batch. Only equality where() clauses are used (no orderBy on a different field), so this
+  // never needs a manual Firestore composite index; the sort happens client-side.
   function computeFgOpeningStockFromRtd(jobCardNo, targetDate){
     var jcKey = (jobCardNo || "").trim();
     if(!jcKey) return Promise.resolve({ openingStock: null });
@@ -3191,8 +3193,8 @@
         });
         var latest = rows[0];
         if(!latest) return { openingStock: null };
-        var leftover = (Number(latest.quantity) || 0) - (Number(latest.dispatchedQty) || 0);
-        return { openingStock: leftover > 0 ? leftover : 0 };
+        var balance = Number(latest.balanceQty) || 0;
+        return { openingStock: balance > 0 ? balance : 0 };
       })
       .catch(function(){
         // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
@@ -3391,6 +3393,24 @@
       el.fld_type.insertAdjacentElement("afterend", el.fld_ply);
     } else {
       el.fld_layers.insertAdjacentElement("beforebegin", el.fld_ply);
+    }
+    // Available Stock's own DOM position: its HOME spot in the markup is right before No of Days
+    // Ageing, but Finished Goods — the only stage that ever shows it — needs it right after Type
+    // instead, so whoever's checking stock sees it as early as the Job Card/Type themselves rather
+    // than buried near the bottom of the form. Same physical-relocation approach as Quantity/Ply
+    // above.
+    if(fg){
+      el.fld_type.insertAdjacentElement("afterend", el.fld_openingstock);
+    } else {
+      el.fld_ageing.insertAdjacentElement("beforebegin", el.fld_openingstock);
+    }
+    // Total Bundle's own DOM position: its HOME spot in the markup is right before PLY, but Finished
+    // Goods — the only stage that ever shows it — needs it right after Quantity Per Bundle instead,
+    // so the two bundle-related figures read together. Same physical-relocation approach as above.
+    if(fg){
+      el.fld_qtyperbundle.insertAdjacentElement("afterend", el.fld_totalbundle);
+    } else {
+      el.fld_plantbalanceqty.insertAdjacentElement("afterend", el.fld_totalbundle);
     }
     // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
     // live on Finished Goods instead — see computeFgOpeningStockFromRtd above the modal code.
