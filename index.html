@@ -5596,6 +5596,23 @@
       : null;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
+    // Quantity Per Bundle is a per-product catalog fact (see applyCatalogAutofill), not something
+    // typed at every stage — Plant's own form doesn't even show the field (see QTYPERBUNDLE_STAGES),
+    // so an entry advancing straight from a stage like Plant into a stage that DOES show it (Ready
+    // to Dispatch, Bundling, ...) via Next Stage would otherwise save qtyPerBundle blank forever,
+    // since hasQtyPerBundle above is keyed off chosenStage — the stage the OPEN FORM is showing,
+    // which never collected it. This falls back to the catalog's own known value for this
+    // Customer/Product, exactly what applyCatalogAutofill would have filled in had the field been
+    // visible on this stage to autofill into in the first place.
+    var qtyPerBundleFromCatalogOnMove = null;
+    if(!hasQtyPerBundle && movedTo && stageHasQtyPerBundle(movedTo)){
+      var moveCanonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
+      var moveCanonicalProduct = findCanonicalProduct(moveCanonicalCustomer, el.f_product.value);
+      if(moveCanonicalProduct){
+        var moveCatalogInfo = state.catalog.customers[moveCanonicalCustomer].products[moveCanonicalProduct] || {};
+        if(moveCatalogInfo.qtyPerBundle != null) qtyPerBundleFromCatalogOnMove = moveCatalogInfo.qtyPerBundle;
+      }
+    }
     var hasNoOfBundles = stageHasNoOfBundles(chosenStage);
     var hasPalletNo = stageHasPalletNo(chosenStage);
     var hasPalletArea = stageHasPalletArea(chosenStage);
@@ -5644,7 +5661,7 @@
       invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
       vehicleNumber: isDispatch ? el.f_vehicleno.value.trim() : "",
       driver: isDispatch ? el.f_driver.value.trim() : "",
-      qtyPerBundle: hasQtyPerBundle ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
+      qtyPerBundle: hasQtyPerBundle ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : qtyPerBundleFromCatalogOnMove,
       noOfBundles: hasNoOfBundles
         ? (movingRtdToDispatch ? movedNoOfBundles : (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)))
         : null,
