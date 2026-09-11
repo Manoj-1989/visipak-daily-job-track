@@ -3379,6 +3379,19 @@
     } else {
       el.fld_type.insertAdjacentElement("afterend", el.fld_qty);
     }
+    // Ply's own DOM position: its HOME spot in the markup is right before the Layers table, but on
+    // every stage that actually shows it (see stageHasPly/PLY_EXCLUDED_STAGES above — Plant,
+    // RD-1CP, Bundling, and so on) it needs to sit between Type and Quantity instead. Same
+    // physical-relocation approach as Quantity just above; inserting Ply "afterend" of Type AFTER
+    // Quantity has already been placed there pushes Quantity one slot further along, landing the
+    // order Type -> Ply -> Quantity exactly as needed. The Layers table itself (Size/GSM/BF, driven
+    // by whichever Ply count is selected) is unaffected — only the Ply dropdown moves, not the
+    // table below it. On stages that don't show Ply at all, it just stays in its HOME spot, hidden.
+    if(stageHasPly(stage)){
+      el.fld_type.insertAdjacentElement("afterend", el.fld_ply);
+    } else {
+      el.fld_layers.insertAdjacentElement("beforebegin", el.fld_ply);
+    }
     // Dispatched Qty and Balance Quantity are Ready to Dispatch's own fields; Opening Stock/Ageing
     // live on Finished Goods instead — see computeFgOpeningStockFromRtd above the modal code.
     el.fld_dispatchedqty.hidden = !readyToDispatch;
