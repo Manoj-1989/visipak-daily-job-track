@@ -2654,6 +2654,16 @@
     // person already picked alone rather than clearing it.
     if(info.type && !el.fld_type.hidden) el.f_type.value = info.type;
     if(info.ply && !el.fld_ply.hidden) el.f_ply.value = info.ply;
+    // Quantity Per Bundle: same rule — a product the catalog already knows (this save, or the
+    // backfilled reference data, see QTY_PER_BUNDLE_REFERENCE below) auto-fills it; a brand-new
+    // product has nothing saved yet, so it's left blank for manual entry as usual. Downstream
+    // auto-calcs that depend on it (No of Bundles, FG's Total Bundle) don't pick up a plain value
+    // assignment on their own, so they're explicitly refreshed right after.
+    if(info.qtyPerBundle != null && stageHasQtyPerBundle(el.f_stage.value) && !el.fld_qtyperbundle.hidden){
+      el.f_qtyperbundle.value = info.qtyPerBundle;
+      refreshNoOfBundles();
+      refreshFgTotalBundle();
+    }
   }
   // ---------- Task modal's Customer/Product selects (optional fields, same shared catalog) ----------
   // Mirrors the main entry form's f_clientname/f_product handling above exactly (same generic
@@ -2836,7 +2846,7 @@
   // catalog, or fills in a Type/PLY that a known product didn't have yet. Never erases an already-
   // known Type/PLY with a blank (a stage that doesn't collect one of those fields simply omits it
   // from the update instead of overwriting it with "").
-  function upsertCatalogEntry(customerName, productName, typeVal, plyVal){
+  function upsertCatalogEntry(customerName, productName, typeVal, plyVal, qtyPerBundleVal){
     var custTrim = (customerName || "").trim();
     var prodTrim = (productName || "").trim();
     if(!custTrim || !prodTrim) return;
@@ -2847,12 +2857,18 @@
     var canonicalCustomer = findCanonicalCustomer(custTrim) || formatCustomerName(custTrim);
     var canonicalProduct = findCanonicalProduct(canonicalCustomer, prodTrim) || formatProductName(prodTrim);
     var existing = ((state.catalog.customers[canonicalCustomer] || {}).products || {})[canonicalProduct] || {};
-    var merged = { type: existing.type || "", ply: existing.ply || "" };
+    var existingQtyPerBundle = existing.qtyPerBundle != null ? existing.qtyPerBundle : null;
+    var merged = { type: existing.type || "", ply: existing.ply || "", qtyPerBundle: existingQtyPerBundle };
     if(typeVal) merged.type = typeVal;
     if(plyVal) merged.ply = plyVal;
+    // Quantity Per Bundle: remembered the same way Type/PLY are, so the next new entry for this
+    // exact product auto-fills it too (see applyCatalogAutofill) — a brand-new product with nothing
+    // saved yet simply has nothing to remember here, so it stays a manual field until the first
+    // save teaches the catalog what it should be.
+    if(qtyPerBundleVal != null && qtyPerBundleVal !== "") merged.qtyPerBundle = Number(qtyPerBundleVal);
     var isNewCustomer = !state.catalog.customers[canonicalCustomer];
     var isNewProduct = isNewCustomer || !state.catalog.customers[canonicalCustomer].products[canonicalProduct];
-    if(!isNewProduct && merged.type === existing.type && merged.ply === existing.ply) return; // nothing changed, skip the write
+    if(!isNewProduct && merged.type === existing.type && merged.ply === existing.ply && merged.qtyPerBundle === existingQtyPerBundle) return; // nothing changed, skip the write
     var update = { customers: {} };
     update.customers[canonicalCustomer] = { products: {} };
     update.customers[canonicalCustomer].products[canonicalProduct] = merged;
@@ -2917,6 +2933,47 @@
       });
     });
   }
+  // ---------- One-time data fix: backfill Quantity Per Bundle onto the shared catalog ----------
+  // Quantity Per Bundle now auto-fills the same way Type/PLY already do (see applyCatalogAutofill
+  // and upsertCatalogEntry) — but that only ever remembers a value going forward, from the moment
+  // someone actually saves an entry with it filled in. Every product already sitting in the catalog
+  // from before this feature existed has no qtyPerBundle of its own yet, so without this fix
+  // literally every product would read as "brand new" (nothing to auto-fill) the first time,
+  // regardless of how long it's actually been in production. QTY_PER_BUNDLE_REFERENCE is Visipak's
+  // own "Status FG" master sheet — the definitive per-product bundle sizes — keyed by
+  // normalizeKey(customer) + "__" + normalizeKey(product) so each entry matches however that
+  // product's name is actually capitalized/spaced in the live catalog, however it looks in the
+  // sheet. Only fills in products that don't already have a qtyPerBundle — nothing here ever
+  // overwrites a value someone has since entered or corrected on the form — so it's safe to run on
+  // every load indefinitely: once every matching product is backfilled, it finds nothing left to do.
+  // (A handful of the sheet's rows were left out of this reference on purpose: one product listed
+  // under two different Box Types with two different bundle sizes had no single correct answer, so
+  // it's simply not here — that one product stays a manual entry, same as any other brand-new one.)
+  var QTY_PER_BUNDLE_REFERENCE = {"amore rusk__amore rusk 200g":10,"amore rusk__amore rusk 36x12grm":10,"amore rusk__amore rusk 50g blue":20,"amore rusk__amore rusk 56g green":20,"b m l__bright  double  mentha & mentha":10,"b m l__bright  double sandia & mentha":10,"b m l__bright  double uva & mentha":10,"b m l__cannon black menthol":10,"b m l__fort black mentol":10,"b m l__fort plain boxes":10,"b m l__fort somt bag":10,"b m l__lg premium":10,"b m l__marco":10,"b m l__millonare  special":10,"b m l__millonare menthol":10,"b m l__pride blue ks mastercase":10,"b m l__pride gold ks mastercase":10,"b m l__ruby crush  sandia & mentha":10,"b m l__ruby crush  uva & mentha":10,"b m l__ruby crush 100mm sandia & mentha":10,"b m l__ruby crush mentha  & mentha":10,"b m l__smart click on blueberry":10,"b m l__walton":10,"dodla__dodla 140ml & 150 ml dtm new":10,"dodla__dodla 140ml tm":10,"dodla__dodla 150 ml dtm old":10,"dodla__dodla 30ml pack":10,"dodla__dodla 500ml dtm":10,"dodla__dodla 500ml tm":10,"dodla__dodla lassi samll boxes":25,"fragile vaachi__290x250x240 red":20,"fragile vaachi__370x280x250":10,"fragile vaachi__535x370x255 red":10,"fragile vaachi__875x460x490x green":10,"fragile vaachi__900x370x370 red":10,"gland__gx - 141":10,"gland__gx - 195":10,"gland__gx - 198":20,"gland__gx - 209":10,"gland__gx - 218":10,"gland__gx - 241":10,"gland__gx - 296":10,"gland__gx - 308":10,"gland__gx - 347":10,"gland__gx - 369":10,"gland__gx - 370":10,"gland__gx - 444":10,"gland__gx - 509":10,"gland__gx-105":10,"gland__gx-116":10,"gland__gx-146":10,"laurus__1200x1000":25,"laurus__1200x800":25,"laurus__2000016":15,"laurus__2000136":15,"laurus__2000156 die cut":15,"laurus__2000160":15,"laurus__2000265":15,"laurus__2000289":15,"laurus__2000297":15,"laurus__2000310":15,"laurus__2000319":15,"laurus__2000330":15,"laurus__2000332":15,"laurus__2000333 die cut job":15,"laurus__2000334":15,"laurus__2000362":15,"laurus__2000416":15,"laurus__2000498":15,"laurus__2000499":15,"laurus__2000500":15,"laurus__2000501":15,"laurus__2000510":15,"laurus__2000531":15,"laurus__2000539":15,"laurus__2000540":15,"laurus__2000541":15,"laurus__2000609":15,"laurus__2000637":15,"laurus__2000673":15,"laurus__2001064":15,"laurus__2001421":15,"laurus__2001566":15,"laurus__2001567":15,"laurus__2001568":15,"laurus__2001569":15,"laurus__2001604":15,"laurus__2001787":15,"laurus__2001847":15,"laurus__2002121":15,"laurus__2002122":15,"laurus__2002219":15,"laurus__2002348":15,"laurus__2002514 punching die cut job":15,"laurus__2002724":15,"laurus__2002725":15,"laurus__2002830":15,"laurus__2002962":15,"laurus__2002963":15,"laurus__2003195":15,"laurus__laurus -4  20313":15,"manjushree__648x398x448":5,"manjushree__743x568x263":5,"manjushree__853x448x253":5,"moldtek__moldtek 10 ltr":10,"moldtek__moldtek 15 ltr":5,"moldtek__moldtek 17 ltr":5,"moldtek__moldtek 20 ltr":10,"moldtek__moldtek 4 ltr":10,"moldtek__moldtek 7.5 ltr":10,"natco__6250071":10,"natco__6250078 100grm":10,"natco__6250079 250grm":10,"natco__6250080 500grm":10,"natco__6250081":10,"natco__6250087":10,"natco__6250092":10,"natco__6250094":10,"natco__6250096":10,"natco__6250097 1kg":10,"natco__6250157":10,"natco__6250161":10,"natco__6250168":10,"natco__6250169":10,"natco__6250174":10,"natco__6250175":10,"pepsi__aquafina 1 ltr water cc boxes":20,"pepsi__pepsi 1.25 ml cc boxes":20,"pepsi__pepsi 160ml cc boxes":25,"pepsi__pepsi 1ltr new aquavees pads 320x240":220,"pepsi__pepsi 1ltr old pads 400x240":200,"pepsi__pepsi 200ml pads":200,"pepsi__pepsi 400ml pads 390x315":200,"pidilite -1__heatx 1 ltr":20,"pidilite -1__heatx 2 ltr":20,"pidilite -1__heatx 5 ltr":20,"pidilite -1__heatx 500 ml":20,"pidilite -1__hiper  2 kg":20,"pidilite -1__hiper  5 kg  ( nsd ) new job":20,"pidilite -1__hiper  5 kg red":20,"pidilite -1__hiper  star 2kg":20,"pidilite -1__hiper 1 kg red":20,"pidilite -1__hiper 10 kg":10,"pidilite -1__hiper 500 gm":20,"pidilite -1__hiper star 1 kg":20,"pidilite -1__hiper star 2x5 kg":20,"pidilite -1__ibx 100 ml":20,"pidilite -1__ibx 200 ml":20,"pidilite -1__ibx 50 ml":20,"pidilite -1__marine 1 kg":20,"pidilite -1__marine 10 kg":10,"pidilite -1__marine 2kg":20,"pidilite -1__marine 5 kg":20,"pidilite -1__marine 5 kg c - flute":20,"pidilite -1__marine 500gm":20,"pidilite -1__probond 10kg":10,"pidilite -1__probond 1kg":20,"pidilite -1__probond 500gm":20,"pidilite -1__probond 5kg":20,"pidilite -1__sbx 100ml":20,"pidilite -1__sbx 200 ml":20,"pidilite -1__sbx 50 ml":20,"pidilite -1__sh 1 kg":20,"pidilite -1__sh 10 kg":10,"pidilite -1__sh 2kg":20,"pidilite -1__sh 5 kg":20,"pidilite -1__sh 500gm":20,"pidilite -2__crack x paste 12x1 kg":10,"pidilite -2__crack x paste 12x500gm inner":10,"pidilite -2__crack x paste 2x12x500gm":10,"pidilite -2__crack x paste 2x5 kg":10,"pidilite -2__crack x powedr 20x1 kg gm":20,"pidilite -2__crack x powedr 24x500 gm":20,"pidilite -2__damgaurd 1 kg":20,"pidilite -2__damgaurd 500 gm":10,"pidilite -2__dr fix kwik n ezee klear 12x250grm":20,"pidilite -2__dr fix kwik n ezee klear 6x1kg":20,"pidilite -2__fastfelx  ulatra 11 kg":10,"pidilite -2__fastfelx 7 kg":10,"pidilite -2__fastfelx ulatra 6 kg":10,"pidilite -2__hai sha 4x4ltr":10,"pidilite -2__hai sha 6x1ltr":20,"pidilite -2__lw + 2x5 ltr  promo tape":20,"pidilite -2__lw + 2x5 ltr (regular ) nd ih":20,"pidilite -2__lw+ m tape 2x5 ltr":20,"pidilite -2__master fix 4kg":10,"pidilite -2__p/fin 2k 4x3 kg":20,"pidilite -2__p/fin 2k 4x3 kg new job":20,"pidilite -2__p/fin 2k inner  10kg":10,"pidilite -2__primo white 1ltr":10,"pidilite -2__primo white 2x4ltr":10,"pidilite -2__raincoat 2 in1 1ltr":10,"pidilite -2__raincoat 2 in1 4ltr":10,"pidilite -2__raincoat neo 1ltr":10,"pidilite -2__raincoat neo 2x3.8ltr /4ltr":10,"pidilite -2__raincoat star 2x3.8ltr/ 4 ltr":10,"pidilite -2__raincoat star 6x950ml/1 ltr":10,"pidilite -2__regular lw + 15x1 ltr":20,"pidilite -2__roff hyguard 9 kg":10,"pidilite -2__roof seal classic 2x4ltr new job diecut":10,"pidilite -2__roofseal classic 2x4 ltr":10,"pidilite -2__roofseal classic 6x1 ltr":10,"pidilite -2__roofseal select 2x4 ltr":10,"pidilite -2__sure seal 1kg":10,"pidilite -2__sureseal 5 kg":10,"pidilite -2__unprinted 10kg":10,"pidilite -2__unprinted 20 kg":10,"pmk__8pm 750 ml":25,"pmk__a/c neat 180ml":25,"pmk__a/c neat 750ml":25,"pmk__after dark blue 180 ml":25,"pmk__bols  180 ml":25,"pmk__bols 750 ml":25,"pmk__bols 90 ml":25,"pmk__bombma 180ml":25,"pmk__good friends 180 ml":25,"pmk__good friends 90 ml":25,"pmk__mxop 180ml":25,"pmk__mxop 375 ml":25,"pmk__mxop 750 ml":25,"pmk__mxop 750 ml new jod":25,"pmk__party special 180 ml":25,"pmk__party special 375 ml":25,"pmk__party special 750 ml":25,"pmk__qulaty liquor 180 ml":25};
+  var qtyPerBundleBackfillAttempted = false;
+  function backfillQtyPerBundleInCatalog(){
+    if(qtyPerBundleBackfillAttempted) return;
+    var update = {};
+    var foundAny = false;
+    Object.keys(state.catalog.customers).forEach(function(customerName){
+      var products = (state.catalog.customers[customerName] || {}).products || {};
+      Object.keys(products).forEach(function(productName){
+        var info = products[productName] || {};
+        if(info.qtyPerBundle != null) return; // already has one -- never overwrite it
+        var key = normalizeKey(customerName) + "__" + normalizeKey(productName);
+        var refQty = QTY_PER_BUNDLE_REFERENCE[key];
+        if(refQty == null) return; // not in the reference sheet -- stays a manual entry, as intended
+        update["customers." + customerName + ".products." + productName + ".qtyPerBundle"] = refQty;
+        foundAny = true;
+      });
+    });
+    if(!foundAny) return;
+    qtyPerBundleBackfillAttempted = true;
+    state.db.collection("catalog").doc("customerProducts").update(update).catch(function(err){
+      if(window.console) console.error("Quantity Per Bundle backfill failed:", err);
+      qtyPerBundleBackfillAttempted = false; // let a later snapshot retry if this write failed
+    });
+  }
   var catalogSeedAttempted = false;
   function subscribeCatalog(){
     state.db.collection("catalog").doc("customerProducts").onSnapshot(function(doc){
@@ -2927,6 +2984,7 @@
       refreshTaskCustomerNameOptions();
       refreshTaskProductNameOptions();
       fixMaraneTypoInCatalog();
+      backfillQtyPerBundleInCatalog();
       // Only the very first device to see a truly empty catalog seeds it — a stale/incomplete
       // snapshot never re-triggers this because catalogSeedAttempted latches after the first try,
       // and set(..., {merge:true}) is harmless even if more than one device races to do this.
@@ -5672,10 +5730,11 @@
       artworkAttachmentCtrl.commit();
       qcSpecsAttachmentCtrl.commit();
       visipakSpecsAttachmentCtrl.commit();
-      // Remembers this customer/product (and whatever Type/PLY this stage collected for it) in
-      // the shared catalog — a no-op if both fields are blank (see upsertCatalogEntry's guard),
-      // which covers stages without a Customer Name / Product Name at all (e.g. HR Man Power).
-      upsertCatalogEntry(payload.clientName, payload.productName, payload.type, payload.ply);
+      // Remembers this customer/product (and whatever Type/PLY/Quantity Per Bundle this stage
+      // collected for it) in the shared catalog — a no-op if both fields are blank (see
+      // upsertCatalogEntry's guard), which covers stages without a Customer Name / Product Name at
+      // all (e.g. HR Man Power).
+      upsertCatalogEntry(payload.clientName, payload.productName, payload.type, payload.ply, payload.qtyPerBundle);
       // Ready to Dispatch -> Dispatch with something left undispatched: spin the leftover off into
       // its own Finished Goods entry (see buildRtdBalanceFgEntry above) now that the save itself is
       // safely through — this document is becoming a Dispatch record, not an FG one, so its own
