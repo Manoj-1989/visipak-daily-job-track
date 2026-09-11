@@ -2953,7 +2953,16 @@
   var qtyPerBundleBackfillAttempted = false;
   function backfillQtyPerBundleInCatalog(){
     if(qtyPerBundleBackfillAttempted) return;
-    var update = {};
+    // Built as real nested objects (matching upsertCatalogEntry's own set(...,{merge:true}) pattern)
+    // rather than dotted-path strings like the Marane fix above uses — several real product names
+    // in the reference sheet contain a literal "." (e.g. "Moldtek 7.5", "Raincoat neo 2x3.8ltr
+    // /4ltr"), and Firestore's update() always parses a dot in a plain string key as a path
+    // separator with no way to escape it. A dotted-path key built from one of those names would
+    // silently misroute into the wrong nested field and fail, and since every product's backfill
+    // was bundled into that one update() call, that single bad key used to fail the entire write —
+    // nothing backfilled at all, for any product. set(merge) has no such parsing: the object's keys
+    // are used exactly as given, dots and all.
+    var update = { customers: {} };
     var foundAny = false;
     Object.keys(state.catalog.customers).forEach(function(customerName){
       var products = (state.catalog.customers[customerName] || {}).products || {};
@@ -2963,13 +2972,14 @@
         var key = normalizeKey(customerName) + "__" + normalizeKey(productName);
         var refQty = QTY_PER_BUNDLE_REFERENCE[key];
         if(refQty == null) return; // not in the reference sheet -- stays a manual entry, as intended
-        update["customers." + customerName + ".products." + productName + ".qtyPerBundle"] = refQty;
+        if(!update.customers[customerName]) update.customers[customerName] = { products: {} };
+        update.customers[customerName].products[productName] = { qtyPerBundle: refQty };
         foundAny = true;
       });
     });
     if(!foundAny) return;
     qtyPerBundleBackfillAttempted = true;
-    state.db.collection("catalog").doc("customerProducts").update(update).catch(function(err){
+    state.db.collection("catalog").doc("customerProducts").set(update, { merge: true }).catch(function(err){
       if(window.console) console.error("Quantity Per Bundle backfill failed:", err);
       qtyPerBundleBackfillAttempted = false; // let a later snapshot retry if this write failed
     });
