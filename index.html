@@ -1508,6 +1508,7 @@
       attach_err_pdf_rendered_toolarge: "Captured pages are too large to save. Try a shorter PDF or fewer pages.",
       attach_specs_filled_some: "Auto-filled from PDF: {fields}. Please check and fill in the rest manually.",
       attach_specs_filled_none: "Could not find matching specifications in this PDF — please enter Client Specs manually.",
+      attach_specs_autofilled_catalog: "Auto-filled from this product's saved Client Specifications.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Box Weight", qc_spec_bct: "BCT",
@@ -1671,6 +1672,7 @@
       attach_err_pdf_rendered_toolarge: "कैप्चर किए गए पेज सेव करने के लिए बहुत बड़े हैं। कोई छोटी PDF या कम पेज आज़माएं।",
       attach_specs_filled_some: "PDF से ऑटो-भरा गया: {fields}। कृपया बाकी को जांचें और मैन्युअल रूप से भरें।",
       attach_specs_filled_none: "इस PDF में मेल खाने वाली स्पेसिफिकेशन नहीं मिलीं — कृपया क्लाइंट स्पेक्स मैन्युअल रूप से दर्ज करें।",
+      attach_specs_autofilled_catalog: "इस प्रोडक्ट की सेव की गई क्लाइंट स्पेसिफिकेशन से ऑटो-भरा गया।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "बॉक्स वज़न", qc_spec_bct: "BCT",
@@ -1834,6 +1836,7 @@
       attach_err_pdf_rendered_toolarge: "క్యాప్చర్ చేసిన పేజీలు సేవ్ చేయడానికి చాలా పెద్దవి. చిన్న PDF లేదా తక్కువ పేజీలు ప్రయత్నించండి.",
       attach_specs_filled_some: "PDF నుండి ఆటో-ఫిల్ చేయబడింది: {fields}. దయచేసి మిగతావి చెక్ చేసి మాన్యువల్‌గా నింపండి.",
       attach_specs_filled_none: "ఈ PDFలో సరిపోలే స్పెసిఫికేషన్లు కనుగొనబడలేదు — దయచేసి క్లయింట్ స్పెక్స్‌ను మాన్యువల్‌గా ఎంటర్ చేయండి.",
+      attach_specs_autofilled_catalog: "ఈ ప్రొడక్ట్ యొక్క సేవ్ చేసిన క్లయింట్ స్పెసిఫికేషన్ నుండి ఆటో-ఫిల్ చేయబడింది.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బాక్స్ బరువు", qc_spec_bct: "BCT",
@@ -2634,6 +2637,7 @@
     // person already picked alone rather than clearing it.
     if(info.type && !el.fld_type.hidden) el.f_type.value = info.type;
     if(info.ply && !el.fld_ply.hidden) el.f_ply.value = info.ply;
+    refreshClientSpecsFromCatalog();
   }
   // ---------- Task modal's Customer/Product selects (optional fields, same shared catalog) ----------
   // Mirrors the main entry form's f_clientname/f_product handling above exactly (same generic
@@ -2838,6 +2842,73 @@
     update.customers[canonicalCustomer].products[canonicalProduct] = merged;
     state.db.collection("catalog").doc("customerProducts").set(update, { merge: true }).catch(function(err){
       if(window.console) console.error("Catalog update failed:", err);
+    });
+  }
+  // ---------- Per-product Client Specifications catalog (Plant/QC) ----------
+  // Separate from the "catalog" doc above on purpose: that one doc holds every customer/product's
+  // Type/PLY together and stays well under Firestore's 1MB cap, but a Client Specifications
+  // attachment (a captured photo or PDF page, base64-encoded) can itself run into the hundreds of
+  // KB — packing many of those into one shared document would blow past that cap almost
+  // immediately. Each product instead gets its own small document here, keyed by Customer+Product,
+  // holding just its most recently-saved Client Specifications attachment.
+  function productSpecsDocId(customerName, productName){
+    var key = normalizeKey(customerName) + "__" + normalizeKey(productName);
+    // Firestore document IDs can't contain "/" — replace it (and collapse whitespace) so an
+    // unusual customer/product name can never produce an invalid or colliding id.
+    key = key.replace(/\//g, "-").replace(/\s+/g, " ").trim();
+    return key.slice(0, 1400) || "unknown";
+  }
+  // Called after an entry with a Client Specifications attachment saves successfully (Plant or QC
+  // stage — see stageHasQcSpecs) — remembers that attachment against this Customer+Product so the
+  // next new entry for the same product can auto-attach it (see refreshClientSpecsFromCatalog
+  // below). A plain set() (not merge) always fully replaces whatever was saved before, so a revised
+  // specification simply overwrites the old one in place — there's only ever one document per
+  // product, so nothing old is left lying around to clean up separately.
+  function saveProductSpecsToCatalog(customerName, productName, attachmentVal){
+    var custTrim = (customerName || "").trim();
+    var prodTrim = (productName || "").trim();
+    if(!custTrim || !prodTrim || !attachmentVal || !attachmentVal.data) return;
+    state.db.collection("productSpecs").doc(productSpecsDocId(custTrim, prodTrim)).set({
+      customerName: custTrim,
+      productName: prodTrim,
+      clientSpecsAttachmentData: attachmentVal.data,
+      clientSpecsAttachmentName: attachmentVal.name || null,
+      clientSpecsAttachmentType: attachmentVal.type || null,
+      updatedAt: Date.now()
+    }).catch(function(err){
+      if(window.console) console.error("Product specs catalog update failed:", err);
+    });
+  }
+  // Called whenever Customer Name/Product Name resolve to a known pair on a brand-new entry (see
+  // applyCatalogAutofill) or the stage switches to Plant/QC (see updateFormFieldsForStage) — looks
+  // up whatever Client Specifications attachment was last saved for that exact product and, if the
+  // widget doesn't already hold something (an existing entry's own saved attachment, or whatever
+  // this same new entry has already been given), attaches it automatically under Client
+  // Specifications. Never runs for an entry that's actually being edited — same "only a brand-new
+  // entry gets auto-filled" rule as every other catalog/stock auto-fill in this file.
+  var productSpecsLookupToken = 0;
+  function refreshClientSpecsFromCatalog(){
+    if(state.editingId) return;
+    if(!stageHasQcSpecs(el.f_stage.value)) return;
+    if(qcSpecsAttachmentCtrl.getValue()) return; // already has something -- never overwrite it
+    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, el.f_product.value);
+    if(!canonicalCustomer || !canonicalProduct) return;
+    var myToken = ++productSpecsLookupToken;
+    state.db.collection("productSpecs").doc(productSpecsDocId(canonicalCustomer, canonicalProduct)).get().then(function(doc){
+      if(myToken !== productSpecsLookupToken) return; // superseded by a newer lookup
+      if(state.editingId) return; // modal moved on to editing an existing entry while this was in flight
+      if(qcSpecsAttachmentCtrl.getValue()) return; // a manual upload landed while this was in flight
+      if(!doc.exists) return;
+      var data = doc.data();
+      if(!data || !data.clientSpecsAttachmentData) return;
+      qcSpecsAttachmentCtrl.setValue({
+        data: data.clientSpecsAttachmentData, name: data.clientSpecsAttachmentName, type: data.clientSpecsAttachmentType
+      });
+      var statusEl = document.getElementById("attachQcSpecsStatus");
+      if(statusEl) statusEl.textContent = t("attach_specs_autofilled_catalog");
+    }).catch(function(err){
+      if(window.console) console.error("Product specs lookup failed:", err);
     });
   }
   var catalogSeedAttempted = false;
@@ -3522,6 +3593,7 @@
     refreshPlantStockFields();
     refreshStockOpeningBalance();
     refreshStockSummaryCalc();
+    refreshClientSpecsFromCatalog();
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -5497,6 +5569,13 @@
       artworkAttachmentCtrl.commit();
       qcSpecsAttachmentCtrl.commit();
       visipakSpecsAttachmentCtrl.commit();
+      // Remembers this product's Client Specifications attachment (if this save actually has one)
+      // against its Customer+Product, so the next new entry for the same product auto-attaches it —
+      // see refreshClientSpecsFromCatalog. A revised attachment simply overwrites the one saved
+      // before (see saveProductSpecsToCatalog), so there's nothing stale left behind.
+      if(hasQcSpecs && qcSpecsVal && qcSpecsVal.data){
+        saveProductSpecsToCatalog(payload.clientName, payload.productName, qcSpecsVal);
+      }
       // Remembers this customer/product (and whatever Type/PLY this stage collected for it) in
       // the shared catalog — a no-op if both fields are blank (see upsertCatalogEntry's guard),
       // which covers stages without a Customer Name / Product Name at all (e.g. HR Man Power).
