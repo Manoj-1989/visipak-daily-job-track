@@ -2721,33 +2721,39 @@
         return { openingStock: 0, jobCardNo: "", ageingDays: null, palletNo: "" };
       });
   }
-  // The Quantity that was recorded when this Customer + Product's job started at Plant — the
-  // standing order total that Ready to Dispatch's own Balance Quantity Required/Total Quantity to
-  // Dispatch are built from below, the same way computeLatestFgStock above sources Plant's own
-  // Opening Stock. Same shape/sort/catch pattern, just reading Plant's Quantity field instead of
-  // Finished Goods' Opening Stock.
-  function computeLatestPlantQuantity(customerName, productName, targetDate){
-    var custKey = (customerName || "").trim();
-    var prodKey = (productName || "").trim();
-    if(!custKey || !prodKey) return Promise.resolve({ quantity: 0 });
+  // The Quantity that was recorded when this exact job started at Plant — the standing order total
+  // that Ready to Dispatch's own Balance Quantity Required/Total Quantity to Dispatch are built
+  // from below. Keyed off Job Card No (rather than Customer+Product) for the same reason
+  // computeFgOpeningStockFromRtd below is: the same Customer+Product can span several different
+  // production batches/job cards at once, each with its own Quantity, so matching on Customer+
+  // Product alone can silently pick up a DIFFERENT job's number instead of this job's own.
+  //
+  // Deliberately NOT filtered to stage=="Plant": advancing a job via Next Stage mutates that same
+  // document's own `stage` field in place rather than creating a fresh document at each step, so by
+  // the time a job reaches Ready to Dispatch, its own document usually no longer has stage=="Plant"
+  // at all (a stage=="Plant" filter here would then always come back empty for it). Quantity itself
+  // is set once at Plant and carried unchanged through every stage in between — nothing but Ready to
+  // Dispatch's own live recompute and Finished Goods/HR Man Power/Stock Summary (which null it out
+  // entirely) ever touches it — so the OLDEST entry for this Job Card No that still has a Quantity
+  // reflects the original Plant figure, whether that's this same document from back when it was at
+  // Plant, or a genuinely separate Plant-stage document for jobs entered that way instead.
+  function computeLatestPlantQuantity(jobCardNo, targetDate){
+    var jcKey = (jobCardNo || "").trim();
+    if(!jcKey) return Promise.resolve({ quantity: 0 });
     return state.db.collection("entries")
-      .where("stage", "==", "Plant")
-      .where("clientName", "==", custKey)
-      .where("productName", "==", prodKey)
+      .where("jobCardNo", "==", jcKey)
       .get()
       .then(function(snap){
         var rows = [];
         snap.forEach(function(doc){
           var r = doc.data();
+          if(r.quantity == null) return;
           if(!targetDate || r.date <= targetDate) rows.push(r);
         });
-        rows.sort(function(a, b){
-          if(a.date !== b.date) return a.date < b.date ? 1 : -1; // newest first
-          return (b.createdAt || 0) - (a.createdAt || 0);
-        });
-        var latest = rows[0];
-        if(!latest) return { quantity: 0 };
-        return { quantity: Number(latest.quantity) || 0 };
+        rows.sort(function(a, b){ return (a.createdAt || 0) - (b.createdAt || 0); }); // oldest first
+        var earliest = rows[0];
+        if(!earliest) return { quantity: 0 };
+        return { quantity: Number(earliest.quantity) || 0 };
       })
       .catch(function(){
         return { quantity: 0 };
@@ -3112,7 +3118,7 @@
     var myToken = ++rtdFgStockRequestToken;
     Promise.all([
       computeLatestFgStock(customerName, productName, el.f_date.value),
-      computeLatestPlantQuantity(customerName, productName, el.f_date.value)
+      computeLatestPlantQuantity(el.f_jobcard.value, el.f_date.value)
     ]).then(function(results){
       if(myToken !== rtdFgStockRequestToken) return; // superseded by a newer request
       var fgStock = results[0].openingStock;
@@ -3131,6 +3137,10 @@
     });
   }
   el.f_date.addEventListener("change", refreshRtdFgStockFields);
+  // Balance Quantity Required now depends on Job Card No too (see computeLatestPlantQuantity
+  // above), so typing/changing it needs to re-trigger the same live recompute — same pattern as
+  // Finished Goods' own Job Card No -> Available Stock auto-fill just below.
+  el.f_jobcard.addEventListener("input", refreshRtdFgStockFields);
 
   function daysBetweenDates(laterStr, earlierStr){
     if(!laterStr || !earlierStr) return 0;
