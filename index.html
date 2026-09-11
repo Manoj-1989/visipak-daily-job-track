@@ -1494,6 +1494,8 @@
       attach_err_pdf_source_toolarge: "This PDF is too large to process (max 20MB).",
       attach_err_pdf_toomanypages: "This PDF has too many pages (max {max}). Please split it and upload separately.",
       attach_err_pdf_rendered_toolarge: "Captured pages are too large to save. Try a shorter PDF or fewer pages.",
+      attach_specs_filled_some: "Auto-filled from PDF: {fields}. Please check and fill in the rest manually.",
+      attach_specs_filled_none: "Could not find matching specifications in this PDF — please enter Client Specs manually.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Box Weight", qc_spec_bct: "BCT",
@@ -1655,6 +1657,8 @@
       attach_err_pdf_source_toolarge: "यह PDF प्रोसेस करने के लिए बहुत बड़ी है (अधिकतम 20MB)।",
       attach_err_pdf_toomanypages: "इस PDF में बहुत ज़्यादा पेज हैं (अधिकतम {max})। कृपया इसे अलग-अलग करके अपलोड करें।",
       attach_err_pdf_rendered_toolarge: "कैप्चर किए गए पेज सेव करने के लिए बहुत बड़े हैं। कोई छोटी PDF या कम पेज आज़माएं।",
+      attach_specs_filled_some: "PDF से ऑटो-भरा गया: {fields}। कृपया बाकी को जांचें और मैन्युअल रूप से भरें।",
+      attach_specs_filled_none: "इस PDF में मेल खाने वाली स्पेसिफिकेशन नहीं मिलीं — कृपया क्लाइंट स्पेक्स मैन्युअल रूप से दर्ज करें।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "बॉक्स वज़न", qc_spec_bct: "BCT",
@@ -1816,6 +1820,8 @@
       attach_err_pdf_source_toolarge: "ఈ PDF ప్రాసెస్ చేయడానికి చాలా పెద్దది (గరిష్టం 20MB).",
       attach_err_pdf_toomanypages: "ఈ PDF‌లో పేజీలు ఎక్కువగా ఉన్నాయి (గరిష్టం {max}). దయచేసి దీన్ని వేరు చేసి విడివిడిగా అప్‌లోడ్ చేయండి.",
       attach_err_pdf_rendered_toolarge: "క్యాప్చర్ చేసిన పేజీలు సేవ్ చేయడానికి చాలా పెద్దవి. చిన్న PDF లేదా తక్కువ పేజీలు ప్రయత్నించండి.",
+      attach_specs_filled_some: "PDF నుండి ఆటో-ఫిల్ చేయబడింది: {fields}. దయచేసి మిగతావి చెక్ చేసి మాన్యువల్‌గా నింపండి.",
+      attach_specs_filled_none: "ఈ PDFలో సరిపోలే స్పెసిఫికేషన్లు కనుగొనబడలేదు — దయచేసి క్లయింట్ స్పెక్స్‌ను మాన్యువల్‌గా ఎంటర్ చేయండి.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బాక్స్ బరువు", qc_spec_bct: "BCT",
@@ -4718,6 +4724,170 @@
     reader.readAsArrayBuffer(file);
   }
 
+  // Best-effort client-specs auto-fill: reads the text layer of an uploaded Client Specification
+  // PDF (via pdf.js's getTextContent — a separate, independent read of the same File object from
+  // capturePdfPages above, which only rasterizes pages to images and never looks at the text) and
+  // tries to pull the 5 known QC parameters' values out of it. This is deliberately best-effort —
+  // spec sheets vary a lot in wording/layout, so any parameter the parser can't confidently find is
+  // just left blank for manual entry rather than guessed at.
+  var QC_SPEC_PARSE_CONFIG = [
+    { key: "boardgsm", labelKey: "qc_spec_boardgsm", labels: ["board gsm", "gsm"] },
+    { key: "bustingstrength", labelKey: "qc_spec_bustingstrength", labels: ["bursting strength", "busting strength", "bursting factor", "burst strength"] },
+    { key: "moisture", labelKey: "qc_spec_moisture", labels: ["moisture"] },
+    { key: "weight", labelKey: "qc_spec_weight", labels: ["box weight", "weight"] },
+    { key: "bct", labelKey: "qc_spec_bct", labels: ["bct", "box compression test", "compression strength"] }
+  ];
+  // Matches a number plus an optional ± tolerance, each optionally followed by a recognized unit —
+  // e.g. "6.0 Kg", "10.0 Kg ±0.5 Kg/cm²/min", "180 gsm", "12.5%".
+  var QC_SPEC_UNIT_PATTERN = "(?:kg\\/cm[\\u00b22]?\\/?min|kgf\\/cm[\\u00b22]?|kg\\/cm[\\u00b22]?|g\\/m[\\u00b22]?|gsm|kgs|kg|%|n\\b)";
+  var QC_SPEC_VALUE_RE = new RegExp("[\\d.]+\\s*" + QC_SPEC_UNIT_PATTERN + "?(?:\\s*\\u00b1\\s*[\\d.]+\\s*" + QC_SPEC_UNIT_PATTERN + "?)?", "i");
+
+  // Extracts every page's text from `file` (a PDF), concatenated in page order, entirely
+  // client-side via pdf.js. Calls back(errorMessage) on failure, or back(null, text) on success.
+  function extractPdfText(file, callback){
+    if(!window.pdfjsLib){
+      callback(t("attach_err_pdflib"));
+      return;
+    }
+    var reader = new FileReader();
+    reader.onerror = function(){
+      callback(t("attach_err_upload"));
+    };
+    reader.onload = function(){
+      var loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(reader.result) });
+      loadingTask.promise.then(function(pdf){
+        var maxPages = Math.min(pdf.numPages, 20);
+        var textParts = [];
+        function readPage(pageNum){
+          if(pageNum > maxPages){
+            callback(null, textParts.join("\n"));
+            return;
+          }
+          pdf.getPage(pageNum).then(function(page){
+            page.getTextContent().then(function(content){
+              textParts.push(content.items.map(function(item){ return item.str; }).join(" "));
+              readPage(pageNum + 1);
+            }, function(){
+              readPage(pageNum + 1);
+            });
+          }, function(){
+            readPage(pageNum + 1);
+          });
+        }
+        readPage(1);
+      }, function(loadErr){
+        callback(t("attach_err_upload"));
+        if(window.console) console.error("PDF text load failed:", loadErr);
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Pulls the first numeric+unit token out of `str` (e.g. "6.0 Kg ±0.5 Kg/cm²/min"), or null if
+  // nothing matching looks like a spec value.
+  function extractQcSpecNumericToken(str){
+    var vm = str.match(QC_SPEC_VALUE_RE);
+    if(!vm) return null;
+    return vm[0].replace(/\s+/g, " ").trim();
+  }
+
+  // Reads a parameter's search window and returns the value to use, handling specs that give a
+  // different value per Ply count (e.g. "3ply 6.0 Kg ... 5ply 10.0 Kg ..."): each "<digit>ply"
+  // marker starts a new segment running up to the next marker (or the end of the window), and the
+  // first numeric token in each segment is that Ply's value. When the entry's own Ply is known and
+  // matches one of the segments, that value is used; with exactly one Ply value present it's used
+  // regardless; otherwise (multiple Ply-specific values but no Ply chosen yet) it's left blank
+  // rather than guessing which one applies.
+  function extractQcSpecValue(windowText, plyDigit){
+    var plyRe = /(\d)\s*-?\s*ply/gi;
+    var hits = [];
+    var m;
+    while((m = plyRe.exec(windowText))){
+      hits.push({ digit: m[1], start: m.index, end: m.index + m[0].length });
+    }
+    if(hits.length > 0){
+      var byPly = {};
+      for(var i = 0; i < hits.length; i++){
+        var segEnd = (i + 1 < hits.length) ? hits[i + 1].start : windowText.length;
+        var seg = windowText.slice(hits[i].end, segEnd);
+        var val = extractQcSpecNumericToken(seg);
+        if(val) byPly[hits[i].digit] = val;
+      }
+      if(plyDigit && byPly[plyDigit]) return byPly[plyDigit];
+      var keys = Object.keys(byPly);
+      if(keys.length === 1) return byPly[keys[0]];
+      return null;
+    }
+    return extractQcSpecNumericToken(windowText);
+  }
+
+  // Searches `text` (the PDF's extracted text) for each of the 5 known QC parameters and returns
+  // whatever values it could confidently find, keyed by QC_SPEC_PARSE_CONFIG's `key`. `plyValue`
+  // is the entry's own currently-selected Ply field value (e.g. "3 Ply"), used to disambiguate
+  // Ply-dependent specs — see extractQcSpecValue above.
+  function parseClientSpecsFromText(text, plyValue){
+    var result = {};
+    if(!text) return result;
+    var lower = text.toLowerCase();
+    var plyDigit = null;
+    if(plyValue){
+      var plyNumMatch = String(plyValue).match(/\d+/);
+      if(plyNumMatch) plyDigit = plyNumMatch[0];
+    }
+
+    // Find where each parameter's label occurs, preferring the most specific synonym that appears
+    // at all (e.g. "box weight" over the too-generic "weight") so unrelated mentions of a plain
+    // word don't steal a parameter's search window.
+    var found = [];
+    QC_SPEC_PARSE_CONFIG.forEach(function(cfg){
+      var idx = -1, labelLen = 0;
+      for(var i = 0; i < cfg.labels.length; i++){
+        var pos = lower.indexOf(cfg.labels[i]);
+        if(pos !== -1){ idx = pos; labelLen = cfg.labels[i].length; break; }
+      }
+      if(idx !== -1) found.push({ key: cfg.key, idx: idx, labelLen: labelLen });
+    });
+
+    found.forEach(function(f){
+      var windowStart = f.idx + f.labelLen;
+      var windowEnd = Math.min(text.length, windowStart + 300);
+      found.forEach(function(other){
+        if(other !== f && other.idx > f.idx && other.idx < windowEnd) windowEnd = other.idx;
+      });
+      var value = extractQcSpecValue(text.slice(windowStart, windowEnd), plyDigit);
+      if(value) result[f.key] = value;
+    });
+
+    return result;
+  }
+
+  // Called after a Client Specification PDF finishes uploading to the QC Specifications
+  // attachment widget (see qcSpecsAttachmentCtrl's onPdfUploaded below) — tries to auto-fill the
+  // Client Specs column from the PDF's own text, leaving anything it can't confidently find (or
+  // that's already been typed in manually) untouched, then reports what happened.
+  function autofillClientSpecsFromPdf(file){
+    var statusEl = document.getElementById("attachQcSpecsStatus");
+    extractPdfText(file, function(err, text){
+      if(err || !text) return; // best-effort only — a failure here doesn't affect the attachment itself
+      var plyValue = (el.f_ply && el.fld_ply && !el.fld_ply.hidden) ? el.f_ply.value : "";
+      var parsed = parseClientSpecsFromText(text, plyValue);
+      var filledLabels = [];
+      QC_SPEC_PARSE_CONFIG.forEach(function(cfg){
+        var value = parsed[cfg.key];
+        if(!value) return;
+        var inputEl = document.getElementById("f_qc_" + cfg.key + "_client");
+        if(!inputEl || inputEl.value) return; // never overwrite an already-filled field
+        inputEl.value = value;
+        filledLabels.push(t(cfg.labelKey));
+      });
+      if(statusEl){
+        statusEl.textContent = filledLabels.length > 0
+          ? tf("attach_specs_filled_some", { fields: filledLabels.join(", ") })
+          : t("attach_specs_filled_none");
+      }
+    });
+  }
+
   function makeAttachmentController(cfg){
     var current = null;
     var originalValue = null;
@@ -4815,6 +4985,7 @@
         current = { data: JSON.stringify({ v: 2, pages: pages }), name: file.name, type: file.type };
         setStatus("");
         renderPreview();
+        if(cfg.onPdfUploaded) cfg.onPdfUploaded(file);
       });
     }
 
@@ -4863,7 +5034,10 @@
   var qcSpecsAttachmentCtrl = makeAttachmentController({
     fileInputId: "attachQcSpecsFileInput", cameraInputId: "attachQcSpecsCameraInput",
     cameraBtnId: "attachQcSpecsCameraBtn", uploadBtnId: "attachQcSpecsUploadBtn",
-    statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview"
+    statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview",
+    // A camera capture is always an image (see the accept="image/*" camera input above), so this
+    // only ever fires for an uploaded PDF — the one case with an extractable text layer.
+    onPdfUploaded: autofillClientSpecsFromPdf
   });
 
   // ---------- Modal ----------
@@ -5420,7 +5594,12 @@
     });
   }
 
+  // Bumped on every renderTasks() call so an in-flight Required Stock Qty lookup (see below) that
+  // resolves after a newer render has already replaced the board can tell it's stale and skip
+  // touching whatever unrelated card now occupies that DOM node.
+  var taskRenderToken = 0;
   function renderTasks(){
+    var myRenderToken = ++taskRenderToken;
     el.taskList.innerHTML = "";
     el.taskListEmpty.hidden = state.tasks.length > 0;
     state.tasks.forEach(function(task){
@@ -5433,15 +5612,12 @@
         : "";
       // Type/Ply/Quantity/Assign To are all optional extra detail (unlike Customer/Product Name,
       // which are required) — shown together on one compact line, only when at least one is set.
+      // Required Stock Qty is deliberately left out of this synchronous list — see below.
       var metaBits = [];
       if(task.type) metaBits.push(task.type);
       if(task.ply) metaBits.push(task.ply);
       if(task.quantity != null) metaBits.push(t("card_qty_label") + " " + task.quantity);
-      // Required Qty only means anything alongside its own Quantity target — an opening-stock
-      // lookup with no target quantity has nothing to subtract from.
-      if(task.quantity != null && task.requiredQty != null) metaBits.push(t("task_requiredqty_label") + ": " + task.requiredQty);
       if(task.assignTo) metaBits.push(t("task_assignto_label") + ": " + task.assignTo);
-      var metaLine = metaBits.length ? '<div class="taskSub">' + esc(metaBits.join(" · ")) + '</div>' : "";
       // Only the admin device can change anything here — the drag handle is left out of the
       // markup entirely (rather than just hidden) for every other device, and the Done/Pending
       // checkbox is disabled, so the only thing a non-admin device can do with a task is open it
@@ -5456,9 +5632,11 @@
             '<span class="taskTitle">' + esc(task.title || "") + '</span>' +
           '</div>' +
           subLine +
-          metaLine +
+          '<div class="taskSub taskMeta"' + (metaBits.length ? "" : " hidden") + '></div>' +
           (task.notes ? '<div class="taskNotes">' + esc(task.notes) + '</div>' : "") +
         '</div>';
+      var metaEl = item.querySelector(".taskMeta");
+      metaEl.textContent = metaBits.join(" · ");
       if(canEdit){
         item.querySelector(".taskCheck").addEventListener("click", function(ev){ ev.stopPropagation(); });
         item.querySelector(".taskCheck").addEventListener("change", function(){
@@ -5471,6 +5649,28 @@
       }
       item.querySelector(".taskBody").addEventListener("click", function(){ openTaskModal(task); });
       el.taskList.appendChild(item);
+
+      // Required Stock Qty only means anything alongside its own Quantity target — an
+      // opening-stock lookup with no target quantity has nothing to subtract from. It's fetched
+      // live here (the same Finished-Goods-stock lookup the task's own Edit form uses — see
+      // refreshTaskStockFields above) rather than trusted from whatever value was last saved on
+      // the task, which goes stale the moment FG stock changes after the fact — otherwise the
+      // board and the Edit form can disagree, as they did before this lookup was added here.
+      if(task.quantity != null && task.clientName && task.productName){
+        computeLatestFgStock(task.clientName, task.productName, task.date).then(function(result){
+          if(myRenderToken !== taskRenderToken) return; // superseded by a newer render
+          var required = Number(task.quantity) - (Number(result.openingStock) || 0);
+          if(required < 0) required = 0;
+          var qtyBit = t("card_qty_label") + " " + task.quantity;
+          var qtyIdx = metaBits.indexOf(qtyBit);
+          var updatedBits = metaBits.slice();
+          var requiredBit = t("task_requiredqty_label") + ": " + required;
+          if(qtyIdx !== -1) updatedBits.splice(qtyIdx + 1, 0, requiredBit);
+          else updatedBits.push(requiredBit);
+          metaEl.hidden = false;
+          metaEl.textContent = updatedBits.join(" · ");
+        });
+      }
     });
   }
 
