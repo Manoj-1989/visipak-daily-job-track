@@ -1555,6 +1555,7 @@
       banner_live_updates_stopped_prefix: "Live updates stopped:",
       banner_log_updates_stopped_prefix: "Log updates stopped:",
       banner_moved: "Job Card {jc} completed at {from} — moved to {to}.",
+      banner_moved_with_balance: "Job Card {jc} completed at {from} — {qty} moved to {to}, {balance} balance moved to Finished Goods (FG).",
       tasks_board_heading: "Priority Tasks", btn_add_task: "+ Add Task",
       tasks_empty: "No tasks scheduled for this date yet.",
       task_title_label: "Task", task_title_placeholder: "e.g. Prepare dispatch schedule",
@@ -1719,6 +1720,7 @@
       banner_live_updates_stopped_prefix: "लाइव अपडेट रुक गए:",
       banner_log_updates_stopped_prefix: "लॉग अपडेट रुक गए:",
       banner_moved: "जॉब कार्ड {jc} {from} पर पूर्ण हुआ — {to} में भेजा गया।",
+      banner_moved_with_balance: "जॉब कार्ड {jc} {from} पर पूर्ण हुआ — {qty} {to} में भेजा गया, {balance} बैलेंस Finished Goods (FG) में भेजा गया।",
       tasks_board_heading: "प्राथमिकता कार्य", btn_add_task: "+ कार्य जोड़ें",
       tasks_empty: "इस तारीख के लिए अभी तक कोई कार्य निर्धारित नहीं है।",
       task_title_label: "कार्य", task_title_placeholder: "जैसे, डिस्पैच शेड्यूल तैयार करें",
@@ -1883,6 +1885,7 @@
       banner_live_updates_stopped_prefix: "లైవ్ అప్‌డేట్లు ఆగిపోయాయి:",
       banner_log_updates_stopped_prefix: "లాగ్ అప్‌డేట్లు ఆగిపోయాయి:",
       banner_moved: "జాబ్ కార్డ్ {jc} {from} వద్ద పూర్తయింది — {to}కి తరలించబడింది.",
+      banner_moved_with_balance: "జాబ్ కార్డ్ {jc} {from} వద్ద పూర్తయింది — {qty} {to}కి తరలించబడింది, {balance} బ్యాలెన్స్ Finished Goods (FG)కి తరలించబడింది.",
       tasks_board_heading: "ప్రాధాన్యత పనులు", btn_add_task: "+ పని జోడించండి",
       tasks_empty: "ఈ తేదీకి ఇంకా పనులు షెడ్యూల్ చేయలేదు.",
       task_title_label: "పని", task_title_placeholder: "ఉదా. డిస్పాచ్ షెడ్యూల్ సిద్ధం చేయండి",
@@ -3318,6 +3321,57 @@
     el.f_balanceqty.value = balance;
   }
   el.f_dispatchedqty.addEventListener("input", refreshRtdBalanceQty);
+  // Builds the Finished Goods entry that a Ready to Dispatch entry's leftover (Balance Quantity)
+  // spins off into when that entry advances to DISPATCH (see the submit handler's
+  // movingRtdToDispatch/rtdBalanceQtyNum) — the moving document itself becomes the Dispatch record
+  // for whatever actually shipped, so whatever didn't ship needs a home of its own rather than
+  // disappearing the moment the original document's stage field changes out from under it. Shaped
+  // the same way any other brand-new Finished Goods entry would be: same Customer/Product/Job Card/
+  // Type/Date as the record it split off from, Available Stock set to the leftover itself, and
+  // Total Bundle recomputed from that (same ceil(availableStock / qtyPerBundle) rule as the FG form
+  // itself uses — see refreshFgTotalBundle).
+  function buildRtdBalanceFgEntry(rtdPayload, balanceQtyNum){
+    var qtyPerBundle = rtdPayload.qtyPerBundle;
+    return {
+      date: rtdPayload.date,
+      shift: "",
+      stage: "Finished Goods (FG)",
+      productName: rtdPayload.productName,
+      jobCardNo: rtdPayload.jobCardNo,
+      quantity: null,
+      ply: "",
+      layers: null,
+      type: rtdPayload.type,
+      startTime: null,
+      endTime: null,
+      runtimeHrs: null,
+      manpower: null,
+      updatedBy: rtdPayload.updatedBy,
+      status: "Completed",
+      nextStage: "",
+      onHold: false,
+      verified: false,
+      remarks: "",
+      clientName: rtdPayload.clientName,
+      invoiceNo: "",
+      vehicleNumber: "",
+      driver: "",
+      qtyPerBundle: qtyPerBundle,
+      noOfBundles: null,
+      reasonForRejection: "",
+      totalBundle: qtyPerBundle ? Math.ceil(balanceQtyNum / qtyPerBundle) : null,
+      palletNo: "",
+      palletAllocationArea: "",
+      dispatchedQty: null,
+      balanceQty: null,
+      fgStockAvailable: null,
+      fgStockPalletNo: null,
+      totalDispatchQty: null,
+      openingStock: balanceQtyNum,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  }
   // ---------- Finished Goods: Available Stock (sourced from Ready to Dispatch's own Balance
   // Quantity) / No of Days Ageing (always live) ----------
   // Available Stock: a job's undispatched leftover at Ready to Dispatch — that entry's own Balance
@@ -5487,6 +5541,29 @@
     // carry-over: it's never saved, always computed live from the entry's own Date (see
     // refreshFgAgeing).
     var movingRtdToFg = isReadyToDispatch && movedTo === "Finished Goods (FG)";
+    // Ready to Dispatch advancing to DISPATCH is a split, not a plain move: only what actually left
+    // (Dispatched Qty) belongs on the Dispatch-stage record this document becomes, and whatever
+    // never went out (Balance Quantity) is still physically sitting in the FG warehouse — it needs
+    // its own Finished Goods entry rather than silently vanishing, since this document itself is
+    // about to become a Dispatch entry, not an FG one. See the quantity/noOfBundles overrides and
+    // the Finished Goods spin-off entry created after a successful save, below.
+    var movingRtdToDispatch = isReadyToDispatch && movedTo === "Dispatch";
+    // The portion actually leaving today — blank Dispatched Qty (nothing entered yet) is treated as
+    // 0, same as refreshRtdBalanceQty's own fallback once it has both numbers to work with, so an
+    // entry moved on without filling it in sends its ENTIRE Quantity to Finished Goods rather than
+    // losing track of it.
+    var rtdDispatchedQtyNum = movingRtdToDispatch ? (el.f_dispatchedqty.value === "" ? 0 : Number(el.f_dispatchedqty.value)) : null;
+    // Recomputed directly from Quantity minus Dispatched Qty (the same formula refreshRtdBalanceQty
+    // uses) rather than read off the Balance Quantity field itself — that field shows blank rather
+    // than a real number whenever Dispatched Qty is blank (see refreshRtdBalanceQty's own early
+    // return), which would otherwise make a blank Dispatched Qty look like "nothing left over"
+    // instead of "the whole thing is left over".
+    var rtdBalanceQtyNum = movingRtdToDispatch
+      ? Math.max(0, (el.f_totaldispatchqty.value === "" ? 0 : Number(el.f_totaldispatchqty.value)) - rtdDispatchedQtyNum)
+      : 0;
+    var movedNoOfBundles = (movingRtdToDispatch && stageHasQtyPerBundle(chosenStage) && el.f_qtyperbundle.value !== "" && Number(el.f_qtyperbundle.value))
+      ? Math.ceil(rtdDispatchedQtyNum / Number(el.f_qtyperbundle.value))
+      : null;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
     var hasNoOfBundles = stageHasNoOfBundles(chosenStage);
@@ -5513,7 +5590,9 @@
       artworkCheckAttachmentData: artworkVal ? artworkVal.data : null,
       artworkCheckAttachmentName: artworkVal ? artworkVal.name : null,
       artworkCheckAttachmentType: artworkVal ? artworkVal.type : null,
-      quantity: (isFG || isHR || isStockSummary) ? null : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
+      quantity: (isFG || isHR || isStockSummary) ? null
+        : movingRtdToDispatch ? rtdDispatchedQtyNum
+        : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
       type: hasType ? el.f_type.value : "",
@@ -5534,7 +5613,9 @@
       vehicleNumber: isDispatch ? el.f_vehicleno.value.trim() : "",
       driver: isDispatch ? el.f_driver.value.trim() : "",
       qtyPerBundle: hasQtyPerBundle ? (el.f_qtyperbundle.value === "" ? null : Number(el.f_qtyperbundle.value)) : null,
-      noOfBundles: hasNoOfBundles ? (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)) : null,
+      noOfBundles: hasNoOfBundles
+        ? (movingRtdToDispatch ? movedNoOfBundles : (el.f_noofbundles.value === "" ? null : Number(el.f_noofbundles.value)))
+        : null,
       reasonForRejection: isRejected ? el.f_reasonforrejection.value.trim() : "",
       totalBundle: isFG ? (el.f_totalbundle.value === "" ? null : Number(el.f_totalbundle.value)) : null,
       palletNo: hasPalletNo ? el.f_palletno.value.trim() : "",
@@ -5638,9 +5719,31 @@
       // the shared catalog — a no-op if both fields are blank (see upsertCatalogEntry's guard),
       // which covers stages without a Customer Name / Product Name at all (e.g. HR Man Power).
       upsertCatalogEntry(payload.clientName, payload.productName, payload.type, payload.ply);
+      // Ready to Dispatch -> Dispatch with something left undispatched: spin the leftover off into
+      // its own Finished Goods entry (see buildRtdBalanceFgEntry above) now that the save itself is
+      // safely through — this document is becoming a Dispatch record, not an FG one, so its own
+      // Balance Quantity has nowhere else to live once its stage field changes out from under it.
+      if(movingRtdToDispatch && rtdBalanceQtyNum > 0){
+        var fgBalancePayload = buildRtdBalanceFgEntry(payload, rtdBalanceQtyNum);
+        state.db.collection("entries").add(fgBalancePayload).then(function(fgRes){
+          if(fgRes && fgRes.id){
+            logActivity("add", Object.assign({ id: fgRes.id }, fgBalancePayload), payload.updatedBy);
+          }
+        }).catch(function(err){
+          if(window.console) console.error("Finished Goods balance spin-off failed:", err);
+          showBanner(t("banner_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+        });
+      }
       closeModal();
       if(movedTo){
-        showBanner(tf("banner_moved", { jc: payload.jobCardNo || "", from: chosenStage, to: movedTo }));
+        if(movingRtdToDispatch && rtdBalanceQtyNum > 0){
+          showBanner(tf("banner_moved_with_balance", {
+            jc: payload.jobCardNo || "", from: chosenStage, to: movedTo,
+            qty: rtdDispatchedQtyNum, balance: rtdBalanceQtyNum
+          }));
+        } else {
+          showBanner(tf("banner_moved", { jc: payload.jobCardNo || "", from: chosenStage, to: movedTo }));
+        }
       }
     }).catch(function(err){
       saveBtn.disabled = false;
