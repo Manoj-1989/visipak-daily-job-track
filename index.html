@@ -455,6 +455,7 @@
   .attachmentWidget{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
   .attachmentLabel{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
   .attachmentControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .attachVerifiedRow{margin-top:10px;}
   .attachBtn{padding:6px 10px;font-size:12px;}
   .attachBtn:disabled{opacity:.55;cursor:not-allowed;}
   .attachStatus{font-size:12px;color:var(--ink-soft);}
@@ -1121,6 +1122,20 @@
             <button type="button" class="btn ghost attachBtn" id="attachVisipakSpecsUploadBtn" data-i18n="attach_upload_btn">📎 Upload</button>
             <span class="attachStatus" id="attachVisipakSpecsStatus"></span>
           </div>
+          <!-- QC-only: a plain informational confirmation that whoever's at QC has actually checked
+               the Visipak Specifications attachment above against the physical spec sheet — same
+               switch widget/wording as the Finished Goods Verified toggle (see fld_verified above),
+               but its own field, and gated to QC specifically (see isQCStage in
+               updateFormFieldsForStage) even though the Visipak Specifications section itself is
+               shared with Plant. -->
+          <div class="formGridItem attachVerifiedRow" id="fld_visipakspecsverified">
+            <span data-i18n="form_verified_label">Verified</span>
+            <label class="passFailToggle">
+              <input type="checkbox" id="f_visipakspecsverified">
+              <span class="pfTrack"></span>
+              <span class="pfLabel"></span>
+            </label>
+          </div>
           <div class="attachmentPreview" id="attachVisipakSpecsPreview" hidden></div>
         </div>
       </div>
@@ -1508,7 +1523,6 @@
       attach_err_pdf_rendered_toolarge: "Captured pages are too large to save. Try a shorter PDF or fewer pages.",
       attach_specs_filled_some: "Auto-filled from PDF: {fields}. Please check and fill in the rest manually.",
       attach_specs_filled_none: "Could not find matching specifications in this PDF — please enter Client Specs manually.",
-      attach_specs_autofilled_catalog: "Auto-filled from this product's saved Client Specifications.",
       qc_th_client: "Client Specs", qc_th_visipak: "Visipak Specs", qc_th_result: "Result",
       qc_spec_boardgsm: "Board GSM", qc_spec_bustingstrength: "Busting Strength",
       qc_spec_moisture: "Moisture", qc_spec_weight: "Box Weight", qc_spec_bct: "BCT",
@@ -1673,7 +1687,6 @@
       attach_err_pdf_rendered_toolarge: "कैप्चर किए गए पेज सेव करने के लिए बहुत बड़े हैं। कोई छोटी PDF या कम पेज आज़माएं।",
       attach_specs_filled_some: "PDF से ऑटो-भरा गया: {fields}। कृपया बाकी को जांचें और मैन्युअल रूप से भरें।",
       attach_specs_filled_none: "इस PDF में मेल खाने वाली स्पेसिफिकेशन नहीं मिलीं — कृपया क्लाइंट स्पेक्स मैन्युअल रूप से दर्ज करें।",
-      attach_specs_autofilled_catalog: "इस प्रोडक्ट की सेव की गई क्लाइंट स्पेसिफिकेशन से ऑटो-भरा गया।",
       qc_th_client: "क्लाइंट स्पेक्स", qc_th_visipak: "विसिपैक स्पेक्स", qc_th_result: "नतीजा",
       qc_spec_boardgsm: "बोर्ड GSM", qc_spec_bustingstrength: "बर्स्टिंग स्ट्रेंथ",
       qc_spec_moisture: "नमी", qc_spec_weight: "बॉक्स वज़न", qc_spec_bct: "BCT",
@@ -1838,7 +1851,6 @@
       attach_err_pdf_rendered_toolarge: "క్యాప్చర్ చేసిన పేజీలు సేవ్ చేయడానికి చాలా పెద్దవి. చిన్న PDF లేదా తక్కువ పేజీలు ప్రయత్నించండి.",
       attach_specs_filled_some: "PDF నుండి ఆటో-ఫిల్ చేయబడింది: {fields}. దయచేసి మిగతావి చెక్ చేసి మాన్యువల్‌గా నింపండి.",
       attach_specs_filled_none: "ఈ PDFలో సరిపోలే స్పెసిఫికేషన్లు కనుగొనబడలేదు — దయచేసి క్లయింట్ స్పెక్స్‌ను మాన్యువల్‌గా ఎంటర్ చేయండి.",
-      attach_specs_autofilled_catalog: "ఈ ప్రొడక్ట్ యొక్క సేవ్ చేసిన క్లయింట్ స్పెసిఫికేషన్ నుండి ఆటో-ఫిల్ చేయబడింది.",
       qc_th_client: "క్లయింట్ స్పెక్స్", qc_th_visipak: "విసిపాక్ స్పెక్స్", qc_th_result: "ఫలితం",
       qc_spec_boardgsm: "బోర్డ్ GSM", qc_spec_bustingstrength: "బర్స్టింగ్ స్ట్రెంత్",
       qc_spec_moisture: "తేమ", qc_spec_weight: "బాక్స్ బరువు", qc_spec_bct: "BCT",
@@ -2176,6 +2188,8 @@
     fld_hold: document.getElementById("fld_hold"),
     f_verified: document.getElementById("f_verified"),
     fld_verified: document.getElementById("fld_verified"),
+    f_visipakspecsverified: document.getElementById("f_visipakspecsverified"),
+    fld_visipakspecsverified: document.getElementById("fld_visipakspecsverified"),
     f_remarks: document.getElementById("f_remarks"),
     f_clientname: document.getElementById("f_clientname"),
     f_invoiceno: document.getElementById("f_invoiceno"),
@@ -2367,7 +2381,7 @@
     el.f_qc_moisture_client, el.f_qc_moisture_visipak, el.f_qc_moisture_pass,
     el.f_qc_weight_client, el.f_qc_weight_visipak, el.f_qc_weight_pass,
     el.f_qc_bct_client, el.f_qc_bct_visipak, el.f_qc_bct_pass,
-    el.f_artworkcheck_pass, el.f_hold,
+    el.f_artworkcheck_pass, el.f_hold, el.f_visipakspecsverified,
     // The Client Specifications and Visipak Specifications attachment buttons live inside these
     // same QC-only blocks (Artwork Check, QC Specifications), so they're gated the same way.
     document.getElementById("attachArtworkCameraBtn"), document.getElementById("attachArtworkUploadBtn"),
@@ -2640,7 +2654,6 @@
     // person already picked alone rather than clearing it.
     if(info.type && !el.fld_type.hidden) el.f_type.value = info.type;
     if(info.ply && !el.fld_ply.hidden) el.f_ply.value = info.ply;
-    refreshClientSpecsFromCatalog();
   }
   // ---------- Task modal's Customer/Product selects (optional fields, same shared catalog) ----------
   // Mirrors the main entry form's f_clientname/f_product handling above exactly (same generic
@@ -2847,101 +2860,6 @@
       if(window.console) console.error("Catalog update failed:", err);
     });
   }
-  // ---------- Per-product Client Specifications catalog (Plant/QC) ----------
-  // Separate from the "catalog" doc above on purpose: that one doc holds every customer/product's
-  // Type/PLY together and stays well under Firestore's 1MB cap, but a Client Specifications
-  // attachment (a captured photo or PDF page, base64-encoded) can itself run into the hundreds of
-  // KB — packing many of those into one shared document would blow past that cap almost
-  // immediately. Each product instead gets its own small document here, keyed by Customer+Product,
-  // holding just its most recently-saved Client Specifications attachment.
-  function productSpecsDocId(customerName, productName){
-    var key = normalizeKey(customerName) + "__" + normalizeKey(productName);
-    // Firestore document IDs can't contain "/" — replace it (and collapse whitespace) so an
-    // unusual customer/product name can never produce an invalid or colliding id.
-    key = key.replace(/\//g, "-").replace(/\s+/g, " ").trim();
-    return key.slice(0, 1400) || "unknown";
-  }
-  // Called after an entry with a Client Specifications attachment saves successfully (Plant or QC
-  // stage — see stageHasQcSpecs) — remembers that attachment against this Customer+Product so the
-  // next new entry for the same product can auto-attach it (see refreshClientSpecsFromCatalog
-  // below). A plain set() (not merge) always fully replaces whatever was saved before, so a revised
-  // specification simply overwrites the old one in place — there's only ever one document per
-  // product, so nothing old is left lying around to clean up separately.
-  function saveProductSpecsToCatalog(customerName, productName, attachmentVal){
-    var custTrim = (customerName || "").trim();
-    var prodTrim = (productName || "").trim();
-    if(!custTrim || !prodTrim || !attachmentVal || !attachmentVal.data) return;
-    state.db.collection("productSpecs").doc(productSpecsDocId(custTrim, prodTrim)).set({
-      customerName: custTrim,
-      productName: prodTrim,
-      clientSpecsAttachmentData: attachmentVal.data,
-      clientSpecsAttachmentName: attachmentVal.name || null,
-      clientSpecsAttachmentType: attachmentVal.type || null,
-      updatedAt: Date.now()
-    }).catch(function(err){
-      if(window.console) console.error("Product specs catalog update failed:", err);
-    });
-  }
-  // Called whenever Customer Name/Product Name resolve to a known pair on a brand-new entry (see
-  // applyCatalogAutofill) or the stage switches to Plant/QC (see updateFormFieldsForStage) — looks
-  // up whatever Client Specifications attachment was last saved for that exact product and, if the
-  // widget doesn't already hold something (an existing entry's own saved attachment, or whatever
-  // this same new entry has already been given), attaches it automatically under Client
-  // Specifications. Never runs for an entry that's actually being edited — same "only a brand-new
-  // entry gets auto-filled" rule as every other catalog/stock auto-fill in this file.
-  var productSpecsLookupToken = 0;
-  // Tracks whether the QC Specs widget's CURRENT value came from this auto-lookup (true) or from
-  // something deliberate -- a manual upload/capture, or an existing entry's own saved attachment
-  // loaded by openModal (false). Only that distinction lets refreshClientSpecsFromCatalog tell "the
-  // user attached this on purpose, never touch it" apart from "this is a PREVIOUS product's
-  // auto-filled attachment that's now stale and must be re-resolved (replaced or cleared) for
-  // whatever Customer/Product is selected now." Reset to false by openModal (fresh state per open)
-  // and by a manual upload/capture (see qcSpecsAttachmentCtrl's onManualUpload below); set to true
-  // only when this function itself calls setValue.
-  var qcSpecsAutoFilledFromCatalog = false;
-  function refreshClientSpecsFromCatalog(){
-    if(state.editingId) return;
-    if(!stageHasQcSpecs(el.f_stage.value)) return;
-    // Only skip when there's a value AND it wasn't just this function's own auto-fill -- i.e. it's
-    // something deliberate that must never be overwritten.
-    if(qcSpecsAttachmentCtrl.getValue() && !qcSpecsAutoFilledFromCatalog) return;
-    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
-    var canonicalProduct = findCanonicalProduct(canonicalCustomer, el.f_product.value);
-    if(!canonicalCustomer || !canonicalProduct){
-      // Customer/Product no longer resolve to a catalog match -- if the widget is only showing a
-      // previous product's auto-filled spec, clear it instead of leaving it stuck on screen.
-      if(qcSpecsAutoFilledFromCatalog){
-        qcSpecsAttachmentCtrl.setValue(null);
-        qcSpecsAutoFilledFromCatalog = false;
-      }
-      return;
-    }
-    var myToken = ++productSpecsLookupToken;
-    state.db.collection("productSpecs").doc(productSpecsDocId(canonicalCustomer, canonicalProduct)).get().then(function(doc){
-      if(myToken !== productSpecsLookupToken) return; // superseded by a newer lookup
-      if(state.editingId) return; // modal moved on to editing an existing entry while this was in flight
-      if(qcSpecsAttachmentCtrl.getValue() && !qcSpecsAutoFilledFromCatalog) return; // a manual upload landed while this was in flight
-      var data = doc.exists ? doc.data() : null;
-      if(!data || !data.clientSpecsAttachmentData){
-        // This product has no saved spec of its own -- if the widget is currently showing a
-        // DIFFERENT, now-stale product's auto-filled attachment, clear it rather than leaving it
-        // displayed under the wrong product.
-        if(qcSpecsAutoFilledFromCatalog){
-          qcSpecsAttachmentCtrl.setValue(null);
-          qcSpecsAutoFilledFromCatalog = false;
-        }
-        return;
-      }
-      qcSpecsAttachmentCtrl.setValue({
-        data: data.clientSpecsAttachmentData, name: data.clientSpecsAttachmentName, type: data.clientSpecsAttachmentType
-      });
-      qcSpecsAutoFilledFromCatalog = true;
-      var statusEl = document.getElementById("attachQcSpecsStatus");
-      if(statusEl) statusEl.textContent = t("attach_specs_autofilled_catalog");
-    }).catch(function(err){
-      if(window.console) console.error("Product specs lookup failed:", err);
-    });
-  }
   // ---------- One-time data fix: "Marane" was a spelling mistake for "Marine" on two of
   // PIDILITE -1's products (the rest of that customer's Marine-branded products were already
   // spelled correctly). Corrects both the shared catalog — so the Product Name dropdown offers the
@@ -3094,6 +3012,12 @@
   function refreshVerifiedLabel(){
     var label = el.f_verified.closest(".passFailToggle").querySelector(".pfLabel");
     label.textContent = el.f_verified.checked ? t("verified_on_label") : t("verified_off_label");
+  }
+  // Visipak Specifications' own Verified toggle uses the same switch widget/wording too — a plain
+  // informational flag (QC stage only), no effect on Status, Next Stage, or saving otherwise.
+  function refreshVisipakSpecsVerifiedLabel(){
+    var label = el.f_visipakspecsverified.closest(".passFailToggle").querySelector(".pfLabel");
+    label.textContent = el.f_visipakspecsverified.checked ? t("verified_on_label") : t("verified_off_label");
   }
   // While a job is on Hold it must not advance to the next stage, so Next Stage is locked
   // (disabled) whenever Hold is checked — on stages where Next Stage doesn't even show (the
@@ -3721,10 +3645,14 @@
     el.fld_hold.hidden = !stageHasHold(stage);
     // Verified is Finished Goods-only — see the toggle's own comment in the HTML above.
     el.fld_verified.hidden = !fg;
+    // Visipak Specifications' own Verified toggle is QC-only, even though the Visipak
+    // Specifications section itself also shows on Plant — see the toggle's own comment in the HTML.
+    el.fld_visipakspecsverified.hidden = !qc;
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
     refreshVerifiedLabel();
+    refreshVisipakSpecsVerifiedLabel();
     refreshNextStageHoldLock();
     refreshNoOfBundles();
     refreshRtdBalanceQty();
@@ -3733,7 +3661,6 @@
     refreshPlantStockFields();
     refreshStockOpeningBalance();
     refreshStockSummaryCalc();
-    refreshClientSpecsFromCatalog();
   }
   el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
 
@@ -4575,6 +4502,9 @@
     verified: { header: function(){ return t("form_verified_label"); },
       html: function(e){ return esc(e.verified ? t("verified_on_label") : t("verified_off_label")); },
       csv: function(e){ return e.verified ? t("verified_on_label") : t("verified_off_label"); } },
+    visipakSpecsVerified: { header: function(){ return t("form_verified_label"); },
+      html: function(e){ return esc(e.visipakSpecsVerified ? t("verified_on_label") : t("verified_off_label")); },
+      csv: function(e){ return e.visipakSpecsVerified ? t("verified_on_label") : t("verified_off_label"); } },
     plantOpeningStock: { header: function(){ return t("plant_openingstock_label"); }, cellClass: "num",
       html: function(e){ return esc(e.plantOpeningStock != null ? e.plantOpeningStock : ""); }, csv: function(e){ return e.plantOpeningStock != null ? e.plantOpeningStock : ""; } },
     plantOpeningStockJobCard: { header: function(){ return t("plant_openingstockjobcard_label"); },
@@ -4671,6 +4601,7 @@
     if(fg) keys.push("verified");
     if(!special) keys.push("remarks");
     if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment", "visipakSpecsAttachment");
+    if(qc) keys.push("visipakSpecsVerified");
     if(hr) keys.push("hrTotalOperator", "hrTotalMh", "hrTotalFh", "hrTotalGrand");
     keys.push("lastUpdated");
     return keys;
@@ -4896,6 +4827,7 @@
   });
   el.f_hold.addEventListener("change", function(){ refreshHoldLabel(); refreshNextStageHoldLock(); });
   el.f_verified.addEventListener("change", refreshVerifiedLabel);
+  el.f_visipakspecsverified.addEventListener("change", refreshVisipakSpecsVerifiedLabel);
   // Keep the QC Check block's Artwork No mirror in sync as the stage's own team types it —
   // there's only one Artwork No per entry; this block just surfaces it next to QC's Pass/Fail
   // call rather than asking for it a second time.
@@ -5238,7 +5170,6 @@
           setStatus("");
           setBusy(false);
           renderPreview();
-          if(cfg.onManualUpload) cfg.onManualUpload();
         };
         reader.onerror = function(){
           setStatus(t("attach_err_upload"));
@@ -5259,7 +5190,6 @@
         current = { data: JSON.stringify({ v: 2, pages: pages }), name: file.name, type: file.type };
         setStatus("");
         renderPreview();
-        if(cfg.onManualUpload) cfg.onManualUpload();
         if(cfg.onPdfUploaded) cfg.onPdfUploaded(file);
       });
     }
@@ -5312,11 +5242,7 @@
     statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview",
     // A camera capture is always an image (see the accept="image/*" camera input above), so this
     // only ever fires for an uploaded PDF — the one case with an extractable text layer.
-    onPdfUploaded: autofillClientSpecsFromPdf,
-    // A deliberate manual capture/upload always wins from here on for this modal session — mark it
-    // as no longer "just an auto-fill from the catalog" so refreshClientSpecsFromCatalog never
-    // overwrites or clears it on a later Customer/Product change (see that function).
-    onManualUpload: function(){ qcSpecsAutoFilledFromCatalog = false; }
+    onPdfUploaded: autofillClientSpecsFromPdf
   });
   var visipakSpecsAttachmentCtrl = makeAttachmentController({
     fileInputId: "attachVisipakSpecsFileInput", cameraInputId: "attachVisipakSpecsCameraInput",
@@ -5378,6 +5304,8 @@
     // Verified defaults OFF for a new entry, same reasoning as Hold below — it's a confirmation
     // someone still needs to actively give, not something that starts out already checked.
     el.f_verified.checked = !!(entry && entry.verified);
+    // Same defaults-OFF reasoning for Visipak Specifications' own Verified toggle.
+    el.f_visipakspecsverified.checked = !!(entry && entry.visipakSpecsVerified);
     el.f_status.value = entry ? statusLabel(entry.status) : "In Progress";
     el.f_nextstage.value = entry ? (entry.nextStage || "") : "";
     // Hold defaults OFF for a new entry (and for any older entry saved before Hold existed) —
@@ -5457,10 +5385,6 @@
     qcSpecsAttachmentCtrl.setValue(entry && entry.qcSpecsAttachmentData ? {
       data: entry.qcSpecsAttachmentData, name: entry.qcSpecsAttachmentName, type: entry.qcSpecsAttachmentType
     } : null);
-    // This load is either a saved entry's own attachment or a genuinely blank new entry -- never a
-    // catalog auto-fill -- so each modal open starts refreshClientSpecsFromCatalog's tracking fresh
-    // (see that function for why this flag exists).
-    qcSpecsAutoFilledFromCatalog = false;
     visipakSpecsAttachmentCtrl.setValue(entry && entry.visipakSpecsAttachmentData ? {
       data: entry.visipakSpecsAttachmentData, name: entry.visipakSpecsAttachmentName, type: entry.visipakSpecsAttachmentType
     } : null);
@@ -5645,6 +5569,8 @@
       // Plain informational flag, Finished Goods only — see refreshVerifiedLabel above the modal
       // code and the toggle's own comment in the HTML.
       verified: isFG ? el.f_verified.checked : null,
+      // Visipak Specifications' own Verified toggle — same plain informational flag, QC stage only.
+      visipakSpecsVerified: isQC ? el.f_visipakspecsverified.checked : null,
       remarks: isSpecial ? "" : el.f_remarks.value.trim(),
       clientName: hasClientName ? el.f_clientname.value.trim() : "",
       invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
@@ -5746,13 +5672,6 @@
       artworkAttachmentCtrl.commit();
       qcSpecsAttachmentCtrl.commit();
       visipakSpecsAttachmentCtrl.commit();
-      // Remembers this product's Client Specifications attachment (if this save actually has one)
-      // against its Customer+Product, so the next new entry for the same product auto-attaches it —
-      // see refreshClientSpecsFromCatalog. A revised attachment simply overwrites the one saved
-      // before (see saveProductSpecsToCatalog), so there's nothing stale left behind.
-      if(hasQcSpecs && qcSpecsVal && qcSpecsVal.data){
-        saveProductSpecsToCatalog(payload.clientName, payload.productName, qcSpecsVal);
-      }
       // Remembers this customer/product (and whatever Type/PLY this stage collected for it) in
       // the shared catalog — a no-op if both fields are blank (see upsertCatalogEntry's guard),
       // which covers stages without a Customer Name / Product Name at all (e.g. HR Man Power).
