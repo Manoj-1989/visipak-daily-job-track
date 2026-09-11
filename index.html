@@ -2890,24 +2890,52 @@
   // Specifications. Never runs for an entry that's actually being edited — same "only a brand-new
   // entry gets auto-filled" rule as every other catalog/stock auto-fill in this file.
   var productSpecsLookupToken = 0;
+  // Tracks whether the QC Specs widget's CURRENT value came from this auto-lookup (true) or from
+  // something deliberate -- a manual upload/capture, or an existing entry's own saved attachment
+  // loaded by openModal (false). Only that distinction lets refreshClientSpecsFromCatalog tell "the
+  // user attached this on purpose, never touch it" apart from "this is a PREVIOUS product's
+  // auto-filled attachment that's now stale and must be re-resolved (replaced or cleared) for
+  // whatever Customer/Product is selected now." Reset to false by openModal (fresh state per open)
+  // and by a manual upload/capture (see qcSpecsAttachmentCtrl's onManualUpload below); set to true
+  // only when this function itself calls setValue.
+  var qcSpecsAutoFilledFromCatalog = false;
   function refreshClientSpecsFromCatalog(){
     if(state.editingId) return;
     if(!stageHasQcSpecs(el.f_stage.value)) return;
-    if(qcSpecsAttachmentCtrl.getValue()) return; // already has something -- never overwrite it
+    // Only skip when there's a value AND it wasn't just this function's own auto-fill -- i.e. it's
+    // something deliberate that must never be overwritten.
+    if(qcSpecsAttachmentCtrl.getValue() && !qcSpecsAutoFilledFromCatalog) return;
     var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
     var canonicalProduct = findCanonicalProduct(canonicalCustomer, el.f_product.value);
-    if(!canonicalCustomer || !canonicalProduct) return;
+    if(!canonicalCustomer || !canonicalProduct){
+      // Customer/Product no longer resolve to a catalog match -- if the widget is only showing a
+      // previous product's auto-filled spec, clear it instead of leaving it stuck on screen.
+      if(qcSpecsAutoFilledFromCatalog){
+        qcSpecsAttachmentCtrl.setValue(null);
+        qcSpecsAutoFilledFromCatalog = false;
+      }
+      return;
+    }
     var myToken = ++productSpecsLookupToken;
     state.db.collection("productSpecs").doc(productSpecsDocId(canonicalCustomer, canonicalProduct)).get().then(function(doc){
       if(myToken !== productSpecsLookupToken) return; // superseded by a newer lookup
       if(state.editingId) return; // modal moved on to editing an existing entry while this was in flight
-      if(qcSpecsAttachmentCtrl.getValue()) return; // a manual upload landed while this was in flight
-      if(!doc.exists) return;
-      var data = doc.data();
-      if(!data || !data.clientSpecsAttachmentData) return;
+      if(qcSpecsAttachmentCtrl.getValue() && !qcSpecsAutoFilledFromCatalog) return; // a manual upload landed while this was in flight
+      var data = doc.exists ? doc.data() : null;
+      if(!data || !data.clientSpecsAttachmentData){
+        // This product has no saved spec of its own -- if the widget is currently showing a
+        // DIFFERENT, now-stale product's auto-filled attachment, clear it rather than leaving it
+        // displayed under the wrong product.
+        if(qcSpecsAutoFilledFromCatalog){
+          qcSpecsAttachmentCtrl.setValue(null);
+          qcSpecsAutoFilledFromCatalog = false;
+        }
+        return;
+      }
       qcSpecsAttachmentCtrl.setValue({
         data: data.clientSpecsAttachmentData, name: data.clientSpecsAttachmentName, type: data.clientSpecsAttachmentType
       });
+      qcSpecsAutoFilledFromCatalog = true;
       var statusEl = document.getElementById("attachQcSpecsStatus");
       if(statusEl) statusEl.textContent = t("attach_specs_autofilled_catalog");
     }).catch(function(err){
@@ -5210,6 +5238,7 @@
           setStatus("");
           setBusy(false);
           renderPreview();
+          if(cfg.onManualUpload) cfg.onManualUpload();
         };
         reader.onerror = function(){
           setStatus(t("attach_err_upload"));
@@ -5230,6 +5259,7 @@
         current = { data: JSON.stringify({ v: 2, pages: pages }), name: file.name, type: file.type };
         setStatus("");
         renderPreview();
+        if(cfg.onManualUpload) cfg.onManualUpload();
         if(cfg.onPdfUploaded) cfg.onPdfUploaded(file);
       });
     }
@@ -5282,7 +5312,11 @@
     statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview",
     // A camera capture is always an image (see the accept="image/*" camera input above), so this
     // only ever fires for an uploaded PDF — the one case with an extractable text layer.
-    onPdfUploaded: autofillClientSpecsFromPdf
+    onPdfUploaded: autofillClientSpecsFromPdf,
+    // A deliberate manual capture/upload always wins from here on for this modal session — mark it
+    // as no longer "just an auto-fill from the catalog" so refreshClientSpecsFromCatalog never
+    // overwrites or clears it on a later Customer/Product change (see that function).
+    onManualUpload: function(){ qcSpecsAutoFilledFromCatalog = false; }
   });
   var visipakSpecsAttachmentCtrl = makeAttachmentController({
     fileInputId: "attachVisipakSpecsFileInput", cameraInputId: "attachVisipakSpecsCameraInput",
@@ -5423,6 +5457,10 @@
     qcSpecsAttachmentCtrl.setValue(entry && entry.qcSpecsAttachmentData ? {
       data: entry.qcSpecsAttachmentData, name: entry.qcSpecsAttachmentName, type: entry.qcSpecsAttachmentType
     } : null);
+    // This load is either a saved entry's own attachment or a genuinely blank new entry -- never a
+    // catalog auto-fill -- so each modal open starts refreshClientSpecsFromCatalog's tracking fresh
+    // (see that function for why this flag exists).
+    qcSpecsAutoFilledFromCatalog = false;
     visipakSpecsAttachmentCtrl.setValue(entry && entry.visipakSpecsAttachmentData ? {
       data: entry.visipakSpecsAttachmentData, name: entry.visipakSpecsAttachmentName, type: entry.visipakSpecsAttachmentType
     } : null);
