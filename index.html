@@ -875,12 +875,15 @@
           <option value="Pads" data-i18n="type_pads">Pads</option>
         </select>
       </label>
+      <!-- Ready to Dispatch-only: sits right after Type, ahead of everything else on this form, so
+           whoever opens the entry sees the order's bottom line — how much needs to leave in total —
+           before any of the supporting detail below it. Still the same auto-calculated field it's
+           always been (Balance Quantity Required + FG Stock Available, both further down the form —
+           see refreshRtdFgStockFields/refreshRtdTotalDispatchQty in the script). -->
+      <label id="fld_totaldispatchqty"><span data-i18n="form_totaldispatchqty_label">Total Quantity to Dispatch</span>
+        <input type="number" id="f_totaldispatchqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totaldispatchqty_placeholder">
+      </label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
-      <!-- The label text itself switches to "Balance Quantity Required" on Ready to Dispatch (see
-           el.f_qtyLabel in updateFormFieldsForStage) — same field, same value, just read there as
-           the production requirement that feeds Total Quantity to Dispatch below, the same way
-           Updated By's own label switches to "Checked By" on Dispatch. -->
-      <label id="fld_qty"><span id="f_qtyLabel" data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
       <!-- Plant-only: before starting production on this (new) Job Card, shows how much of this
            Customer+Product is already sitting in Finished Goods stock — the exact same "most recent
            Finished Goods entry" lookup Priority Tasks use for their own Opening Stock Qty/Job Card No
@@ -946,18 +949,25 @@
       <label id="fld_palletarea"><span data-i18n="form_palletarea_label">Pallet Allocation Area</span> <input type="text" id="f_palletarea" placeholder="e.g. Zone A - Rack 3" data-i18n-placeholder="form_palletarea_placeholder"></label>
       <!-- Ready to Dispatch-only: before anyone fills in what actually got dispatched, shows how
            much of this same Customer+Product already exists as Finished Goods stock (same
-           computeLatestFgStock lookup Plant/Priority Tasks use) and the Total Quantity to Dispatch —
-           this entry's own Quantity (the batch that just reached Ready to Dispatch) PLUS that FG
-           Stock Available — so whoever's dispatching can see the full picture (a freshly produced
-           batch plus whatever was already sitting in the warehouse) in one place. Purely informational
-           — see refreshRtdFgStockFields below — Dispatched Qty right below is still typed in by hand
-           once goods actually leave. -->
+           computeLatestFgStock lookup Plant/Priority Tasks use), plus which Pallet No that stock is
+           sitting on (from the very same Finished Goods entry) — so whoever's dispatching knows both
+           how much is available AND where to physically find it. Purely informational — see
+           refreshRtdFgStockFields below — Dispatched Qty further down is still typed in by hand once
+           goods actually leave. -->
       <label id="fld_fgstockavailable"><span data-i18n="form_fgstockavailable_label">FG Stock Available</span>
         <input type="number" id="f_fgstockavailable" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_fgstockavailable_placeholder">
       </label>
-      <label id="fld_totaldispatchqty"><span data-i18n="form_totaldispatchqty_label">Total Quantity to Dispatch</span>
-        <input type="number" id="f_totaldispatchqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totaldispatchqty_placeholder">
+      <label id="fld_fgstockpalletno"><span data-i18n="form_fgstockpalletno_label">FG Stock Pallet No</span>
+        <input type="text" id="f_fgstockpalletno" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_fgstockpalletno_placeholder">
       </label>
+      <!-- The label text itself switches to "Balance Quantity Required" on Ready to Dispatch (see
+           el.f_qtyLabel in updateFormFieldsForStage) — same field, same value, just read there as
+           the production requirement that feeds Total Quantity to Dispatch (near the top of this
+           form) the same way Updated By's own label switches to "Checked By" on Dispatch. Sits
+           right after FG Stock Pallet No on Ready to Dispatch specifically so the two stock-related
+           auto-fills (what's already on hand, and where) read together before the amount still
+           owed by production. -->
+      <label id="fld_qty"><span id="f_qtyLabel" data-i18n="form_qty_label">Quantity</span> <input type="number" id="f_qty" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder"></label>
       <!-- Dispatched Qty and Balance Quantity (Total Quantity to Dispatch minus Dispatched Qty,
            live-calculated — see refreshRtdBalanceQty below) are Ready to Dispatch's own fields.
            Opening Stock, though,
@@ -1458,6 +1468,7 @@
       form_dispatchedqty_label: "Dispatched Qty", form_dispatchedqty_placeholder: "e.g. 4000",
       form_balanceqty_label: "Balance Quantity", form_balanceqty_placeholder: "Auto-calculated",
       form_fgstockavailable_label: "FG Stock Available", form_fgstockavailable_placeholder: "Auto-calculated",
+      form_fgstockpalletno_label: "FG Stock Pallet No", form_fgstockpalletno_placeholder: "Auto-calculated",
       form_totaldispatchqty_label: "Total Quantity to Dispatch", form_totaldispatchqty_placeholder: "Auto-calculated",
       form_openingstock_label: "Opening Stock", form_openingstock_placeholder: "Auto-calculated",
       form_ageing_label: "No of Days Ageing", form_ageing_placeholder: "Auto-calculated",
@@ -1618,6 +1629,7 @@
       form_dispatchedqty_label: "डिस्पैच की गई मात्रा", form_dispatchedqty_placeholder: "जैसे 4000",
       form_balanceqty_label: "शेष मात्रा", form_balanceqty_placeholder: "स्वतः गणना",
       form_fgstockavailable_label: "एफजी स्टॉक उपलब्ध", form_fgstockavailable_placeholder: "स्वतः गणना",
+      form_fgstockpalletno_label: "एफजी स्टॉक पैलेट नंबर", form_fgstockpalletno_placeholder: "स्वतः गणना",
       form_totaldispatchqty_label: "डिस्पैच के लिए कुल मात्रा", form_totaldispatchqty_placeholder: "स्वतः गणना",
       form_openingstock_label: "ओपनिंग स्टॉक", form_openingstock_placeholder: "स्वतः गणना",
       form_ageing_label: "एजिंग के दिनों की संख्या", form_ageing_placeholder: "स्वतः गणना",
@@ -1778,6 +1790,7 @@
       form_dispatchedqty_label: "డిస్పాచ్ చేసిన పరిమాణం", form_dispatchedqty_placeholder: "ఉదా. 4000",
       form_balanceqty_label: "మిగిలిన పరిమాణం", form_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_fgstockavailable_label: "ఎఫ్‌జి స్టాక్ అందుబాటులో ఉంది", form_fgstockavailable_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      form_fgstockpalletno_label: "ఎఫ్‌జి స్టాక్ పాలెట్ నంబర్", form_fgstockpalletno_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_totaldispatchqty_label: "డిస్పాచ్ చేయవలసిన మొత్తం పరిమాణం", form_totaldispatchqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_openingstock_label: "ఓపెనింగ్ స్టాక్", form_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_ageing_label: "ఏజింగ్ రోజుల సంఖ్య", form_ageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
@@ -2172,6 +2185,8 @@
     fld_palletarea: document.getElementById("fld_palletarea"),
     f_fgstockavailable: document.getElementById("f_fgstockavailable"),
     fld_fgstockavailable: document.getElementById("fld_fgstockavailable"),
+    f_fgstockpalletno: document.getElementById("f_fgstockpalletno"),
+    fld_fgstockpalletno: document.getElementById("fld_fgstockpalletno"),
     f_totaldispatchqty: document.getElementById("f_totaldispatchqty"),
     fld_totaldispatchqty: document.getElementById("fld_totaldispatchqty"),
     f_dispatchedqty: document.getElementById("f_dispatchedqty"),
@@ -2664,7 +2679,7 @@
   function computeLatestFgStock(customerName, productName, targetDate){
     var custKey = (customerName || "").trim();
     var prodKey = (productName || "").trim();
-    if(!custKey || !prodKey) return Promise.resolve({ openingStock: 0, jobCardNo: "", ageingDays: null });
+    if(!custKey || !prodKey) return Promise.resolve({ openingStock: 0, jobCardNo: "", ageingDays: null, palletNo: "" });
     return state.db.collection("entries")
       .where("stage", "==", "Finished Goods (FG)")
       .where("clientName", "==", custKey)
@@ -2681,17 +2696,21 @@
           return (b.createdAt || 0) - (a.createdAt || 0);
         });
         var latest = rows[0];
-        if(!latest) return { openingStock: 0, jobCardNo: "", ageingDays: null };
+        if(!latest) return { openingStock: 0, jobCardNo: "", ageingDays: null, palletNo: "" };
         return {
           openingStock: Number(latest.openingStock) || 0,
           jobCardNo: latest.jobCardNo || "",
-          ageingDays: daysBetweenDates(targetDate || todayStr(), latest.date)
+          ageingDays: daysBetweenDates(targetDate || todayStr(), latest.date),
+          // The Pallet No that same Finished Goods entry was logged under — Ready to Dispatch's
+          // own FG Stock Pallet No field surfaces this so dispatch knows where that stock
+          // physically is, not just how much of it exists — see refreshRtdFgStockFields below.
+          palletNo: latest.palletNo || ""
         };
       })
       .catch(function(){
         // Offline, or this device hasn't got a Firestore read through yet — leave it blank rather
         // than blocking the form; the task can still be saved without the auto-fill this time.
-        return { openingStock: 0, jobCardNo: "", ageingDays: null };
+        return { openingStock: 0, jobCardNo: "", ageingDays: null, palletNo: "" };
       });
   }
   // The Quantity that was recorded when this Customer + Product's job started at Plant — the
@@ -3066,6 +3085,7 @@
   function refreshRtdFgStockFields(){
     if(!isReadyToDispatchStage(el.f_stage.value)){
       el.f_fgstockavailable.value = "";
+      el.f_fgstockpalletno.value = "";
       refreshRtdTotalDispatchQty();
       return;
     }
@@ -3073,6 +3093,7 @@
     var productName = el.f_product.value;
     if(!customerName || !productName){
       el.f_fgstockavailable.value = "";
+      el.f_fgstockpalletno.value = "";
       // Balance Quantity Required is Ready to Dispatch's own auto-calculated field (see below) —
       // nothing to compute without a Customer + Product chosen yet.
       el.f_qty.value = "";
@@ -3089,6 +3110,7 @@
       var fgStock = results[0].openingStock;
       var plantQty = results[1].quantity;
       el.f_fgstockavailable.value = fgStock;
+      el.f_fgstockpalletno.value = results[0].palletNo || "";
       // Balance Quantity Required mirrors Plant's own Balance Quantity Required formula exactly
       // (that job's Quantity minus stock already on hand) — auto-calculated, not typed — so Total
       // Quantity to Dispatch below (Balance Quantity Required + FG Stock Available) always
@@ -3323,9 +3345,10 @@
     el.fld_noofbundles.hidden = !stageHasNoOfBundles(stage);
     el.fld_palletno.hidden = !stageHasPalletNo(stage);
     el.fld_palletarea.hidden = !stageHasPalletArea(stage);
-    // FG Stock Available / Total Quantity to Dispatch are Ready to Dispatch's own informational
-    // fields — see refreshRtdFgStockFields above the modal code.
+    // FG Stock Available / FG Stock Pallet No / Total Quantity to Dispatch are Ready to Dispatch's
+    // own informational fields — see refreshRtdFgStockFields above the modal code.
     el.fld_fgstockavailable.hidden = !readyToDispatch;
+    el.fld_fgstockpalletno.hidden = !readyToDispatch;
     el.fld_totaldispatchqty.hidden = !readyToDispatch;
     // On Ready to Dispatch, the Quantity field becomes Balance Quantity Required — auto-calculated
     // from that job's own Plant-stage Quantity minus FG Stock Available (see
@@ -4178,6 +4201,8 @@
       html: function(e){ return esc(e.palletAllocationArea || ""); }, csv: function(e){ return e.palletAllocationArea || ""; } },
     fgStockAvailable: { header: function(){ return t("form_fgstockavailable_label"); }, cellClass: "num",
       html: function(e){ return esc(e.fgStockAvailable != null ? e.fgStockAvailable : ""); }, csv: function(e){ return e.fgStockAvailable != null ? e.fgStockAvailable : ""; } },
+    fgStockPalletNo: { header: function(){ return t("form_fgstockpalletno_label"); },
+      html: function(e){ return esc(e.fgStockPalletNo || ""); }, csv: function(e){ return e.fgStockPalletNo || ""; } },
     totalDispatchQty: { header: function(){ return t("form_totaldispatchqty_label"); }, cellClass: "num",
       html: function(e){ return esc(e.totalDispatchQty != null ? e.totalDispatchQty : ""); }, csv: function(e){ return e.totalDispatchQty != null ? e.totalDispatchQty : ""; } },
     dispatchedQty: { header: function(){ return t("form_dispatchedqty_label"); }, cellClass: "num",
@@ -4309,7 +4334,7 @@
     if(!special) keys.push("startTime", "endTime", "runtimeHrs", "manpower");
     if(stageHasPalletNo(stage)) keys.push("palletNo");
     if(stageHasPalletArea(stage)) keys.push("palletAllocationArea");
-    if(readyToDispatch) keys.push("fgStockAvailable", "totalDispatchQty", "dispatchedQty", "balanceQty");
+    if(readyToDispatch) keys.push("fgStockAvailable", "fgStockPalletNo", "totalDispatchQty", "dispatchedQty", "balanceQty");
     if(stockSummary) keys.push("stockRate", "stockOpeningQty", "stockOpeningValue",
       "stockInwardReason", "stockInwardQty", "stockInwardValue",
       "stockOutwardReason", "stockOutwardQty", "stockOutwardValue",
@@ -5102,9 +5127,11 @@
       // Balance Quantity is Ready to Dispatch's own live Total-Quantity-to-Dispatch-minus-
       // Dispatched-Qty snapshot — see refreshRtdBalanceQty above the modal code.
       balanceQty: hasRtdStock ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null,
-      // FG Stock Available / Total Quantity to Dispatch — see refreshRtdFgStockFields above the
-      // modal code. Snapshotted purely for display on the card/log, same as Plant's own fields.
+      // FG Stock Available / FG Stock Pallet No / Total Quantity to Dispatch — see
+      // refreshRtdFgStockFields above the modal code. Snapshotted purely for display on the
+      // card/log, same as Plant's own fields.
       fgStockAvailable: hasRtdStock ? (el.f_fgstockavailable.value === "" ? null : Number(el.f_fgstockavailable.value)) : null,
+      fgStockPalletNo: hasRtdStock ? (el.f_fgstockpalletno.value || null) : null,
       totalDispatchQty: hasRtdStock ? (el.f_totaldispatchqty.value === "" ? null : Number(el.f_totaldispatchqty.value)) : null,
       // Opening Stock belongs to Finished Goods, normally snapshotted from whatever the auto-fill
       // (or, for an existing entry, its own saved value) is showing in the read-only field — see
