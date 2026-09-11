@@ -890,7 +890,7 @@
            in total — before any of the supporting detail below it. Still the same auto-calculated
            field it's always been (Balance Quantity Required + FG Stock Available, both further down
            the form — see refreshRtdFgStockFields/refreshRtdTotalDispatchQty in the script). -->
-      <label id="fld_totaldispatchqty"><span data-i18n="form_totaldispatchqty_label">Total Quantity to Dispatch</span>
+      <label id="fld_totaldispatchqty"><span data-i18n="form_totaldispatchqty_label">Quantity</span>
         <input type="number" id="f_totaldispatchqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totaldispatchqty_placeholder">
       </label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
@@ -908,7 +908,7 @@
       <label id="fld_plantbalanceqty"><span data-i18n="plant_balanceqty_label">Balance Quantity Required</span>
         <input type="number" id="f_plantbalanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="plant_balanceqty_placeholder">
       </label>
-      <label id="fld_totalbundle"><span data-i18n="form_totalbundle_label">Total Bundle</span> <input type="number" id="f_totalbundle" min="0" step="1"></label>
+      <label id="fld_totalbundle"><span data-i18n="form_totalbundle_label">Total Bundle</span> <input type="number" id="f_totalbundle" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totalbundle_placeholder"></label>
       <label id="fld_ply"><span data-i18n="form_ply_label">PLY</span>
         <select id="f_ply">
           <option value="" data-i18n="form_ply_select">— select —</option>
@@ -1470,14 +1470,14 @@
       form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
       form_type_label: "Type", form_type_select: "— select —",
       type_boxes: "Boxes", type_partition: "Partition", type_pads: "Pads",
-      form_totalbundle_label: "Total Bundle",
+      form_totalbundle_label: "Total Bundle", form_totalbundle_placeholder: "Auto-calculated",
       form_palletno_label: "Pallet No", form_palletno_placeholder: "e.g. PL-014",
       form_palletarea_label: "Pallet Allocation Area", form_palletarea_placeholder: "e.g. Zone A - Rack 3",
       form_dispatchedqty_label: "Dispatched Qty", form_dispatchedqty_placeholder: "e.g. 4000",
       form_balanceqty_label: "Balance Quantity", form_balanceqty_placeholder: "Auto-calculated",
       form_fgstockavailable_label: "FG Stock Available", form_fgstockavailable_placeholder: "Auto-calculated",
       form_fgstockpalletno_label: "FG Stock Pallet No", form_fgstockpalletno_placeholder: "Auto-calculated",
-      form_totaldispatchqty_label: "Total Quantity to Dispatch", form_totaldispatchqty_placeholder: "Auto-calculated",
+      form_totaldispatchqty_label: "Quantity", form_totaldispatchqty_placeholder: "Auto-calculated",
       form_openingstock_label: "Available Stock", form_openingstock_placeholder: "Auto-calculated",
       form_ageing_label: "No of Days Ageing", form_ageing_placeholder: "Auto-calculated",
       qc_specs_heading: "Specifications",
@@ -1632,14 +1632,14 @@
       form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
       form_type_label: "टाइप", form_type_select: "— चुनें —",
       type_boxes: "बॉक्स", type_partition: "पार्टीशन", type_pads: "पैड",
-      form_totalbundle_label: "कुल बंडल",
+      form_totalbundle_label: "कुल बंडल", form_totalbundle_placeholder: "स्वतः गणना",
       form_palletno_label: "पैलेट नंबर", form_palletno_placeholder: "जैसे PL-014",
       form_palletarea_label: "पैलेट आवंटन क्षेत्र", form_palletarea_placeholder: "जैसे Zone A - Rack 3",
       form_dispatchedqty_label: "डिस्पैच की गई मात्रा", form_dispatchedqty_placeholder: "जैसे 4000",
       form_balanceqty_label: "शेष मात्रा", form_balanceqty_placeholder: "स्वतः गणना",
       form_fgstockavailable_label: "एफजी स्टॉक उपलब्ध", form_fgstockavailable_placeholder: "स्वतः गणना",
       form_fgstockpalletno_label: "एफजी स्टॉक पैलेट नंबर", form_fgstockpalletno_placeholder: "स्वतः गणना",
-      form_totaldispatchqty_label: "डिस्पैच के लिए कुल मात्रा", form_totaldispatchqty_placeholder: "स्वतः गणना",
+      form_totaldispatchqty_label: "मात्रा", form_totaldispatchqty_placeholder: "स्वतः गणना",
       form_openingstock_label: "उपलब्ध स्टॉक", form_openingstock_placeholder: "स्वतः गणना",
       form_ageing_label: "एजिंग के दिनों की संख्या", form_ageing_placeholder: "स्वतः गणना",
       qc_specs_heading: "स्पेसिफिकेशन",
@@ -1794,14 +1794,14 @@
       form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
       form_type_label: "టైప్", form_type_select: "— ఎంచుకోండి —",
       type_boxes: "బాక్సులు", type_partition: "పార్టిషన్", type_pads: "ప్యాడ్స్",
-      form_totalbundle_label: "మొత్తం బండిల్",
+      form_totalbundle_label: "మొత్తం బండిల్", form_totalbundle_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_palletno_label: "పాలెట్ నంబర్", form_palletno_placeholder: "ఉదా. PL-014",
       form_palletarea_label: "పాలెట్ కేటాయింపు ప్రాంతం", form_palletarea_placeholder: "ఉదా. జోన్ A - ర్యాక్ 3",
       form_dispatchedqty_label: "డిస్పాచ్ చేసిన పరిమాణం", form_dispatchedqty_placeholder: "ఉదా. 4000",
       form_balanceqty_label: "మిగిలిన పరిమాణం", form_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_fgstockavailable_label: "ఎఫ్‌జి స్టాక్ అందుబాటులో ఉంది", form_fgstockavailable_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_fgstockpalletno_label: "ఎఫ్‌జి స్టాక్ పాలెట్ నంబర్", form_fgstockpalletno_placeholder: "ఆటో-కాలిక్యులేటెడ్",
-      form_totaldispatchqty_label: "డిస్పాచ్ చేయవలసిన మొత్తం పరిమాణం", form_totaldispatchqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      form_totaldispatchqty_label: "పరిమాణం", form_totaldispatchqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_openingstock_label: "అందుబాటులో ఉన్న స్టాక్", form_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       form_ageing_label: "ఏజింగ్ రోజుల సంఖ్య", form_ageing_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       qc_specs_heading: "స్పెసిఫికేషన్లు",
@@ -2325,7 +2325,7 @@
   // fields and its QC specs table can end up independently enabled/disabled for the same device.
   var NORMAL_FORM_FIELDS = [
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
-    el.f_type, el.f_totalbundle, el.f_palletno,
+    el.f_type, el.f_palletno,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
     el.f_updatedby, el.f_verified, el.f_status, el.f_nextstage, el.f_remarks,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
@@ -3232,18 +3232,45 @@
   // updateFormFieldsForStage) — an existing entry's Opening Stock shows whatever it was actually
   // saved with (see openModal's population below) and is never silently recomputed just because
   // someone reopens it later.
+  // ---------- Finished Goods: Total Bundle auto-calculated from Available Stock / Quantity Per
+  // Bundle ----------
+  // Same "round up to a whole bundle" rule as No of Bundles above (a partial remainder still needs
+  // its own bundle), just against Available Stock — Finished Goods' own stock figure — instead of
+  // this entry's own Quantity. Readonly, never typed in by hand; recomputed live off whatever
+  // Available Stock and Quantity Per Bundle currently show, so it stays correct whether Available
+  // Stock just auto-filled (a brand-new entry) or was read back from a saved one (see
+  // refreshFgStockFields below, which calls this after Available Stock is settled either way).
+  function refreshFgTotalBundle(){
+    if(!isFGStage(el.f_stage.value) || el.f_openingstock.value === "" || el.f_qtyperbundle.value === ""){
+      el.f_totalbundle.value = "";
+      return;
+    }
+    var availableStock = Number(el.f_openingstock.value);
+    var perBundle = Number(el.f_qtyperbundle.value);
+    if(!perBundle || isNaN(availableStock)){
+      el.f_totalbundle.value = "";
+      return;
+    }
+    el.f_totalbundle.value = Math.ceil(availableStock / perBundle);
+  }
+  el.f_qtyperbundle.addEventListener("input", refreshFgTotalBundle);
   var fgStockRequestToken = 0;
   function refreshFgStockFields(){
     refreshFgAgeing();
-    if(state.editingId) return;
+    if(state.editingId){
+      refreshFgTotalBundle();
+      return;
+    }
     if(!isFGStage(el.f_stage.value)){
       el.f_openingstock.value = "";
+      refreshFgTotalBundle();
       return;
     }
     var myToken = ++fgStockRequestToken;
     computeFgOpeningStockFromRtd(el.f_jobcard.value, el.f_date.value).then(function(result){
       if(myToken !== fgStockRequestToken) return; // superseded by a newer request
       el.f_openingstock.value = result.openingStock != null ? result.openingStock : "";
+      refreshFgTotalBundle();
     });
   }
   el.f_date.addEventListener("change", refreshFgStockFields);
