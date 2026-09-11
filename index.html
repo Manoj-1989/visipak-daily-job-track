@@ -958,8 +958,9 @@
       <label id="fld_totaldispatchqty"><span data-i18n="form_totaldispatchqty_label">Total Quantity to Dispatch</span>
         <input type="number" id="f_totaldispatchqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totaldispatchqty_placeholder">
       </label>
-      <!-- Dispatched Qty and Balance Quantity (Quantity minus Dispatched Qty, live-calculated — see
-           refreshRtdBalanceQty below) are Ready to Dispatch's own fields. Opening Stock, though,
+      <!-- Dispatched Qty and Balance Quantity (Total Quantity to Dispatch minus Dispatched Qty,
+           live-calculated — see refreshRtdBalanceQty below) are Ready to Dispatch's own fields.
+           Opening Stock, though,
            lives on Finished Goods — undispatched leftover from Ready to Dispatch is physically stock
            sitting back in the FG warehouse, so FG is where it's surfaced, either carried straight
            over when this same entry advances there via Next Stage, or matched to that batch by Job
@@ -3109,24 +3110,26 @@
     return diff > 0 ? diff : 0;
   }
   // ---------- Ready to Dispatch: Balance Quantity auto-calculation ----------
-  // Balance Quantity is this entry's OWN Quantity minus its OWN (manually typed) Dispatched Qty —
-  // pure arithmetic on two fields already on the form, so it recomputes live with no lookup at
-  // all, and is just as correct for an existing entry being reopened as for a brand-new one. This
-  // is the same leftover figure that becomes Finished Goods' Opening Stock once this entry moves
-  // on — either carried over directly (see the submit handler's movingRtdToFg) or looked up later
-  // by Job Card No (see computeFgOpeningStockFromRtd below).
+  // Balance Quantity is Total Quantity to Dispatch (Balance Quantity Required + FG Stock
+  // Available — see refreshRtdTotalDispatchQty above) minus this entry's own (manually typed)
+  // Dispatched Qty: whatever's left of the FULL dispatchable pool — stock already on hand
+  // included — once this round's dispatch is accounted for. Total Quantity to Dispatch is itself
+  // always kept current by refreshRtdFgStockFields, so this just does the final subtraction live,
+  // just as correct for an existing entry being reopened as for a brand-new one. This is the same
+  // leftover figure that becomes Finished Goods' Opening Stock once this entry moves on — either
+  // carried over directly (see the submit handler's movingRtdToFg) or looked up later by Job Card
+  // No (see computeFgOpeningStockFromRtd below).
   function refreshRtdBalanceQty(){
-    if(!isReadyToDispatchStage(el.f_stage.value) || el.f_qty.value === "" || el.f_dispatchedqty.value === ""){
+    if(!isReadyToDispatchStage(el.f_stage.value) || el.f_totaldispatchqty.value === "" || el.f_dispatchedqty.value === ""){
       el.f_balanceqty.value = "";
       return;
     }
-    var qty = Number(el.f_qty.value) || 0;
+    var totalToDispatch = Number(el.f_totaldispatchqty.value) || 0;
     var dispatched = Number(el.f_dispatchedqty.value) || 0;
-    var balance = qty - dispatched;
+    var balance = totalToDispatch - dispatched;
     if(balance < 0) balance = 0;
     el.f_balanceqty.value = balance;
   }
-  el.f_qty.addEventListener("input", refreshRtdBalanceQty);
   el.f_dispatchedqty.addEventListener("input", refreshRtdBalanceQty);
   // ---------- Finished Goods: Opening Stock Qty (sourced from Ready to Dispatch's leftover) / No
   // of Days Ageing (always live) ----------
@@ -5096,8 +5099,8 @@
       palletNo: hasPalletNo ? el.f_palletno.value.trim() : "",
       palletAllocationArea: hasPalletArea ? el.f_palletarea.value.trim() : "",
       dispatchedQty: hasRtdStock ? (el.f_dispatchedqty.value === "" ? null : Number(el.f_dispatchedqty.value)) : null,
-      // Balance Quantity is Ready to Dispatch's own live Quantity-minus-Dispatched-Qty snapshot —
-      // see refreshRtdBalanceQty above the modal code.
+      // Balance Quantity is Ready to Dispatch's own live Total-Quantity-to-Dispatch-minus-
+      // Dispatched-Qty snapshot — see refreshRtdBalanceQty above the modal code.
       balanceQty: hasRtdStock ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null,
       // FG Stock Available / Total Quantity to Dispatch — see refreshRtdFgStockFields above the
       // modal code. Snapshotted purely for display on the card/log, same as Plant's own fields.
