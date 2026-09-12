@@ -633,6 +633,11 @@
       </div>
       <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden data-i18n="btn_manage_users">Manage Users</button>
       <button class="btn ghost" id="activityLogBtn" type="button" hidden data-i18n="btn_activity_log">Activity Log</button>
+      <!-- Admin-only, same gating as Manage Users/Activity Log above — the practical stand-in for
+           "Excel file" the QC Master Sheet request asked for: a CSV of every Customer+Product's
+           Master Sheet record, which opens natively in Excel (see exportMasterSheetBtn's own
+           listener below). -->
+      <button class="btn ghost" id="exportMasterSheetBtn" type="button" hidden data-i18n="master_export_btn">Export Master Sheet</button>
       <div class="viewToggle" role="tablist">
         <button class="toggleBtn active" data-view="board" type="button" data-i18n="view_board">Board</button>
         <button class="toggleBtn" data-view="log" type="button" data-i18n="view_log">Log</button>
@@ -1065,6 +1070,18 @@
           </div>
           <div class="attachmentPreview" id="attachArtworkPreview" hidden></div>
         </div>
+        <!-- Artwork Active/Inactive — QC-only: gates whether this Customer+Product's Artwork No
+             and its Client Specifications attachment above get saved to the Master Sheet and
+             autofilled into downstream production stages (RD-1CP/RS-2CP/RS+RD-4CP) — see the
+             masterSheet section of the script below. -->
+        <div class="formGridItem attachVerifiedRow" id="fld_artworkactive">
+          <span data-i18n="form_artworkactive_label">Artwork Active</span>
+          <label class="passFailToggle">
+            <input type="checkbox" id="f_artworkactive" checked>
+            <span class="pfTrack"></span>
+            <span class="pfLabel"></span>
+          </label>
+        </div>
       </div>
       <div class="span2 qcSpecsBlock" id="fld_qcspecs">
         <div class="qcSpecsHead" data-i18n="qc_specs_heading">Specifications</div>
@@ -1117,6 +1134,18 @@
             <span class="attachStatus" id="attachQcSpecsStatus"></span>
           </div>
           <div class="attachmentPreview" id="attachQcSpecsPreview" hidden></div>
+        </div>
+        <!-- Client Specs Active/Inactive — QC-only: gates whether this Customer+Product's Client
+             Specifications attachment above gets saved to the Master Sheet and autofilled into
+             Plant, the other stage that shows this same Client Specs table — see the masterSheet
+             section of the script below. -->
+        <div class="formGridItem attachVerifiedRow" id="fld_specsactive">
+          <span data-i18n="form_specsactive_label">Client Specs Active</span>
+          <label class="passFailToggle">
+            <input type="checkbox" id="f_specsactive" checked>
+            <span class="pfTrack"></span>
+            <span class="pfLabel"></span>
+          </label>
         </div>
         <!-- Visipak Specifications attachment for this whole table — Visipak's own spec sheet,
              alongside the Client Specifications attachment above — one image or PDF, captured or
@@ -1393,6 +1422,7 @@
   }catch(e){}
 
   var STAGES = [
+    "QC",
     "Plant",
     "RD-1CP",
     "RS-2CP",
@@ -1409,7 +1439,6 @@
     "Man_Pasting",
     "Hand_ Pasting",
     "Partition",
-    "QC",
     "Finished Goods (FG)",
     "Ready to Dispatch",
     "Dispatch",
@@ -1563,6 +1592,9 @@
       form_nextstage_label: "Next Stage", form_stays_here: "— stays here —",
       form_hold_label: "Status", hold_on_label: "On Hold", hold_off_label: "Active",
       form_verified_label: "Verified", verified_on_label: "Verified", verified_off_label: "Not Verified",
+      active_on_label: "Active", active_off_label: "Inactive",
+      form_artworkactive_label: "Artwork Active", form_specsactive_label: "Client Specs Active",
+      master_export_btn: "Export Master Sheet",
       plant_openingstock_label: "Available Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
       plant_openingstockjobcard_label: "Available Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
       plant_balanceqty_label: "Balance Quantity Required", plant_balanceqty_placeholder: "Auto-calculated",
@@ -1728,6 +1760,9 @@
       form_nextstage_label: "अगला स्टेज", form_stays_here: "— यहीं रहेगा —",
       form_hold_label: "स्थिति", hold_on_label: "होल्ड पर", hold_off_label: "सक्रिय",
       form_verified_label: "सत्यापित", verified_on_label: "सत्यापित", verified_off_label: "असत्यापित",
+      active_on_label: "सक्रिय", active_off_label: "निष्क्रिय",
+      form_artworkactive_label: "आर्टवर्क सक्रिय", form_specsactive_label: "क्लाइंट स्पेसिफिकेशन सक्रिय",
+      master_export_btn: "मास्टर शीट एक्सपोर्ट करें",
       plant_openingstock_label: "उपलब्ध स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
       plant_openingstockjobcard_label: "उपलब्ध स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
       plant_balanceqty_label: "आवश्यक शेष मात्रा", plant_balanceqty_placeholder: "स्वतः गणना",
@@ -1893,6 +1928,9 @@
       form_nextstage_label: "తదుపరి దశ", form_stays_here: "— ఇక్కడే ఉంటుంది —",
       form_hold_label: "స్థితి", hold_on_label: "హోల్డ్‌లో ఉంది", hold_off_label: "యాక్టివ్",
       form_verified_label: "ధృవీకరించబడింది", verified_on_label: "ధృవీకరించబడింది", verified_off_label: "ధృవీకరించబడలేదు",
+      active_on_label: "యాక్టివ్", active_off_label: "ఇనాక్టివ్",
+      form_artworkactive_label: "ఆర్ట్‌వర్క్ యాక్టివ్", form_specsactive_label: "క్లయింట్ స్పెసిఫికేషన్ యాక్టివ్",
+      master_export_btn: "మాస్టర్ షీట్ ఎగుమతి చేయండి",
       plant_openingstock_label: "అందుబాటులో ఉన్న స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_openingstockjobcard_label: "అందుబాటులో ఉన్న స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_balanceqty_label: "అవసరమైన మిగులు పరిమాణం", plant_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
@@ -2056,6 +2094,11 @@
     // subscribeCatalog below), shared by every device. { customers: { "<name>": { products: {
     // "<name>": { type, ply } } } } }; empty until the first snapshot arrives.
     catalog: { customers: {} },
+    // QC Master Sheet — one Firestore doc per Customer+Product (see subscribeMasterSheet below),
+    // keyed here by masterSheetKey(customer, product) rather than nested like catalog above,
+    // because these docs carry base64 attachment data and a single shared doc could grow past
+    // Firestore's 1MB-per-document cap once enough products have artwork/spec files on file.
+    masterSheet: {},
     deviceStage: "ALL",    // legacy single-stage field, kept for older saved devices; "ALL" = full access
     deviceStages: "ALL",   // "ALL", or an array of one or more stage names this device is locked to
     isAdminDevice: false,  // true only on the device set up with the admin phone number
@@ -2136,6 +2179,7 @@
     supervisorsCloseBtn: document.getElementById("supervisorsCloseBtn"),
     deviceTagWrap: document.getElementById("deviceTagWrap"),
     activityLogBtn: document.getElementById("activityLogBtn"),
+    exportMasterSheetBtn: document.getElementById("exportMasterSheetBtn"),
     activityOverlay: document.getElementById("activityOverlay"),
     activitySearchInput: document.getElementById("activitySearchInput"),
     activityBody: document.getElementById("activityBody"),
@@ -2192,6 +2236,10 @@
     fld_artworkcheck: document.getElementById("fld_artworkcheck"),
     artworkCheckNoDisplay: document.getElementById("artworkCheckNoDisplay"),
     f_artworkcheck_pass: document.getElementById("f_artworkcheck_pass"),
+    f_artworkactive: document.getElementById("f_artworkactive"),
+    fld_artworkactive: document.getElementById("fld_artworkactive"),
+    f_specsactive: document.getElementById("f_specsactive"),
+    fld_specsactive: document.getElementById("fld_specsactive"),
     f_qty: document.getElementById("f_qty"),
     f_qtyLabel: document.getElementById("f_qtyLabel"),
     f_ply: document.getElementById("f_ply"),
@@ -2407,6 +2455,7 @@
     el.f_qc_weight_client, el.f_qc_weight_visipak, el.f_qc_weight_pass,
     el.f_qc_bct_client, el.f_qc_bct_visipak, el.f_qc_bct_pass,
     el.f_artworkcheck_pass, el.f_hold, el.f_visipakspecsverified,
+    el.f_artworkactive, el.f_specsactive,
     // The Client Specifications and Visipak Specifications attachment buttons live inside these
     // same QC-only blocks (Artwork Check, QC Specifications), so they're gated the same way.
     document.getElementById("attachArtworkCameraBtn"), document.getElementById("attachArtworkUploadBtn"),
@@ -2439,7 +2488,7 @@
   function stageHasPly(stage){ return PLY_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // Artwork No only applies to the printing/die-cut stages where a job is tied to a specific
   // artwork/plate — it's meaningless once the job has moved past those into gluing, punching, etc.
-  var ARTWORKNO_STAGES = ["RD-1CP", "RS-2CP", "RS+RD-4CP"];
+  var ARTWORKNO_STAGES = ["QC", "RD-1CP", "RS-2CP", "RS+RD-4CP"];
   function stageHasArtworkNo(stage){ return ARTWORKNO_STAGES.indexOf(stage) !== -1; }
   // The Client Specs vs Visipak Specs comparison table started as QC-only, but Plant also checks
   // board specs on the way in, so it gets the same table alongside its normal fields (this does
@@ -2646,6 +2695,7 @@
     lastClientNameValue = el.f_clientname.value;
     refreshProductNameOptions();
     applyCatalogAutofill();
+    applyMasterSheetAutofill();
     refreshStockOpeningBalance();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
@@ -2661,6 +2711,7 @@
     }
     lastProductValue = el.f_product.value;
     applyCatalogAutofill();
+    applyMasterSheetAutofill();
     refreshStockOpeningBalance();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
@@ -2901,6 +2952,89 @@
       if(window.console) console.error("Catalog update failed:", err);
     });
   }
+
+  // ---------- QC Master Sheet ----------
+  // QC is the one deliberate source of truth for a Customer+Product's Artwork No/attachment and
+  // Client+Visipak Specifications attachments — captured once at QC, then reused everywhere that
+  // same job downstream (RD-1CP/RS-2CP/RS+RD-4CP for artwork, Plant for specs) would otherwise need
+  // the same file re-uploaded by hand. One Firestore document per Customer+Product (collection
+  // "masterSheet", doc id = masterSheetKey below) rather than the shared catalog's single nested
+  // doc, since each record here can carry several base64 attachments and a single shared document
+  // could grow past Firestore's 1MB cap once enough products are on file.
+  function masterSheetKey(customerName, productName){
+    return normalizeKey(customerName) + "__" + normalizeKey(productName);
+  }
+  function subscribeMasterSheet(){
+    state.db.collection("masterSheet").onSnapshot(function(snap){
+      var next = {};
+      snap.forEach(function(doc){ next[doc.id] = doc.data(); });
+      state.masterSheet = next;
+    }, function(err){
+      if(window.console) console.error("Master Sheet subscription failed:", err);
+    });
+  }
+  // Called right after a QC-stage entry saves successfully — remembers this Customer+Product's
+  // Artwork No/attachment and Specifications attachments (plus their Active/Inactive gates) as the
+  // Master Sheet record every downstream stage autofills from (see applyMasterSheetAutofill below).
+  // A no-op if Customer or Product is blank (mirrors upsertCatalogEntry's own guard).
+  function upsertMasterSheetEntry(payload){
+    var custTrim = (payload.clientName || "").trim();
+    var prodTrim = (payload.productName || "").trim();
+    if(!custTrim || !prodTrim) return;
+    var canonicalCustomer = findCanonicalCustomer(custTrim) || formatCustomerName(custTrim);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, prodTrim) || formatProductName(prodTrim);
+    var docId = masterSheetKey(canonicalCustomer, canonicalProduct);
+    var record = {
+      clientName: canonicalCustomer,
+      productName: canonicalProduct,
+      artworkNo: payload.artworkNo || "",
+      artworkAttachmentData: payload.artworkCheckAttachmentData || null,
+      artworkAttachmentName: payload.artworkCheckAttachmentName || null,
+      artworkAttachmentType: payload.artworkCheckAttachmentType || null,
+      artworkActive: payload.artworkActive !== false,
+      qcSpecsAttachmentData: payload.qcSpecsAttachmentData || null,
+      qcSpecsAttachmentName: payload.qcSpecsAttachmentName || null,
+      qcSpecsAttachmentType: payload.qcSpecsAttachmentType || null,
+      visipakSpecsAttachmentData: payload.visipakSpecsAttachmentData || null,
+      visipakSpecsAttachmentName: payload.visipakSpecsAttachmentName || null,
+      visipakSpecsAttachmentType: payload.visipakSpecsAttachmentType || null,
+      specsActive: payload.specsActive !== false,
+      updatedBy: payload.updatedBy || "",
+      updatedAt: Date.now()
+    };
+    state.db.collection("masterSheet").doc(docId).set(record, { merge: true }).catch(function(err){
+      if(window.console) console.error("Master Sheet update failed:", err);
+    });
+  }
+  // Extends applyCatalogAutofill's own Customer/Product-change trigger: on a downstream production
+  // stage, pulls this Customer+Product's ACTIVE Master Sheet record into the Artwork No field/
+  // attachment (RD-1CP/RS-2CP/RS+RD-4CP) and the Client+Visipak Specifications attachments (Plant) —
+  // same overwrite-on-change behavior as applyCatalogAutofill, not just when blank. QC itself is
+  // excluded: it's the stage that WRITES the Master Sheet, not one that reads it back.
+  function attachmentValFromMaster(dataKey, nameKey, typeKey, record){
+    return record[dataKey] ? { data: record[dataKey], name: record[nameKey], type: record[typeKey] } : null;
+  }
+  function applyMasterSheetAutofill(){
+    var stage = el.f_stage.value;
+    if(stage === "QC") return;
+    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, el.f_product.value);
+    if(!canonicalProduct) return;
+    var record = state.masterSheet[masterSheetKey(canonicalCustomer, canonicalProduct)];
+    if(!record) return;
+    if(stageHasArtworkNo(stage) && record.artworkActive !== false){
+      if(record.artworkNo) el.f_artworkno.value = record.artworkNo;
+      artworkAttachmentCtrl.setValue(attachmentValFromMaster(
+        "artworkAttachmentData", "artworkAttachmentName", "artworkAttachmentType", record));
+    }
+    if(stageHasQcSpecs(stage) && record.specsActive !== false){
+      qcSpecsAttachmentCtrl.setValue(attachmentValFromMaster(
+        "qcSpecsAttachmentData", "qcSpecsAttachmentName", "qcSpecsAttachmentType", record));
+      visipakSpecsAttachmentCtrl.setValue(attachmentValFromMaster(
+        "visipakSpecsAttachmentData", "visipakSpecsAttachmentName", "visipakSpecsAttachmentType", record));
+    }
+  }
+
   // ---------- One-time data fix: "Marane" was a spelling mistake for "Marine" on two of
   // PIDILITE -1's products (the rest of that customer's Marine-branded products were already
   // spelled correctly). Corrects both the shared catalog — so the Product Name dropdown offers the
@@ -3111,6 +3245,17 @@
   function refreshVisipakSpecsVerifiedLabel(){
     var label = el.f_visipakspecsverified.closest(".passFailToggle").querySelector(".pfLabel");
     label.textContent = el.f_visipakspecsverified.checked ? t("verified_on_label") : t("verified_off_label");
+  }
+  // Artwork Active / Client Specs Active use the same switch widget too, with plain Active/Inactive
+  // wording — QC-only gates controlling whether this Customer+Product's Master Sheet record (see
+  // masterSheet section below) is currently allowed to autofill into downstream production stages.
+  function refreshArtworkActiveLabel(){
+    var label = el.f_artworkactive.closest(".passFailToggle").querySelector(".pfLabel");
+    label.textContent = el.f_artworkactive.checked ? t("active_on_label") : t("active_off_label");
+  }
+  function refreshSpecsActiveLabel(){
+    var label = el.f_specsactive.closest(".passFailToggle").querySelector(".pfLabel");
+    label.textContent = el.f_specsactive.checked ? t("active_on_label") : t("active_off_label");
   }
   // While a job is on Hold it must not advance to the next stage, so Next Stage is locked
   // (disabled) whenever Hold is checked — on stages where Next Stage doesn't even show (the
@@ -3741,11 +3886,17 @@
     // Visipak Specifications' own Verified toggle is QC-only, even though the Visipak
     // Specifications section itself also shows on Plant — see the toggle's own comment in the HTML.
     el.fld_visipakspecsverified.hidden = !qc;
+    // Artwork Active / Client Specs Active gate the Master Sheet — QC-only, even though the
+    // Artwork No / Client Specs sections themselves also show on other stages (RD-1CP etc./Plant).
+    el.fld_artworkactive.hidden = !qc;
+    el.fld_specsactive.hidden = !qc;
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
     refreshVerifiedLabel();
     refreshVisipakSpecsVerifiedLabel();
+    refreshArtworkActiveLabel();
+    refreshSpecsActiveLabel();
     refreshNextStageHoldLock();
     refreshNoOfBundles();
     refreshRtdBalanceQty();
@@ -3755,7 +3906,13 @@
     refreshStockOpeningBalance();
     refreshStockSummaryCalc();
   }
-  el.f_stage.addEventListener("change", function(){ updateFormFieldsForStage(el.f_stage.value); });
+  el.f_stage.addEventListener("change", function(){
+    updateFormFieldsForStage(el.f_stage.value);
+    // Covers picking Customer/Product before switching the Stage dropdown (the less common order,
+    // since Stage sits above Customer/Product on the form) — re-applies the Master Sheet autofill
+    // now that the newly-chosen stage's own fields (Artwork No/Client Specs) are visible.
+    applyMasterSheetAutofill();
+  });
 
   // Layer rows depend on BOTH the current stage (Plant-only) and the chosen Ply (row count) —
   // unlike the other QC-owned toggles above, Ply can change on its own after Plant is already
@@ -3823,6 +3980,7 @@
     el.deviceTagWrap.hidden = !state.isAdminDevice && !forceSetupVisible;
     el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
     el.activityLogBtn.hidden = !state.isAdminDevice;
+    el.exportMasterSheetBtn.hidden = !state.isAdminDevice;
     // Priority Tasks: every device can still see the board, but only the admin device can add,
     // edit, delete, or reorder a task — everyone else can open one to read it (see openTaskModal's
     // read-only mode and renderTasks' drag-handle/checkbox gating below), same admin-only pattern
@@ -4832,6 +4990,43 @@
     downloadCsv("visipak-daily-job-track-log.csv", csv);
   });
 
+  // ---------- QC Master Sheet export ----------
+  // Admin-only CSV of every Customer+Product's Master Sheet record — the practical stand-in for
+  // "Excel file" (a .csv opens natively in Excel, same approach as every other export in this app;
+  // see downloadCsv above). Base64 attachment data itself is left out of the sheet (it isn't
+  // spreadsheet-friendly and would make the file enormous) — each attachment is instead shown as
+  // its saved filename, or "—" when that record has none.
+  function buildMasterSheetCsv(){
+    var header = ["Customer", "Product", "Artwork No", "Artwork Active", "Artwork Attachment",
+      "Client Specs Active", "Client Specs Attachment", "Visipak Specs Attachment",
+      "Updated By", "Updated At"];
+    var lines = [header.map(csvEscape).join(",")];
+    var keys = Object.keys(state.masterSheet).sort(function(a, b){
+      var ra = state.masterSheet[a], rb = state.masterSheet[b];
+      var ca = (ra.clientName || "") + " " + (ra.productName || "");
+      var cb = (rb.clientName || "") + " " + (rb.productName || "");
+      return ca.localeCompare(cb);
+    });
+    keys.forEach(function(key){
+      var r = state.masterSheet[key];
+      lines.push([
+        r.clientName || "", r.productName || "", r.artworkNo || "",
+        r.artworkActive === false ? t("active_off_label") : t("active_on_label"),
+        r.artworkAttachmentName || "—",
+        r.specsActive === false ? t("active_off_label") : t("active_on_label"),
+        r.qcSpecsAttachmentName || "—",
+        r.visipakSpecsAttachmentName || "—",
+        r.updatedBy || "",
+        r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ""
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  el.exportMasterSheetBtn.addEventListener("click", function(){
+    if(Object.keys(state.masterSheet).length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    downloadCsv("visipak-daily-job-track-master-sheet.csv", buildMasterSheetCsv());
+  });
+
   // ---------- Activity log ----------
   // Records who added, edited, or deleted a job card, and when. This is UI-level bookkeeping
   // only (Firestore rules are open), but it gives a readable trail for day-to-day accountability.
@@ -4921,6 +5116,8 @@
   el.f_hold.addEventListener("change", function(){ refreshHoldLabel(); refreshNextStageHoldLock(); });
   el.f_verified.addEventListener("change", refreshVerifiedLabel);
   el.f_visipakspecsverified.addEventListener("change", refreshVisipakSpecsVerifiedLabel);
+  el.f_artworkactive.addEventListener("change", refreshArtworkActiveLabel);
+  el.f_specsactive.addEventListener("change", refreshSpecsActiveLabel);
   // Keep the QC Check block's Artwork No mirror in sync as the stage's own team types it —
   // there's only one Artwork No per entry; this block just surfaces it next to QC's Pass/Fail
   // call rather than asking for it a second time.
@@ -5379,6 +5576,10 @@
     // Same default-to-Pass rule as the Specifications table's switches (see below): a new entry,
     // or an older one saved before this check existed, both start off as Pass.
     el.f_artworkcheck_pass.checked = !entry || entry.artworkCheckPass !== false;
+    // Artwork Active / Client Specs Active default ON — a new QC record starts out live for the
+    // Master Sheet, same default-to-active reasoning as Artwork Check's default-to-Pass above.
+    el.f_artworkactive.checked = !entry || entry.artworkActive !== false;
+    el.f_specsactive.checked = !entry || entry.specsActive !== false;
     el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
     el.f_ply.value = entry ? (entry.ply || "") : "";
     // Layers: populate whichever rows the saved entry actually has data for (up to 7); a new
@@ -5662,6 +5863,9 @@
       artworkCheckAttachmentData: artworkVal ? artworkVal.data : null,
       artworkCheckAttachmentName: artworkVal ? artworkVal.name : null,
       artworkCheckAttachmentType: artworkVal ? artworkVal.type : null,
+      // Master Sheet gates — QC-only, see the toggles' own comments in the HTML.
+      artworkActive: isQC ? el.f_artworkactive.checked : null,
+      specsActive: isQC ? el.f_specsactive.checked : null,
       quantity: (isFG || isHR || isStockSummary) ? null
         : movingRtdToDispatch ? rtdDispatchedQtyNum
         : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
@@ -5787,6 +5991,11 @@
       // upsertCatalogEntry's guard), which covers stages without a Customer Name / Product Name at
       // all (e.g. HR Man Power).
       upsertCatalogEntry(payload.clientName, payload.productName, payload.type, payload.ply, payload.qtyPerBundle);
+      // QC is the Master Sheet's one source of truth — every QC save remembers this Customer+
+      // Product's Artwork No/attachment and Specifications attachments (see upsertMasterSheetEntry
+      // above), which downstream production stages then autofill from (see
+      // applyMasterSheetAutofill). A no-op save-side if Customer/Product is blank.
+      if(isQC) upsertMasterSheetEntry(payload);
       // Ready to Dispatch -> Dispatch with something left undispatched: spin the leftover off into
       // its own Finished Goods entry (see buildRtdBalanceFgEntry above) now that the save itself is
       // safely through — this document is becoming a Dispatch record, not an FG one, so its own
@@ -6415,6 +6624,7 @@
   subscribeBoard();
   subscribeLog();
   subscribeCatalog();
+  subscribeMasterSheet();
   subscribeTasks();
   fixMaraneTypoInEntries();
 })();
