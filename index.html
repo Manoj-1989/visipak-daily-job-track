@@ -5967,6 +5967,22 @@
       hrManpowerTotal: isHR ? hrManpowerData.total : null,
       updatedAt: Date.now()
     };
+    // Artwork No/Check/Attachment/Active only ever get COLLECTED on QC, RD-1CP, RS-2CP, and
+    // RS+RD-4CP (see ARTWORKNO_STAGES) — Plant sits between QC and those production stages in the
+    // job's own lifecycle but never shows this section itself. Saving or moving on from Plant
+    // (filling in Layers/PLY, or advancing via Next Stage into RD-1CP etc.) is still a save of THIS
+    // SAME document/Job Card, though, so the artwork QC already captured must survive that save
+    // untouched rather than being blanked out just because the open form doesn't show it right now.
+    // Leaving these keys OUT of an update() payload (as opposed to writing them back as blank/null)
+    // is what makes Firestore leave the document's existing values alone — see stageHasArtworkNo.
+    if(!stageHasArtworkNo(chosenStage) && state.editingId){
+      delete payload.artworkNo;
+      delete payload.artworkCheckPass;
+      delete payload.artworkCheckAttachmentData;
+      delete payload.artworkCheckAttachmentName;
+      delete payload.artworkCheckAttachmentType;
+      delete payload.artworkActive;
+    }
     lastUpdatedBy = payload.updatedBy;
 
     var isNewEntry = !state.editingId;
