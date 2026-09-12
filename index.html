@@ -4,6 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Production App</title>
+<!-- Installable web app (PWA) support: manifest.webmanifest/icon-*.png/sw.js are separate files
+     that must sit alongside this index.html on GitHub Pages (no build step — GitHub Pages just
+     serves them as static files). With these in place, Chrome/Edge on Android show an "Install
+     app"/"Add to Home screen" option (menu, or an automatic install banner) and Safari on iOS
+     supports Share -> Add to Home Screen; both then launch this app full-screen with its own icon,
+     no browser address bar, same as a native app shortcut. See sw.js's own comment for what the
+     service worker does and (importantly) does NOT do. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#155f9c">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- iOS Safari ignores the manifest above for "Add to Home Screen" and needs these instead. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Production App">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+Telugu:wght@400;500;600&display=swap">
 <style>
   :root{
@@ -1409,6 +1424,18 @@
   };
   firebase.initializeApp(firebaseConfig);
   var firestoreDb = firebase.firestore();
+
+  // ---------- Installable web app (PWA) registration ----------
+  // Registers sw.js (see that file's own comment) so Chrome/Edge on Android will offer to install
+  // this page as an app. Wrapped defensively: file:// pages and browsers without the API both throw
+  // or simply lack serviceWorker, and this must never be able to break the app itself loading.
+  if(window.navigator && navigator.serviceWorker && location.protocol !== "file:"){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(err){
+        if(window.console) console.error("Service worker registration failed:", err);
+      });
+    });
+  }
   // Client Specifications attachments (Artwork Check, QC Specifications) are small base64-encoded
   // files saved directly as fields on the Firestore entry document — see makeAttachmentController
   // below for why (Firebase Storage now requires a paid Blaze plan) and the size limit that keeps
