@@ -1057,10 +1057,15 @@
             </tr>
           </tbody>
         </table>
-        <!-- Client Specifications attachment for this artwork — one image or PDF, captured or
-             uploaded, saved as base64 data on the entry (see makeAttachmentController). -->
+        <!-- Client Artwork attachment — one image or PDF, captured or uploaded, saved as base64
+             data on the entry (see makeAttachmentController). Capture/Upload only show at QC —
+             it's the one stage that actually captures this file; everywhere else this same
+             widget appears (RD-1CP/RS-2CP/RS+RD-4CP, per ARTWORKNO_STAGES) it's read-only,
+             auto-filled from the QC Master Sheet record instead — see updateFormFieldsForStage's
+             qc-gated hiding of attachArtworkCameraBtn/attachArtworkUploadBtn below, and
+             applyMasterSheetAutofill. -->
         <div class="attachmentWidget" id="attachArtworkWidget">
-          <div class="attachmentLabel" data-i18n="attach_client_specs_label">Client Specifications</div>
+          <div class="attachmentLabel" data-i18n="attach_client_artwork_label">Client Artwork</div>
           <div class="attachmentControls">
             <input type="file" accept="image/*" capture="environment" id="attachArtworkCameraInput" hidden>
             <input type="file" accept="image/*,application/pdf" id="attachArtworkFileInput" hidden>
@@ -1559,6 +1564,7 @@
       artwork_check_heading: "QC Check",
       log_th_artworkcheck: "Artwork Check",
       attach_client_specs_label: "Client Specifications",
+      attach_client_artwork_label: "Client Artwork",
       attach_visipak_specs_label: "Visipak Specifications",
       attach_capture_btn: "📷 Capture", attach_upload_btn: "📎 Upload",
       attach_uploading: "Uploading…", attach_err_filetype: "Only images or PDF files are allowed.",
@@ -1727,6 +1733,7 @@
       artwork_check_heading: "QC जांच",
       log_th_artworkcheck: "आर्टवर्क जांच",
       attach_client_specs_label: "क्लाइंट स्पेसिफिकेशन",
+      attach_client_artwork_label: "क्लाइंट आर्टवर्क",
       attach_visipak_specs_label: "विसिपैक स्पेसिफिकेशन",
       attach_capture_btn: "📷 कैप्चर करें", attach_upload_btn: "📎 अपलोड करें",
       attach_uploading: "अपलोड हो रहा है…", attach_err_filetype: "केवल इमेज या PDF फ़ाइलें ही मान्य हैं।",
@@ -1895,6 +1902,7 @@
       artwork_check_heading: "QC చెక్",
       log_th_artworkcheck: "ఆర్ట్‌వర్క్ చెక్",
       attach_client_specs_label: "క్లయింట్ స్పెసిఫికేషన్లు",
+      attach_client_artwork_label: "క్లయింట్ ఆర్ట్‌వర్క్",
       attach_visipak_specs_label: "విసిపాక్ స్పెసిఫికేషన్లు",
       attach_capture_btn: "📷 క్యాప్చర్", attach_upload_btn: "📎 అప్‌లోడ్",
       attach_uploading: "అప్‌లోడ్ అవుతోంది…", attach_err_filetype: "చిత్రాలు లేదా PDF ఫైళ్లు మాత్రమే అనుమతించబడతాయి.",
@@ -3000,6 +3008,14 @@
       visipakSpecsAttachmentData: payload.visipakSpecsAttachmentData || null,
       visipakSpecsAttachmentName: payload.visipakSpecsAttachmentName || null,
       visipakSpecsAttachmentType: payload.visipakSpecsAttachmentType || null,
+      // Specifications table CLIENT column only — Visipak's own column and the Pass/Fail flags are
+      // independently measured/judged by whoever is physically at the downstream stage, not
+      // reference data to carry forward the way the client's own supplied figures are.
+      qcBoardGsmClient: payload.qcBoardGsmClient || "",
+      qcBustingStrengthClient: payload.qcBustingStrengthClient || "",
+      qcMoistureClient: payload.qcMoistureClient || "",
+      qcWeightClient: payload.qcWeightClient || "",
+      qcBctClient: payload.qcBctClient || "",
       specsActive: payload.specsActive !== false,
       updatedBy: payload.updatedBy || "",
       updatedAt: Date.now()
@@ -3034,6 +3050,14 @@
         "qcSpecsAttachmentData", "qcSpecsAttachmentName", "qcSpecsAttachmentType", record));
       visipakSpecsAttachmentCtrl.setValue(attachmentValFromMaster(
         "visipakSpecsAttachmentData", "visipakSpecsAttachmentName", "visipakSpecsAttachmentType", record));
+      // Specifications table CLIENT column — same overwrite-on-Customer/Product-change behavior as
+      // the attachments just above, only ever reached here on Plant (QC itself returned already,
+      // and Plant is the only other stage stageHasQcSpecs allows).
+      if(record.qcBoardGsmClient) el.f_qc_boardgsm_client.value = record.qcBoardGsmClient;
+      if(record.qcBustingStrengthClient) el.f_qc_bustingstrength_client.value = record.qcBustingStrengthClient;
+      if(record.qcMoistureClient) el.f_qc_moisture_client.value = record.qcMoistureClient;
+      if(record.qcWeightClient) el.f_qc_weight_client.value = record.qcWeightClient;
+      if(record.qcBctClient) el.f_qc_bct_client.value = record.qcBctClient;
     }
   }
 
@@ -3892,6 +3916,28 @@
     // Artwork No / Client Specs sections themselves also show on other stages (RD-1CP etc./Plant).
     el.fld_artworkactive.hidden = !qc;
     el.fld_specsactive.hidden = !qc;
+    // Client Artwork (attachArtworkWidget) and Client Specifications (attachQcSpecsWidget)
+    // Capture/Upload buttons only ever make sense at QC — that's the one stage that actually
+    // captures these files; everywhere else both widgets show (RD-1CP/RS-2CP/RS+RD-4CP for
+    // Client Artwork, Plant for Client Specifications) they're read-only, auto-filled from the
+    // QC Master Sheet record instead — see applyMasterSheetAutofill. Deliberately uses .hidden
+    // here, NOT .disabled — QC_ONLY_FORM_FIELDS.forEach(...) further down resets these same
+    // buttons' .disabled based on device permission alone, AFTER this function runs on modal
+    // open, which would silently undo a .disabled-based restriction set here.
+    var attachArtworkCameraBtn = document.getElementById("attachArtworkCameraBtn");
+    var attachArtworkUploadBtn = document.getElementById("attachArtworkUploadBtn");
+    var attachQcSpecsCameraBtn = document.getElementById("attachQcSpecsCameraBtn");
+    var attachQcSpecsUploadBtn = document.getElementById("attachQcSpecsUploadBtn");
+    if(attachArtworkCameraBtn) attachArtworkCameraBtn.hidden = !qc;
+    if(attachArtworkUploadBtn) attachArtworkUploadBtn.hidden = !qc;
+    if(attachQcSpecsCameraBtn) attachQcSpecsCameraBtn.hidden = !qc;
+    if(attachQcSpecsUploadBtn) attachQcSpecsUploadBtn.hidden = !qc;
+    // The remove/delete ("✕") button on an already-attached file follows the same rule — see the
+    // companion fix in renderPreview() inside makeAttachmentController (removeBtn.hidden also
+    // checks cameraBtn.hidden now), so this call re-evaluates it whenever the stage changes.
+    if(typeof refreshAttachmentControllerVisibility === "function"){
+      refreshAttachmentControllerVisibility();
+    }
     updateLayersVisibility();
     refreshAllPassFailLabels();
     refreshHoldLabel();
@@ -4659,7 +4705,7 @@
     artworkCheck: { header: function(){ return t("log_th_artworkcheck"); },
       html: function(e){ return esc(e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass")); },
       csv: function(e){ return e.artworkCheckPass === false ? t("pf_fail") : t("pf_pass"); } },
-    artworkAttachment: { header: function(){ return t("attach_client_specs_label"); },
+    artworkAttachment: { header: function(){ return t("attach_client_artwork_label"); },
       html: function(e){ return attachmentLinkHtml(e.artworkCheckAttachmentData, e.artworkCheckAttachmentName, e.artworkCheckAttachmentType); },
       // The CSV export gets the filename, not the raw base64 data — a single attachment's data
       // can be hundreds of KB, which would bloat the export and likely break most CSV readers.
@@ -5436,7 +5482,11 @@
       // Same permission gate as the Capture/Upload buttons — viewing the attachment (the
       // thumbnail(s)/link above) stays available either way, but removing it doesn't when this
       // device can't edit this block's QC-only fields.
-      removeBtn.hidden = cameraBtn.disabled;
+      // Also respects the stage-based Capture/Upload hiding set by updateFormFieldsForStage (see
+      // its own comment there) — an image auto-filled from the QC Master Sheet at a downstream,
+      // read-only stage (RD-1CP/RS-2CP/RS+RD-4CP for Client Artwork, Plant for Client
+      // Specifications) can't be removed there any more than it can be re-captured.
+      removeBtn.hidden = cameraBtn.disabled || cameraBtn.hidden;
       removeBtn.addEventListener("click", function(){
         current = null;
         renderPreview();
@@ -5520,7 +5570,12 @@
       discardAll: function(){
         current = null; originalValue = null;
         renderPreview();
-      }
+      },
+      // Called from updateFormFieldsForStage whenever the stage changes on an already-open modal
+      // (Capture/Upload/remove-button visibility is otherwise only (re)computed the next time
+      // renderPreview runs, e.g. on upload/remove/setValue) — re-renders so the remove button's
+      // hidden state picks up the camera button's freshly-updated hidden state right away.
+      refreshVisibility: function(){ renderPreview(); }
     };
   }
   var artworkAttachmentCtrl = makeAttachmentController({
@@ -5541,6 +5596,13 @@
     cameraBtnId: "attachVisipakSpecsCameraBtn", uploadBtnId: "attachVisipakSpecsUploadBtn",
     statusElId: "attachVisipakSpecsStatus", previewElId: "attachVisipakSpecsPreview"
   });
+  // Called from updateFormFieldsForStage — see the call there for why this needs to re-run
+  // whenever the stage changes on an already-open modal.
+  function refreshAttachmentControllerVisibility(){
+    artworkAttachmentCtrl.refreshVisibility();
+    qcSpecsAttachmentCtrl.refreshVisibility();
+    visipakSpecsAttachmentCtrl.refreshVisibility();
+  }
 
   // ---------- Modal ----------
   function openModal(entry){
