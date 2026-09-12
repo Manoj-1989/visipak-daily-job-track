@@ -166,6 +166,14 @@
     border:none;background:transparent;color:var(--accent);font-size:12px;font-weight:600;
     cursor:pointer;padding:0;text-decoration:underline;
   }
+  .topbarRight{display:flex;align-items:center;gap:12px;}
+  /* Small and low-contrast on purpose — see the button's own HTML comment for why. */
+  .adminLoginLink{
+    border:none;background:transparent;color:var(--ink-faint);font-size:11.5px;font-weight:600;
+    cursor:pointer;padding:4px 2px;text-decoration:underline;text-underline-offset:2px;
+    letter-spacing:.02em;white-space:nowrap;
+  }
+  .adminLoginLink:hover{color:var(--accent);}
   /* Profile icon + dropdown — the "logged in as / log out" control, styled like an account
      menu in any other app rather than a text tag sitting inline with the filters. */
   .profileWrap{position:relative;align-self:center;}
@@ -589,23 +597,33 @@
           <p>Which product is running in which stage, live</p>
         </div>
       </div>
-      <div class="profileWrap" id="userTagWrap">
-        <button type="button" class="profileBtn" id="profileBtn" aria-haspopup="true" aria-expanded="false" title="Account">
-          <span id="profileInitial"></span>
-        </button>
-        <div class="profileMenu" id="profileMenu" hidden>
-          <div class="profileMenuName" id="profileMenuNameRow"><span data-i18n="profile_signed_in_as">Signed in as</span> <strong id="userTagName"></strong></div>
-          <div class="profileMenuRole" id="profileMenuRole" hidden></div>
-          <div class="profileMenuStages" id="profileMenuStages"></div>
-          <div class="profileMenuLangRow">
-            <span class="profileMenuLangLabel" data-i18n="filter_language">Language</span>
-            <select id="langSelect">
-              <option value="en">English</option>
-              <option value="hi">हिन्दी</option>
-              <option value="te">తెలుగు</option>
-            </select>
+      <div class="topbarRight">
+        <!-- Always-visible admin entry point — opens the same phone-login screen as the
+             "This device: ... Change" control below, but that one only shows once a device is
+             already admin (or with ?setup=1 in the address bar). This one is deliberately small
+             and low-contrast (not a real button) so it doesn't draw a factory-floor worker's eye,
+             but it's always there so an admin never has to remember or type ?setup=1 to log in on
+             a new phone/browser. Cancelling out of the screen it opens leaves this device exactly
+             as it was — see openDeviceSetupForLogin's own comment. -->
+        <button type="button" class="adminLoginLink" id="adminLoginLink" data-i18n="admin_login_link" title="Admin login">Admin</button>
+        <div class="profileWrap" id="userTagWrap">
+          <button type="button" class="profileBtn" id="profileBtn" aria-haspopup="true" aria-expanded="false" title="Account">
+            <span id="profileInitial"></span>
+          </button>
+          <div class="profileMenu" id="profileMenu" hidden>
+            <div class="profileMenuName" id="profileMenuNameRow"><span data-i18n="profile_signed_in_as">Signed in as</span> <strong id="userTagName"></strong></div>
+            <div class="profileMenuRole" id="profileMenuRole" hidden></div>
+            <div class="profileMenuStages" id="profileMenuStages"></div>
+            <div class="profileMenuLangRow">
+              <span class="profileMenuLangLabel" data-i18n="filter_language">Language</span>
+              <select id="langSelect">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="te">తెలుగు</option>
+              </select>
+            </div>
+            <button type="button" class="profileMenuLogout" id="logOutBtn" data-i18n="profile_log_out">Log Out</button>
           </div>
-          <button type="button" class="profileMenuLogout" id="logOutBtn" data-i18n="profile_log_out">Log Out</button>
         </div>
       </div>
     </div>
@@ -1512,6 +1530,7 @@
       filter_all: "All", filter_language: "Language",
       status_not_started: "Not Started", status_in_progress: "In Progress", status_completed: "Completed",
       device_this_device: "This device:", device_change: "Change",
+      admin_login_link: "Admin",
       btn_manage_users: "Manage Users", btn_activity_log: "Activity Log",
       view_board: "Board", view_log: "Log",
       btn_add_entry: "+ Add Entry",
@@ -1681,6 +1700,7 @@
       filter_all: "सभी", filter_language: "भाषा",
       status_not_started: "शुरू नहीं हुआ", status_in_progress: "जारी है", status_completed: "पूर्ण",
       device_this_device: "यह डिवाइस:", device_change: "बदलें",
+      admin_login_link: "एडमिन",
       btn_manage_users: "उपयोगकर्ता प्रबंधित करें", btn_activity_log: "गतिविधि लॉग",
       view_board: "बोर्ड", view_log: "लॉग",
       btn_add_entry: "+ एंट्री जोड़ें",
@@ -1850,6 +1870,7 @@
       filter_all: "అన్నీ", filter_language: "భాష",
       status_not_started: "ప్రారంభం కాలేదు", status_in_progress: "జరుగుతోంది", status_completed: "పూర్తయింది",
       device_this_device: "ఈ పరికరం:", device_change: "మార్చండి",
+      admin_login_link: "అడ్మిన్",
       btn_manage_users: "వినియోగదారులను నిర్వహించండి", btn_activity_log: "కార్యాచరణ లాగ్",
       view_board: "బోర్డు", view_log: "లాగ్",
       btn_add_entry: "+ ఎంట్రీ జోడించండి",
@@ -2178,6 +2199,7 @@
     cancelBtn: document.getElementById("cancelBtn"),
     deviceTagLabel: document.getElementById("deviceTagLabel"),
     changeDeviceBtn: document.getElementById("changeDeviceBtn"),
+    adminLoginLink: document.getElementById("adminLoginLink"),
     userTagWrap: document.getElementById("userTagWrap"),
     profileBtn: document.getElementById("profileBtn"),
     profileInitial: document.getElementById("profileInitial"),
@@ -4121,14 +4143,20 @@
     showDeviceSetupMode(el.deviceSetupToggleLink.dataset.mode);
   });
 
-  el.changeDeviceBtn.addEventListener("click", function(){
+  // Shared by the "This device: ... Change" control (only shown once already-admin, or with
+  // ?setup=1) and the always-visible small "Admin" link up in the header — both just need to open
+  // this same phone-login screen, with Cancel available so backing out leaves this device's
+  // current access completely untouched.
+  function openDeviceSetupForChange(){
     setDeviceSetupTitle("setup_title_change");
     el.deviceStageSelect.value = state.deviceStage;
     el.deviceSetupPhoneInput.value = "";
     el.deviceSetupCancelBtn.hidden = false;
     showDeviceSetupMode("phone");
     el.deviceSetupOverlay.hidden = false;
-  });
+  }
+  el.changeDeviceBtn.addEventListener("click", openDeviceSetupForChange);
+  el.adminLoginLink.addEventListener("click", openDeviceSetupForChange);
   el.deviceSetupCancelBtn.addEventListener("click", function(){
     el.deviceSetupOverlay.hidden = true;
   });
