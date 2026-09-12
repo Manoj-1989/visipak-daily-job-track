@@ -2521,8 +2521,10 @@
   function stageHasPalletArea(stage){ return PALLETAREA_STAGES.indexOf(stage) !== -1; }
   // Next Stage is hidden along with Status on every "special" terminal stage (see the `special`
   // grouping in updateFormFieldsForStage) — except Ready to Dispatch, which needs to be able to
-  // advance its own leftover into Finished Goods once dispatch settles.
-  var NEXTSTAGE_EXCLUDED_STAGES = ["Dispatch", "Finished Goods (FG)", "QC", "HR_Man Power", "Rejected", "Stock Summary"];
+  // advance its own leftover into Finished Goods once dispatch settles, and QC, which (now that
+  // it's the Master Sheet's own first stage — see the QC Master Sheet section below) needs to be
+  // able to send a job on into Plant once its artwork/specs are captured.
+  var NEXTSTAGE_EXCLUDED_STAGES = ["Dispatch", "Finished Goods (FG)", "HR_Man Power", "Rejected", "Stock Summary"];
   function stageHasNextStage(stage){ return NEXTSTAGE_EXCLUDED_STAGES.indexOf(stage) === -1; }
   // Ready to Dispatch's own leftover only ever goes one of two places next — straight out the door
   // (Dispatch) or back into warehouse storage (Finished Goods) — so its Next Stage dropdown offers
