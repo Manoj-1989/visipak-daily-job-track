@@ -548,6 +548,38 @@
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
   .modal.wide{max-width:720px;}
+  /* Device login card restyle — see deviceSetupOverlay's own HTML comment for why. Purely visual:
+     rounded phone-icon field, full-width pill primary button, an "or" divider, and a pill-shaped
+     secondary action, in place of the plain stacked form the rest of the app's modals use. */
+  .loginCard{padding:30px 28px;border-radius:18px;max-width:420px;}
+  .loginCardTitle{font-size:21px;font-weight:700;margin-bottom:10px;}
+  .loginCardDesc{font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 18px;}
+  .loginFieldLabel{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .loginPhoneInputWrap{position:relative;display:flex;align-items:center;}
+  .loginPhoneIcon{position:absolute;left:14px;font-size:14px;pointer-events:none;}
+  .loginPhoneInput, .loginSelect{
+    width:100%;box-sizing:border-box;border:1px solid var(--line-strong);border-radius:999px;
+    background:var(--surface);color:var(--ink);font-size:14px;padding:12px 16px;
+  }
+  .loginPhoneInput{padding-left:38px;}
+  .loginPhoneInput:focus, .loginSelect:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .loginPrimaryRow{margin-top:20px;}
+  .loginPrimaryBtn{
+    width:100%;border-radius:999px;padding:14px 16px;font-size:14px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.04em;
+  }
+  .loginDivider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--ink-faint);font-size:12px;}
+  .loginDivider::before, .loginDivider::after{content:"";flex:1;height:1px;background:var(--line-strong);}
+  .loginSecondaryBtn{
+    display:block;width:100%;box-sizing:border-box;border:1.5px solid var(--accent);border-radius:999px;
+    background:transparent;color:var(--accent);padding:13px 16px;font-size:13px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.03em;cursor:pointer;text-align:center;
+  }
+  .loginSecondaryBtn:hover{background:var(--accent-soft);}
+  .loginCancelLink{
+    display:block;width:fit-content;margin:16px auto 0;background:none;border:none;
+    color:var(--ink-soft);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0;
+  }
   .supSearchInput{width:100%;border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;margin-top:4px;}
   .supTableWrap{max-height:280px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px;}
   .supTable{width:100%;min-width:0;border-collapse:collapse;font-size:13px;}
@@ -753,35 +785,51 @@
 </div>
 
 <div class="modalOverlay" id="deviceSetupOverlay" hidden>
-  <div class="modal">
-    <h2 id="deviceSetupTitle">Log In to This Device</h2>
-    <p id="deviceSetupDesc" data-i18n="setup_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+  <!-- Visual restyle only (rounded phone-icon field, full-width pill CTA, "or" divider, pill
+       secondary action) — the actual login mechanic underneath is unchanged: typing a registered
+       phone number logs in immediately, there's no OTP/SMS step. See the .login* CSS rules for the
+       styling and each element's own comment below for how it maps to the old plain layout. -->
+  <div class="modal loginCard">
+    <h2 id="deviceSetupTitle" class="loginCardTitle">Log In to This Device</h2>
+    <p id="deviceSetupDesc" class="loginCardDesc" data-i18n="setup_desc">
       Enter your phone number to log in. This device will automatically be set up for your assigned stage(s), and
       job cards you add or edit will be tagged with your name. It'll only be able to touch those stages — entries
       from other stages show read-only. Sharing this device with someone else? Log out when you're done so the
       next person logs in with their own number.
     </p>
     <div id="deviceSetupPhoneMode">
-      <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
+      <label class="loginFieldLabel">
         <span data-i18n="setup_phone_label">Phone number</span>
-        <input type="tel" id="deviceSetupPhoneInput" placeholder="e.g. 9876543210" data-i18n-placeholder="setup_phone_placeholder" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+        <span class="loginPhoneInputWrap">
+          <span class="loginPhoneIcon" aria-hidden="true">📞</span>
+          <input type="tel" id="deviceSetupPhoneInput" class="loginPhoneInput" placeholder="e.g. 9876543210" data-i18n-placeholder="setup_phone_placeholder">
+        </span>
       </label>
     </div>
     <div id="deviceSetupManualMode" hidden>
-      <label style="display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;">
+      <label class="loginFieldLabel">
         <span data-i18n="setup_manual_label">This device is for</span>
-        <select id="deviceStageSelect" style="border:1px solid var(--line-strong);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;">
+        <select id="deviceStageSelect" class="loginSelect">
           <option value="ALL" data-i18n="setup_all_stages_full">All stages (full access)</option>
         </select>
       </label>
     </div>
     <div class="readOnlyNote" id="deviceSetupPhoneError" hidden style="margin-top:12px;"></div>
-    <button type="button" id="deviceSetupToggleLink" class="setupToggleLink" data-mode="manual">Set up manually instead</button>
-    <div class="modalActions">
-      <button type="button" class="btn ghost" id="deviceSetupCancelBtn" hidden data-i18n="generic_cancel">Cancel</button>
-      <div class="spacer"></div>
-      <button type="button" class="btn primary" id="deviceSetupSaveBtn">Continue</button>
+    <!-- Primary action — the equivalent of the reference design's big "SEND OTP" pill, except this
+         one really does log you straight in (Continue/Log In), no code sent. -->
+    <div class="modalActions loginPrimaryRow">
+      <button type="button" class="btn primary loginPrimaryBtn" id="deviceSetupSaveBtn">Continue</button>
     </div>
+    <!-- Manual (no-phone, "All stages") setup is no longer offered as a way to configure a new
+         device — phone login is now the only path in. The divider and toggle button that used to
+         switch this card into that mode stay in the markup (permanently hidden) rather than being
+         deleted outright, since showDeviceSetupMode/the language-refresh code below still read
+         el.deviceSetupToggleLink's text — removing the element would turn those into null-reference
+         errors. Hidden and unreachable (nothing else ever calls showDeviceSetupMode("manual")) adds
+         up to the same thing as removed, for anyone using the app. -->
+    <div class="loginDivider" hidden><span data-i18n="generic_or">or</span></div>
+    <button type="button" id="deviceSetupToggleLink" class="loginSecondaryBtn" data-mode="manual" hidden>Set up manually instead</button>
+    <button type="button" class="loginCancelLink" id="deviceSetupCancelBtn" hidden data-i18n="generic_cancel">Cancel</button>
   </div>
 </div>
 
@@ -1523,7 +1571,7 @@
   // factory floor app, not meant to be a professional localization.
   var I18N = {
     en: {
-      generic_cancel: "Cancel", generic_delete: "Delete", generic_save: "Save", generic_done: "Done",
+      generic_cancel: "Cancel", generic_delete: "Delete", generic_save: "Save", generic_done: "Done", generic_or: "or",
       generic_err_invalid_phone: "Enter a valid 10-digit phone number.",
       generic_err_network: "Couldn't check that number right now. Check your connection and try again.",
       filter_date: "Date", filter_shift: "Shift", filter_stage: "Stage", filter_status: "Status",
@@ -1693,7 +1741,7 @@
       task_drag_handle_title: "Drag to reorder"
     },
     hi: {
-      generic_cancel: "रद्द करें", generic_delete: "हटाएं", generic_save: "सेव करें", generic_done: "हो गया",
+      generic_cancel: "रद्द करें", generic_delete: "हटाएं", generic_save: "सेव करें", generic_done: "हो गया", generic_or: "या",
       generic_err_invalid_phone: "एक सही 10-अंकों का फ़ोन नंबर दर्ज करें।",
       generic_err_network: "अभी उस नंबर की जांच नहीं हो सकी। अपना कनेक्शन जांचें और फिर कोशिश करें।",
       filter_date: "तारीख", filter_shift: "शिफ्ट", filter_stage: "स्टेज", filter_status: "स्थिति",
@@ -1863,7 +1911,7 @@
       task_drag_handle_title: "क्रम बदलने के लिए खींचें"
     },
     te: {
-      generic_cancel: "రద్దు చేయండి", generic_delete: "తొలగించండి", generic_save: "సేవ్ చేయండి", generic_done: "పూర్తయింది",
+      generic_cancel: "రద్దు చేయండి", generic_delete: "తొలగించండి", generic_save: "సేవ్ చేయండి", generic_done: "పూర్తయింది", generic_or: "లేదా",
       generic_err_invalid_phone: "సరైన 10-అంకెల ఫోన్ నంబర్ నమోదు చేయండి।",
       generic_err_network: "ఆ నంబర్‌ను ఇప్పుడు తనిఖీ చేయలేకపోయాము. మీ కనెక్షన్‌ని తనిఖీ చేసి మళ్ళీ ప్రయత్నించండి।",
       filter_date: "తేదీ", filter_shift: "షిఫ్ట్", filter_stage: "దశ", filter_status: "స్థితి",
@@ -3636,6 +3684,40 @@
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+  }
+  // ---------- Finished Goods: one live card per Customer+Product ----------
+  // Finished Goods reflects current on-hand stock for a Customer+Product, not a history of every
+  // batch that ever reached it — so whenever a job card arrives at Finished Goods (FG) for a
+  // Customer+Product that already has another FG entry sitting on the board, the older one(s) are
+  // superseded rather than kept alongside: the newest arrival (docId/payload — already saved by the
+  // time this runs) becomes the one live record, and any other FG entry for that same Customer+
+  // Product is removed. Called after every save whose resulting stage is Finished Goods (FG),
+  // regardless of which path produced that (direct Next Stage move, or the Ready to Dispatch balance
+  // spin-off above) — a no-op if Customer or Product is blank. Uses only equality (==) where()
+  // clauses, matching this file's no-composite-index convention (see other queries below).
+  function consolidateFinishedGoodsEntry(docId, payload){
+    var customerName = (payload.clientName || "").trim();
+    var productName = (payload.productName || "").trim();
+    if(!customerName || !productName) return;
+    state.db.collection("entries")
+      .where("clientName", "==", customerName)
+      .where("productName", "==", productName)
+      .where("stage", "==", "Finished Goods (FG)")
+      .get()
+      .then(function(snap){
+        snap.forEach(function(doc){
+          if(doc.id === docId) return; // this is the record we just saved — leave it alone
+          var staleEntry = Object.assign({ id: doc.id }, doc.data());
+          state.db.doc("entries/" + doc.id).delete().then(function(){
+            logActivity("delete", staleEntry, payload.updatedBy);
+          }).catch(function(err){
+            if(window.console) console.error("Finished Goods dedupe delete failed:", err);
+          });
+        });
+      })
+      .catch(function(err){
+        if(window.console) console.error("Finished Goods dedupe lookup failed:", err);
+      });
   }
   // ---------- Finished Goods: Available Stock (sourced from Ready to Dispatch's own Balance
   // Quantity) / No of Days Ageing (always live) ----------
@@ -6131,6 +6213,11 @@
       // above), which downstream production stages then autofill from (see
       // applyMasterSheetAutofill). A no-op save-side if Customer/Product is blank.
       if(isQC) upsertMasterSheetEntry(payload);
+      // Finished Goods holds one live card per Customer+Product — if this save's own stage just
+      // landed on Finished Goods (FG) (however it got there), clear out any other FG entry already
+      // sitting on the board for the same Customer+Product so this one replaces it instead of sitting
+      // alongside it (see consolidateFinishedGoodsEntry above).
+      if(payload.stage === "Finished Goods (FG)") consolidateFinishedGoodsEntry(logEntryId, payload);
       // Ready to Dispatch -> Dispatch with something left undispatched: spin the leftover off into
       // its own Finished Goods entry (see buildRtdBalanceFgEntry above) now that the save itself is
       // safely through — this document is becoming a Dispatch record, not an FG one, so its own
@@ -6140,6 +6227,7 @@
         state.db.collection("entries").add(fgBalancePayload).then(function(fgRes){
           if(fgRes && fgRes.id){
             logActivity("add", Object.assign({ id: fgRes.id }, fgBalancePayload), payload.updatedBy);
+            consolidateFinishedGoodsEntry(fgRes.id, fgBalancePayload);
           }
         }).catch(function(err){
           if(window.console) console.error("Finished Goods balance spin-off failed:", err);
