@@ -2635,6 +2635,11 @@
   // (Dispatch) or back into warehouse storage (Finished Goods) — so its Next Stage dropdown offers
   // only those two, instead of every stage like the normal production stages do.
   var RTD_NEXTSTAGE_OPTIONS = ["Dispatch", "Finished Goods (FG)"];
+  // Stages a Plant entry can carry its own Quantity forward into via Next Stage — see the Balance
+  // Quantity Required carry-over in the submit handler below, where whichever of Plant's own
+  // Quantity / Balance Quantity Required actually reflects what still needs producing is what gets
+  // forwarded as the next stage's own Quantity.
+  var PLANT_QTY_CARRY_STAGES = ["RD-1CP", "RS-2CP", "RS+RD-4CP", "Auto Gluing", "Bundling"];
   // Rebuilds Next Stage's own option list for the given stage — called from
   // updateFormFieldsForStage below, since which stages are offered depends on the CURRENT stage,
   // not just whether Next Stage shows at all (stageHasNextStage above). Preserves whatever's
@@ -2727,7 +2732,21 @@
   function buildCatalogOptionsHtml(names, formatFn, canonicalFinder, rawSelected){
     var trimmedRaw = (rawSelected || "").trim();
     var html = '<option value="">— select —</option>';
-    html += names.map(function(n){ var f = formatFn(n); return '<option value="' + esc(f) + '">' + esc(f) + '</option>'; }).join("");
+    // Catalog data from before Customer Name/Product Name were real <select>s (free-typed then) can
+    // hold the same customer/product more than once under different casing/spacing — e.g. "Laurus"
+    // and "LAURUS" — which both format to the identical display string and so, without this guard,
+    // would render as two visually-identical options in the dropdown. findCanonicalCustomer/
+    // findCanonicalProduct already treat any such pair as one and the same (matched via
+    // normalizeKey), so the option list only ever needs to show the FIRST formatted spelling it
+    // meets for each one — picking any one of the duplicates is equivalent since they all resolve
+    // back to whichever the lookup finds anyway.
+    var seenFormatted = {};
+    names.forEach(function(n){
+      var f = formatFn(n);
+      if(!f || seenFormatted[f]) return;
+      seenFormatted[f] = true;
+      html += '<option value="' + esc(f) + '">' + esc(f) + '</option>';
+    });
     if(trimmedRaw && !canonicalFinder(trimmedRaw)){
       html += '<option value="' + esc(trimmedRaw) + '">' + esc(trimmedRaw) + '</option>';
     }
@@ -3196,6 +3215,83 @@
       maraneCatalogFixAttempted = false; // let a later snapshot retry if this write failed
     });
   }
+  // ---------- One-time data fix: merge duplicate Customer/Product catalog entries ----------
+  // Before Customer Name/Product Name became real <select>s (see their own comment above), this
+  // catalog was free-typed — so the exact same customer or product can end up saved more than once
+  // under different casing/spacing (e.g. "Laurus" and "LAURUS"). Both format to the identical
+  // display string (formatCustomerName/formatProductName), which is why the dropdown itself never
+  // shows more than one option for either (see buildCatalogOptionsHtml's own de-duplication) — but
+  // underneath, they're still two SEPARATE catalog records, so a product saved under one spelling
+  // stays invisible under the other (findCanonicalCustomer/findCanonicalProduct only ever resolve
+  // to whichever raw spelling they happen to find first). This finds every such duplicate group —
+  // grouped by normalizeKey, at both the customer level and, within each customer, the product
+  // level — merges every product across a group's spellings into ONE canonical spelling (never
+  // letting a blanker duplicate erase a Type/PLY/Quantity Per Bundle another duplicate already
+  // has), and removes the rest. Safe to run on every catalog snapshot: once every customer/product
+  // is down to one canonically-spelled record, it finds nothing left to merge and does nothing.
+  var catalogDedupeFixAttempted = false;
+  function fixDuplicateCatalogEntries(){
+    if(catalogDedupeFixAttempted) return;
+    var customers = state.catalog.customers || {};
+    var groups = {}; // normalizeKey(customer) -> [rawCustomerName, ...]
+    Object.keys(customers).forEach(function(name){
+      var key = normalizeKey(name);
+      if(!key) return;
+      (groups[key] = groups[key] || []).push(name);
+    });
+    var updatePayload = {};
+    var foundAny = false;
+    Object.keys(groups).forEach(function(key){
+      var rawCustomerNames = groups[key];
+      // Merge every product across every raw spelling of this customer (even a single-spelling
+      // group still goes through this, to catch duplicate PRODUCTS within just that one customer),
+      // deduped the same way by normalizeKey.
+      var productRows = {}; // normalizeKey(product) -> { rawName, merged }
+      var rawProductKeysSeen = [];
+      rawCustomerNames.forEach(function(rawCustomer){
+        var products = (customers[rawCustomer] || {}).products || {};
+        Object.keys(products).forEach(function(rawProduct){
+          var pKey = normalizeKey(rawProduct);
+          if(!pKey) return;
+          rawProductKeysSeen.push(rawProduct);
+          var row = products[rawProduct] || {};
+          var existingRow = productRows[pKey];
+          if(!existingRow){
+            productRows[pKey] = { rawName: rawProduct, merged: Object.assign({}, row) };
+          } else {
+            // Never let a blanker duplicate clobber good data another duplicate already has.
+            if(row.type && !existingRow.merged.type) existingRow.merged.type = row.type;
+            if(row.ply && !existingRow.merged.ply) existingRow.merged.ply = row.ply;
+            if(row.qtyPerBundle != null && existingRow.merged.qtyPerBundle == null) existingRow.merged.qtyPerBundle = row.qtyPerBundle;
+          }
+        });
+      });
+      var canonicalCustomerName = formatCustomerName(rawCustomerNames[0]);
+      var mergedProducts = {};
+      Object.keys(productRows).forEach(function(pKey){
+        var row = productRows[pKey];
+        mergedProducts[formatProductName(row.rawName)] = row.merged;
+      });
+      var distinctProductKeyCount = Object.keys(productRows).length;
+      var hasProductDuplicatesOrRenames = rawProductKeysSeen.length !== distinctProductKeyCount ||
+        rawProductKeysSeen.some(function(p){ return formatProductName(p) !== p; });
+      var needsWrite = rawCustomerNames.length > 1 || rawCustomerNames[0] !== canonicalCustomerName || hasProductDuplicatesOrRenames;
+      if(!needsWrite) return;
+      foundAny = true;
+      rawCustomerNames.forEach(function(rawCustomer){
+        if(rawCustomer !== canonicalCustomerName){
+          updatePayload["customers." + rawCustomer] = firebase.firestore.FieldValue.delete();
+        }
+      });
+      updatePayload["customers." + canonicalCustomerName] = { products: mergedProducts };
+    });
+    if(!foundAny) return;
+    catalogDedupeFixAttempted = true;
+    state.db.collection("catalog").doc("customerProducts").update(updatePayload).catch(function(err){
+      if(window.console) console.error("Catalog duplicate-entry fix failed:", err);
+      catalogDedupeFixAttempted = false; // let a later snapshot retry if this write failed
+    });
+  }
   var maraneEntriesFixAttempted = false;
   function fixMaraneTypoInEntries(){
     if(maraneEntriesFixAttempted) return;
@@ -3276,6 +3372,7 @@
       refreshTaskCustomerNameOptions();
       refreshTaskProductNameOptions();
       fixMaraneTypoInCatalog();
+      fixDuplicateCatalogEntries();
       backfillQtyPerBundleInCatalog();
       // Only the very first device to see a truly empty catalog seeds it — a stale/incomplete
       // snapshot never re-triggers this because catalogSeedAttempted latches after the first try,
@@ -5723,10 +5820,10 @@
   var qcSpecsAttachmentCtrl = makeAttachmentController({
     fileInputId: "attachQcSpecsFileInput", cameraInputId: "attachQcSpecsCameraInput",
     cameraBtnId: "attachQcSpecsCameraBtn", uploadBtnId: "attachQcSpecsUploadBtn",
-    statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview",
-    // A camera capture is always an image (see the accept="image/*" camera input above), so this
-    // only ever fires for an uploaded PDF — the one case with an extractable text layer.
-    onPdfUploaded: autofillClientSpecsFromPdf
+    statusElId: "attachQcSpecsStatus", previewElId: "attachQcSpecsPreview"
+    // Deliberately no onPdfUploaded here — Client Specs used to auto-fill from the uploaded PDF's
+    // own text (see autofillClientSpecsFromPdf above), but that's by request now always typed in by
+    // hand instead, every time, even when a PDF is attached.
   });
   var visipakSpecsAttachmentCtrl = makeAttachmentController({
     fileInputId: "attachVisipakSpecsFileInput", cameraInputId: "attachVisipakSpecsCameraInput",
@@ -6021,6 +6118,16 @@
     var movedNoOfBundles = (movingRtdToDispatch && stageHasQtyPerBundle(chosenStage) && el.f_qtyperbundle.value !== "" && Number(el.f_qtyperbundle.value))
       ? Math.ceil(rtdDispatchedQtyNum / Number(el.f_qtyperbundle.value))
       : null;
+    // Plant -> RD-1CP/RS-2CP/RS+RD-4CP/Auto Gluing/Bundling: Quantity would otherwise just carry
+    // over unchanged from Plant (see computeLatestPlantQuantity's own comment above — normally
+    // nothing but Ready to Dispatch's live recompute ever touches it again). Plant's own Balance
+    // Quantity Required (this Quantity minus whatever Available Stock already covers — see
+    // refreshPlantBalanceQty) is what actually still needs producing whenever it's above zero, so
+    // THAT'S what gets forwarded as the next stage's own Quantity instead of the original full
+    // figure. When Balance Quantity Required is 0 (existing stock already covers everything), the
+    // original Quantity still carries forward unchanged, same as before this carry-over existed.
+    var movingPlantForward = isPlant && !!movedTo && PLANT_QTY_CARRY_STAGES.indexOf(movedTo) !== -1;
+    var plantBalanceQtyRequiredNum = (isPlant && el.f_plantbalanceqty.value !== "") ? Number(el.f_plantbalanceqty.value) : 0;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
     // Quantity Per Bundle is a per-product catalog fact (see applyCatalogAutofill), not something
@@ -6069,6 +6176,7 @@
       specsActive: isQC ? el.f_specsactive.checked : null,
       quantity: (isFG || isHR || isStockSummary) ? null
         : movingRtdToDispatch ? rtdDispatchedQtyNum
+        : (movingPlantForward && plantBalanceQtyRequiredNum > 0) ? plantBalanceQtyRequiredNum
         : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
