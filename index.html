@@ -1232,16 +1232,16 @@
         <div class="qcSpecsHead" data-i18n="layers_heading">Layers</div>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_size">Size</th><th data-i18n="layers_th_gsm">GSM</th><th data-i18n="layers_th_bf">BF</th></tr>
+            <tr><th></th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_size">Size</th><th data-i18n="layers_th_gsm">GSM</th><th data-i18n="layers_th_bf">BF</th></tr>
           </thead>
           <tbody id="layersBody">
-            <tr id="layerRow1"><td id="layerLabel1"></td><td><input type="text" id="f_layer1_size"></td><td><input type="text" id="f_layer1_gsm"></td><td><input type="text" id="f_layer1_bf"></td></tr>
-            <tr id="layerRow2"><td id="layerLabel2"></td><td><input type="text" id="f_layer2_size"></td><td><input type="text" id="f_layer2_gsm"></td><td><input type="text" id="f_layer2_bf"></td></tr>
-            <tr id="layerRow3"><td id="layerLabel3"></td><td><input type="text" id="f_layer3_size"></td><td><input type="text" id="f_layer3_gsm"></td><td><input type="text" id="f_layer3_bf"></td></tr>
-            <tr id="layerRow4"><td id="layerLabel4"></td><td><input type="text" id="f_layer4_size"></td><td><input type="text" id="f_layer4_gsm"></td><td><input type="text" id="f_layer4_bf"></td></tr>
-            <tr id="layerRow5"><td id="layerLabel5"></td><td><input type="text" id="f_layer5_size"></td><td><input type="text" id="f_layer5_gsm"></td><td><input type="text" id="f_layer5_bf"></td></tr>
-            <tr id="layerRow6"><td id="layerLabel6"></td><td><input type="text" id="f_layer6_size"></td><td><input type="text" id="f_layer6_gsm"></td><td><input type="text" id="f_layer6_bf"></td></tr>
-            <tr id="layerRow7"><td id="layerLabel7"></td><td><input type="text" id="f_layer7_size"></td><td><input type="text" id="f_layer7_gsm"></td><td><input type="text" id="f_layer7_bf"></td></tr>
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><input type="text" id="f_layer1_reelweight"></td><td><input type="text" id="f_layer1_size"></td><td><input type="text" id="f_layer1_gsm"></td><td><input type="text" id="f_layer1_bf"></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><input type="text" id="f_layer2_reelweight"></td><td><input type="text" id="f_layer2_size"></td><td><input type="text" id="f_layer2_gsm"></td><td><input type="text" id="f_layer2_bf"></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><input type="text" id="f_layer3_reelweight"></td><td><input type="text" id="f_layer3_size"></td><td><input type="text" id="f_layer3_gsm"></td><td><input type="text" id="f_layer3_bf"></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><input type="text" id="f_layer4_reelweight"></td><td><input type="text" id="f_layer4_size"></td><td><input type="text" id="f_layer4_gsm"></td><td><input type="text" id="f_layer4_bf"></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><input type="text" id="f_layer5_reelweight"></td><td><input type="text" id="f_layer5_size"></td><td><input type="text" id="f_layer5_gsm"></td><td><input type="text" id="f_layer5_bf"></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><input type="text" id="f_layer6_reelweight"></td><td><input type="text" id="f_layer6_size"></td><td><input type="text" id="f_layer6_gsm"></td><td><input type="text" id="f_layer6_bf"></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_size"></td><td><input type="text" id="f_layer7_gsm"></td><td><input type="text" id="f_layer7_bf"></td></tr>
           </tbody>
         </table>
       </div>
@@ -1333,6 +1333,9 @@
           <span class="pfLabel"></span>
         </label>
       </div>
+      <!-- Wastage: Plant, RD-1CP, RS-2CP, RS+RD-4CP, and Auto Gluing only — the weight of material
+           scrapped/rejected during that stage's run. See WASTAGE_STAGES/stageHasWastage below. -->
+      <label id="fld_wastage"><span data-i18n="form_wastage_label">Wastage (kg)</span> <input type="number" id="f_wastage" min="0" step="0.01" placeholder="e.g. 4.5" data-i18n-placeholder="form_wastage_placeholder"></label>
       <label class="span2" id="fld_remarks"><span data-i18n="th_remarks">Remarks</span> <textarea id="f_remarks" rows="2" placeholder="Running smoothly, on schedule" data-i18n-placeholder="form_remarks_placeholder"></textarea></label>
       <!-- QC's Artwork check — RD-1CP, RS-2CP, RS+RD-4CP only. The Artwork No cell just mirrors
            the value typed into the normal Artwork No field above (kept in sync via JS); this
@@ -1871,7 +1874,7 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
-      layers_heading: "Layers", layers_th_size: "Size", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_heading: "Layers", layers_th_reelweight: "Reel Weight", layers_th_size: "Size", layers_th_gsm: "GSM", layers_th_bf: "BF",
       layers_row_label_n: "Layer {n}",
       form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
       form_type_label: "Type", form_type_select: "— select —",
@@ -1933,6 +1936,7 @@
       form_product_placeholder: "e.g. Fevicol Carton", form_jobcard_placeholder: "e.g. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "Your name", form_remarks_placeholder: "Running smoothly, on schedule",
+      form_wastage_label: "Wastage (kg)", form_wastage_placeholder: "e.g. 4.5",
       form_clientname_label: "Customer Name", form_invoiceno_label: "Invoice No",
       form_vehicleno_label: "Vehicle Number", form_driver_label: "Driver",
       form_qtyperbundle_label: "Quantity Per Bundle", form_noofbundles_label: "No of Bundles",
@@ -2088,7 +2092,7 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
-      layers_heading: "लेयर", layers_th_size: "साइज़", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_heading: "लेयर", layers_th_reelweight: "रील वज़न", layers_th_size: "साइज़", layers_th_gsm: "GSM", layers_th_bf: "BF",
       layers_row_label_n: "लेयर {n}",
       form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
       form_type_label: "टाइप", form_type_select: "— चुनें —",
@@ -2150,6 +2154,7 @@
       form_product_placeholder: "जैसे Fevicol Carton", form_jobcard_placeholder: "जैसे JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "आपका नाम", form_remarks_placeholder: "सुचारू रूप से चल रहा है, समय पर",
+      form_wastage_label: "वेस्टेज (kg)", form_wastage_placeholder: "जैसे, 4.5",
       form_clientname_label: "ग्राहक का नाम", form_invoiceno_label: "इनवॉइस नंबर",
       form_vehicleno_label: "वाहन नंबर", form_driver_label: "ड्राइवर",
       form_qtyperbundle_label: "प्रति बंडल मात्रा", form_noofbundles_label: "बंडलों की संख्या",
@@ -2305,7 +2310,7 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
-      layers_heading: "లేయర్లు", layers_th_size: "సైజు", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_heading: "లేయర్లు", layers_th_reelweight: "రీల్ బరువు", layers_th_size: "సైజు", layers_th_gsm: "GSM", layers_th_bf: "BF",
       layers_row_label_n: "లేయర్ {n}",
       form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
       form_type_label: "టైప్", form_type_select: "— ఎంచుకోండి —",
@@ -2367,6 +2372,7 @@
       form_product_placeholder: "ఉదా. Fevicol Carton", form_jobcard_placeholder: "ఉదా. JC-2031",
       form_qty_placeholder: "500", form_runtime_placeholder: "2.5", form_manpower_placeholder: "3",
       form_updatedby_placeholder: "మీ పేరు", form_remarks_placeholder: "సాఫీగా జరుగుతోంది, షెడ్యూల్ ప్రకారం",
+      form_wastage_label: "వేస్టేజ్ (kg)", form_wastage_placeholder: "ఉదా. 4.5",
       form_clientname_label: "కస్టమర్ పేరు", form_invoiceno_label: "ఇన్వాయిస్ నంబర్",
       form_vehicleno_label: "వాహన నంబర్", form_driver_label: "డ్రైవర్",
       form_qtyperbundle_label: "బండిల్‌కు పరిమాణం", form_noofbundles_label: "బండిళ్ల సంఖ్య",
@@ -2788,6 +2794,8 @@
     fld_verified: document.getElementById("fld_verified"),
     f_visipakspecsverified: document.getElementById("f_visipakspecsverified"),
     fld_visipakspecsverified: document.getElementById("fld_visipakspecsverified"),
+    fld_wastage: document.getElementById("fld_wastage"),
+    f_wastage: document.getElementById("f_wastage"),
     f_remarks: document.getElementById("f_remarks"),
     f_clientname: document.getElementById("f_clientname"),
     f_invoiceno: document.getElementById("f_invoiceno"),
@@ -2887,6 +2895,7 @@
   for(var layerN = 1; layerN <= 7; layerN++){
     el["layerRow" + layerN] = document.getElementById("layerRow" + layerN);
     el["layerLabel" + layerN] = document.getElementById("layerLabel" + layerN);
+    el["f_layer" + layerN + "_reelweight"] = document.getElementById("f_layer" + layerN + "_reelweight");
     el["f_layer" + layerN + "_size"] = document.getElementById("f_layer" + layerN + "_size");
     el["f_layer" + layerN + "_gsm"] = document.getElementById("f_layer" + layerN + "_gsm");
     el["f_layer" + layerN + "_bf"] = document.getElementById("f_layer" + layerN + "_bf");
@@ -2970,14 +2979,14 @@
     el.f_date, el.f_shift, el.f_product, el.f_jobcard, el.f_artworkno, el.f_qty, el.f_ply,
     el.f_type, el.f_palletno,
     el.f_starttime, el.f_endtime, el.f_runtime, el.f_manpower,
-    el.f_updatedby, el.f_verified, el.f_status, el.f_nextstage, el.f_remarks,
+    el.f_updatedby, el.f_verified, el.f_status, el.f_nextstage, el.f_remarks, el.f_wastage,
     el.f_clientname, el.f_invoiceno, el.f_vehicleno, el.f_driver,
     el.f_qtyperbundle, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty,
     el.f_stockrate, el.f_stockinwardreason, el.f_stockinwardqty, el.f_stockoutwardreason, el.f_stockoutwardqty
   ];
   // Layer Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
-    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_size"], el["f_layer" + layerFieldN + "_gsm"], el["f_layer" + layerFieldN + "_bf"]);
+    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_reelweight"], el["f_layer" + layerFieldN + "_size"], el["f_layer" + layerFieldN + "_gsm"], el["f_layer" + layerFieldN + "_bf"]);
   }
   // Every field only QC (or admin) can edit, regardless of which stage the entry itself belongs
   // to: the Specifications table, the Artwork No check, and the Hold switch.
@@ -3828,6 +3837,10 @@
   // Layer Size/GSM/BF rows are Plant-only (not the other Ply stages) — the number of rows shown
   // tracks whichever Ply was picked: 3/5/7 Ply -> that many layers, anything else -> none.
   function stageHasLayers(stage){ return stage === "Plant"; }
+  // Wastage (weight of material scrapped/rejected during that stage's run) — Plant and the three
+  // corrugation stages plus Auto Gluing, the stages that actually generate trim/reject waste.
+  var WASTAGE_STAGES = ["Plant", "RD-1CP", "RS-2CP", "RS+RD-4CP", "Auto Gluing"];
+  function stageHasWastage(stage){ return WASTAGE_STAGES.indexOf(stage) !== -1; }
   function plyLayerCount(plyValue){
     if(plyValue === "3 Ply") return 3;
     if(plyValue === "5 Ply") return 5;
@@ -3972,6 +3985,7 @@
     var layers = [];
     for(var i = 1; i <= count; i++){
       layers.push({
+        reelWeight: el["f_layer" + i + "_reelweight"].value.trim(),
         size: el["f_layer" + i + "_size"].value.trim(),
         gsm: el["f_layer" + i + "_gsm"].value.trim(),
         bf: el["f_layer" + i + "_bf"].value.trim()
@@ -4466,6 +4480,7 @@
     el.fld_nextstage.hidden = !stageHasNextStage(stage);
     populateNextStageOptions(stage);
     el.fld_remarks.hidden = special;
+    el.fld_wastage.hidden = !stageHasWastage(stage);
 
     // Dispatch-only fields.
     el.fld_invoiceno.hidden = !dispatch;
@@ -5875,7 +5890,7 @@
   function summarizeLayers(layers){
     if(!layers || !layers.length) return "";
     return layers.map(function(l, i){
-      return "L" + (i + 1) + ": " + (l.size || "—") + "/" + (l.gsm || "—") + "/" + (l.bf || "—");
+      return "L" + (i + 1) + ": " + (l.reelWeight || "—") + " | " + (l.size || "—") + "/" + (l.gsm || "—") + "/" + (l.bf || "—");
     }).join("; ");
   }
   function summarizeQcSpec(clientVal, visipakVal, pass){
@@ -6051,6 +6066,8 @@
       html: function(e){ return esc(e.plantOpeningStockJobCard || ""); }, csv: function(e){ return e.plantOpeningStockJobCard || ""; } },
     plantBalanceQtyRequired: { header: function(){ return t("plant_balanceqty_label"); }, cellClass: "num",
       html: function(e){ return esc(e.plantBalanceQtyRequired != null ? e.plantBalanceQtyRequired : ""); }, csv: function(e){ return e.plantBalanceQtyRequired != null ? e.plantBalanceQtyRequired : ""; } },
+    wastage: { header: function(){ return t("form_wastage_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.wastage != null ? e.wastage : ""); }, csv: function(e){ return e.wastage != null ? e.wastage : ""; } },
     remarks: { header: function(){ return t("th_remarks"); },
       html: function(e){ return esc(e.remarks || ""); }, csv: function(e){ return e.remarks || ""; } },
     qcBoardGsm: { header: function(){ return t("qc_spec_boardgsm"); },
@@ -6139,6 +6156,7 @@
     if(stageHasNextStage(stage)) keys.push("nextStage");
     if(stageHasHold(stage)) keys.push("hold");
     if(fg) keys.push("verified");
+    if(stageHasWastage(stage)) keys.push("wastage");
     if(!special) keys.push("remarks");
     if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment", "visipakSpecsAttachment");
     if(qc) keys.push("visipakSpecsVerified");
@@ -6891,6 +6909,7 @@
     // entry, or one saved before/without Layers, just leaves them blank.
     for(var layerPopN = 1; layerPopN <= 7; layerPopN++){
       var layerData = (entry && entry.layers && entry.layers[layerPopN - 1]) || null;
+      el["f_layer" + layerPopN + "_reelweight"].value = layerData ? (layerData.reelWeight || "") : "";
       el["f_layer" + layerPopN + "_size"].value = layerData ? (layerData.size || "") : "";
       el["f_layer" + layerPopN + "_gsm"].value = layerData ? (layerData.gsm || "") : "";
       el["f_layer" + layerPopN + "_bf"].value = layerData ? (layerData.bf || "") : "";
@@ -6910,6 +6929,7 @@
     // Hold defaults OFF for a new entry (and for any older entry saved before Hold existed) —
     // unlike the Pass/Fail switches, it's a problem flag, not something that starts out "passed".
     el.f_hold.checked = !!(entry && entry.onHold);
+    el.f_wastage.value = entry && entry.wastage != null ? entry.wastage : "";
     el.f_remarks.value = entry ? (entry.remarks||"") : "";
     // Customer Name is set before Product Name deliberately — Product Name's option list is
     // scoped to whichever Customer is currently selected (see buildProductOptionsHtml), so it has
@@ -7214,6 +7234,10 @@
       verified: isFG ? el.f_verified.checked : null,
       // Visipak Specifications' own Verified toggle — same plain informational flag, QC stage only.
       visipakSpecsVerified: isQC ? el.f_visipakspecsverified.checked : null,
+      // Wastage, like Start Time/End Time/Run Time/Man Power just above, is each stage's own
+      // department reporting its own figure — it must not carry forward onto the next stage's
+      // record when a job moves on via Next Stage, so it's blanked on movedTo the same way.
+      wastage: stageHasWastage(chosenStage) ? (movedTo ? null : (el.f_wastage.value === "" ? null : Number(el.f_wastage.value))) : null,
       remarks: isSpecial ? "" : el.f_remarks.value.trim(),
       clientName: hasClientName ? el.f_clientname.value.trim() : "",
       invoiceNo: isDispatch ? el.f_invoiceno.value.trim() : "",
