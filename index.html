@@ -416,7 +416,10 @@
   .invTiles{display:flex;flex-wrap:wrap;gap:12px;}
   .invLogSection{display:flex;flex-direction:column;gap:12px;margin-top:6px;padding-top:16px;border-top:1px solid var(--line);}
   .invLogHead h3{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--ink);}
-  .invPlacementHint{display:block;font-size:11px;color:var(--warn);margin-top:3px;}
+  .invReorderRow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .invReorderRow:last-child{border-bottom:none;}
+  .invReorderRow .invReorderName{font-weight:600;font-size:13px;flex:1;min-width:0;}
+  .invReorderRow .invReorderMeta{font-size:11.5px;color:var(--ink-soft);font-family:var(--font-mono);white-space:nowrap;}
   .invRowActions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
   .invSmallBtn{padding:5px 9px;font-size:11.5px;}
   .invItemsList{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;margin-bottom:16px;}
@@ -816,22 +819,29 @@
   </main>
 
   <!-- Inventory: a separate department/screen (not a board column — see NON_BOARD_STAGES), reached
-       via the "Inventory" link in .mainNav above. Real-time stock (live onSnapshot on
-       inventoryMovements), a smart placement hint per item, and the movement ledger doubles as the
-       traceability trail — see "Inventory Management" section of the script below. -->
+       via the "Inventory" link in .mainNav above. Receiving-only warehouse tracker — Products are
+       the item master (Manage Inventory Items) and Purchases are the receiving ledger; stock on
+       hand is simply the live sum of a product's purchases. See "Inventory Management" section of
+       the script below. -->
   <main id="inventoryView" class="inventoryView" hidden>
     <div class="invTopBar">
       <div class="invTiles">
         <div class="statTile"><span class="statLabel" data-i18n="inv_stat_skus">Total SKUs</span><span class="statValue" id="invStatSkus">0</span></div>
         <div class="statTile"><span class="statLabel" data-i18n="inv_stat_units">Units on Hand</span><span class="statValue" id="invStatUnits">0</span></div>
-        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_low">Low Stock</span><span class="statValue" id="invStatLow">0</span></div>
-        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_out">Out of Stock</span><span class="statValue" id="invStatOut">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_value">Inventory Value</span><span class="statValue" id="invStatValue">₹0.00</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_reorder">Items to Reorder</span><span class="statValue" id="invStatReorder">0</span></div>
       </div>
       <button class="btn ghost" id="manageInventoryItemsBtn" type="button" hidden data-i18n="btn_manage_inventory_items">Manage Inventory Items</button>
     </div>
 
+    <div class="invLogSection">
+      <div class="invLogHead"><h3 data-i18n="inv_reorder_heading">Reorder List</h3></div>
+      <div id="invReorderList"></div>
+      <div class="logEmpty" id="invReorderEmpty" hidden data-i18n="inv_reorder_empty">Nothing needs reordering right now.</div>
+    </div>
+
     <div class="logControls">
-      <input type="text" id="invSearch" placeholder="Search item, SKU, bin…" data-i18n-placeholder="inv_search_placeholder">
+      <input type="text" id="invSearch" placeholder="Search item, SKU, category…" data-i18n-placeholder="inv_search_placeholder">
       <select id="invCategoryFilter"><option value="" data-i18n="filter_all">All</option></select>
     </div>
 
@@ -840,37 +850,32 @@
         <thead>
           <tr>
             <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
-            <th data-i18n="inv_th_bin">Bin</th><th data-i18n="inv_th_onhand">On Hand</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+            <th data-i18n="inv_th_onhand">On Hand</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
             <th data-i18n="inv_th_status">Status</th><th></th>
           </tr>
         </thead>
         <tbody id="invStockBody"></tbody>
       </table>
-      <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No inventory items yet. Use "Manage Inventory Items" to add your first one.</div>
+      <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No products yet. Use "Manage Inventory Items" to add your first one.</div>
     </div>
 
     <div class="invLogSection">
-      <div class="invLogHead"><h3 data-i18n="inv_log_heading">Activity Log</h3></div>
+      <div class="invLogHead"><h3 data-i18n="inv_log_heading">Purchase History</h3></div>
       <div class="logControls">
-        <input type="text" id="invLogSearch" placeholder="Search item or person…" data-i18n-placeholder="inv_log_search_placeholder">
-        <select id="invLogTypeFilter">
-          <option value="" data-i18n="filter_all">All</option>
-          <option value="receive" data-i18n="inv_type_receive">Received</option>
-          <option value="ship" data-i18n="inv_type_ship">Shipped</option>
-          <option value="adjust" data-i18n="inv_type_adjust">Adjusted</option>
-        </select>
+        <input type="text" id="invLogSearch" placeholder="Search item, supplier, received by…" data-i18n-placeholder="inv_log_search_placeholder">
       </div>
       <div class="tableWrap">
         <table>
           <thead>
             <tr>
-              <th data-i18n="inv_th_item">Item</th><th data-i18n="th_date">Date</th><th data-i18n="inv_th_type">Type</th>
-              <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_balance">Balance After</th><th data-i18n="inv_th_amount">Amount</th><th data-i18n="th_remarks">Remarks</th><th data-i18n="th_updatedby">Updated By</th>
+              <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th>
+              <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_discount">Disc %</th><th data-i18n="inv_th_gst">GST %</th><th data-i18n="inv_th_amount">Amount</th>
+              <th data-i18n="inv_th_supplier">Supplier</th><th data-i18n="inv_th_receivedby">Received By</th><th data-i18n="th_remarks">Note</th><th></th>
             </tr>
           </thead>
           <tbody id="invLogBody"></tbody>
         </table>
-        <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No activity yet.</div>
+        <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No purchases logged yet.</div>
       </div>
     </div>
   </main>
@@ -1000,8 +1005,8 @@
   <div class="modal wide">
     <h2 data-i18n="inv_items_title">Manage Inventory Items</h2>
     <p data-i18n="inv_items_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
-      Add each item your store carries — its SKU, category, bin/location, supplier, and reorder point. Anyone with
-      access to the Inventory screen can then Receive/Ship against it; only Admin can add, edit, or adjust-correct
+      Add each product your warehouse stocks — its SKU, category, unit, supplier, and reorder point. Anyone with
+      access to the Inventory screen can then receive stock against it; only Admin can add, edit, or remove
       items here.
     </p>
     <input type="text" id="invItemsSearchInput" class="supSearchInput" placeholder="Search by name, SKU, or category…" data-i18n-placeholder="inv_items_search_placeholder">
@@ -1019,30 +1024,23 @@
       <label><span data-i18n="inv_th_category">Category</span>
         <select id="invItemCategorySelect"></select>
       </label>
-      <label><span data-i18n="inv_th_bin">Bin / location</span>
-        <input type="text" id="invItemBinInput" class="mono" placeholder="e.g. FAST-A1">
-      </label>
-    </div>
-    <div class="supAddRow">
-      <label><span data-i18n="inv_items_supplier">Supplier</span>
-        <input type="text" id="invItemSupplierInput" placeholder="e.g. Sri Lakshmi Paper Mills">
-      </label>
-      <label><span data-i18n="inv_th_reorder">Reorder point</span>
-        <input type="number" id="invItemReorderInput" min="0" step="1" placeholder="e.g. 100">
-      </label>
-    </div>
-    <div class="supAddRow">
       <label><span data-i18n="inv_items_unit">Unit</span>
         <input type="text" id="invItemUnitInput" placeholder="e.g. sheets, kg, rolls" data-i18n-placeholder="inv_items_unit_placeholder">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_th_reorder">Reorder point</span>
+        <input type="number" id="invItemReorderInput" min="0" step="1" placeholder="e.g. 100">
       </label>
       <label><span data-i18n="inv_items_price">Default Price/Unit</span>
         <input type="number" id="invItemPriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
       </label>
     </div>
-    <p class="supStagesLabel" style="margin:2px 0 10px;font-weight:400;" data-i18n="inv_bin_hint">
-      Tip: start the bin with a zone code (FAST-, MID-, BULK-, or CTRL- for controlled storage) so the Inventory
-      screen can flag when an item might be better placed elsewhere.
-    </p>
+    <div class="supAddRow">
+      <label style="grid-column:1 / -1;"><span data-i18n="inv_items_supplier">Supplier</span>
+        <input type="text" id="invItemSupplierInput" placeholder="e.g. Sri Lakshmi Paper Mills">
+      </label>
+    </div>
     <div class="modalActions" style="margin-top:2px;">
       <button type="button" class="btn ghost" id="invItemClearBtn" hidden data-i18n="sup_cancel_edit">Cancel edit</button>
       <div class="spacer"></div>
@@ -1056,45 +1054,51 @@
   </div>
 </div>
 
-<!-- Receive / Ship / Adjust — one small shared modal, its fields relabeled per action by
-     openInventoryMovementModal (see script below). -->
+<!-- Receive Stock — the only inventory movement now that Ship/Adjust have been removed (see
+     addInventoryPurchase in the script below). Every receipt is an immutable ledger row in
+     `purchases`; correcting a mistaken entry means deleting that row (Admin-only, from Purchase
+     History) rather than editing history in place. -->
 <div class="modalOverlay invMoveModal" id="invMoveOverlay" hidden>
   <div class="modal">
-    <h2 id="invMoveTitle">Receive stock</h2>
+    <h2 data-i18n="inv_move_title">Receive Stock</h2>
     <p class="invMoveCurrentQty" id="invMoveItemLine"></p>
     <div class="supAddRow" style="grid-template-columns:1fr;">
-      <label><span id="invMoveQtyLabel" data-i18n="inv_move_qty_label">Quantity</span>
+      <label><span data-i18n="inv_move_qty_label">Quantity Received</span>
         <input type="number" id="invMoveQtyInput" min="0" step="1">
       </label>
     </div>
-    <!-- Invoice-style pricing — only meaningful for Receive (purchase cost) and Ship (sale value);
-         hidden for Adjust, which is a pure quantity correction with no money changing hands. -->
-    <div id="invMoveInvoiceFields">
-      <div class="supAddRow">
-        <label><span data-i18n="inv_move_price_label">Price/Unit</span>
-          <input type="number" id="invMovePriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
-        </label>
-        <label><span data-i18n="inv_move_discount_label">Discount %</span>
-          <input type="number" id="invMoveDiscountInput" class="mono" min="0" max="100" step="0.01" placeholder="0">
-        </label>
-      </div>
-      <div class="supAddRow" style="grid-template-columns:1fr;">
-        <label><span data-i18n="inv_move_gst_label">GST %</span>
-          <input type="number" id="invMoveGstInput" class="mono" min="0" step="0.01" placeholder="0">
-        </label>
-      </div>
-      <p class="invMoveAmountLine" id="invMoveAmountLine"></p>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_move_price_label">Price/Unit</span>
+        <input type="number" id="invMovePriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
+      </label>
+      <label><span data-i18n="inv_move_discount_label">Discount %</span>
+        <input type="number" id="invMoveDiscountInput" class="mono" min="0" max="100" step="0.01" placeholder="0">
+      </label>
     </div>
     <div class="supAddRow" style="grid-template-columns:1fr;">
-      <label><span id="invMoveNoteLabel" data-i18n="inv_move_note_label">Note</span>
-        <input type="text" id="invMoveNoteInput" placeholder="e.g. supplier delivery, job card ref…" data-i18n-placeholder="inv_move_note_placeholder">
+      <label><span data-i18n="inv_move_gst_label">GST %</span>
+        <input type="number" id="invMoveGstInput" class="mono" min="0" step="0.01" placeholder="0">
+      </label>
+    </div>
+    <p class="invMoveAmountLine" id="invMoveAmountLine"></p>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_move_supplier_label">Supplier / Reference</span>
+        <input type="text" id="invMoveSupplierInput" placeholder="e.g. Acme Traders, PO-1042" data-i18n-placeholder="inv_move_supplier_placeholder">
+      </label>
+      <label><span data-i18n="inv_move_receivedby_label">Received By</span>
+        <input type="text" id="invMoveReceivedByInput" placeholder="Your name">
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_move_note_label">Note (optional)</span>
+        <input type="text" id="invMoveNoteInput" placeholder="Anything worth noting about this delivery…" data-i18n-placeholder="inv_move_note_placeholder">
       </label>
     </div>
     <div class="readOnlyNote" id="invMoveError" hidden style="margin-top:4px;"></div>
     <div class="modalActions" style="margin-top:10px;">
       <button type="button" class="btn ghost" id="invMoveCancelBtn" data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
-      <button type="button" class="btn primary" id="invMoveConfirmBtn" data-i18n="inv_move_confirm">Confirm</button>
+      <button type="button" class="btn primary" id="invMoveConfirmBtn" data-i18n="inv_move_confirm">Log Receipt</button>
     </div>
   </div>
 </div>
@@ -1976,45 +1980,45 @@
       banner_task_reorder_failed_prefix: "Couldn't save new order:",
       task_drag_handle_title: "Drag to reorder",
       nav_production: "Production", nav_inventory: "Inventory",
-      inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_low: "Low Stock", inv_stat_out: "Out of Stock",
+      inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_value: "Inventory Value", inv_stat_reorder: "Items to Reorder",
       btn_manage_inventory_items: "Manage Inventory Items",
-      inv_search_placeholder: "Search item, SKU, bin…",
-      inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category", inv_th_bin: "Bin",
-      inv_th_onhand: "On Hand", inv_th_price: "Price/Unit", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
-      inv_th_type: "Type", inv_th_qty: "Qty", inv_th_balance: "Balance After", inv_th_amount: "Amount",
-      inv_empty: "No inventory items yet. Use \"Manage Inventory Items\" to add your first one.",
-      inv_log_heading: "Activity Log",
-      inv_log_search_placeholder: "Search item or person…",
-      inv_log_empty: "No activity yet.",
-      inv_type_receive: "Received", inv_type_ship: "Shipped", inv_type_adjust: "Adjusted",
-      inv_action_receive: "Receive", inv_action_ship: "Ship", inv_action_adjust: "Adjust",
+      inv_search_placeholder: "Search item, SKU, category…",
+      inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category",
+      inv_th_onhand: "On Hand", inv_th_price: "Price/Unit", inv_th_value: "Value", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
+      inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
+      inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
+      inv_empty: "No products yet. Use \"Manage Inventory Items\" to add your first one.",
+      inv_reorder_heading: "Reorder List",
+      inv_reorder_empty: "Nothing needs reordering right now.",
+      inv_log_heading: "Purchase History",
+      inv_log_search_placeholder: "Search item, supplier, received by…",
+      inv_log_empty: "No purchases logged yet.",
+      inv_action_receive: "Receive",
       inv_status_ok: "In Stock", inv_status_low: "Low Stock", inv_status_out: "Out of Stock",
-      inv_zone_fast: "Fast-Pick (Front)", inv_zone_mid: "Mid Aisle", inv_zone_bulk: "Bulk Storage (Back)", inv_zone_ctrl: "Controlled Storage",
-      inv_suggest_zone: "Suggested: {zone}",
       inv_items_title: "Manage Inventory Items",
-      inv_items_desc: "Add each item your store carries — its SKU, category, bin/location, supplier, and reorder point. Anyone with access to the Inventory screen can then Receive/Ship against it; only Admin can add, edit, or adjust-correct items here.",
+      inv_items_desc: "Add each product your warehouse stocks — its SKU, category, unit, supplier, and reorder point. Anyone with access to the Inventory screen can then receive stock against it; only Admin can add, edit, or remove items here.",
       inv_items_search_placeholder: "Search by name, SKU, or category…",
       inv_items_empty: "No items found.",
       inv_item_name_placeholder: "e.g. Corrugated Sheet 3-ply",
       inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
       inv_items_price: "Default Price/Unit",
-      inv_bin_hint: "Tip: start the bin with a zone code (FAST-, MID-, BULK-, or CTRL- for controlled storage) so the Inventory screen can flag when an item might be better placed elsewhere.",
       inv_items_add: "Add item",
       inv_items_err_required: "Item name and SKU are required.",
       inv_items_err_duplicate_sku: "An item with this SKU already exists.",
       inv_items_err_save_failed: "Couldn't save item.",
       inv_items_err_remove_failed: "Couldn't remove item.",
-      inv_move_qty_label: "Quantity", inv_move_qty_label_adjust: "New counted quantity",
+      inv_move_title: "Receive Stock",
+      inv_move_qty_label: "Quantity Received",
       inv_move_price_label: "Price/Unit", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "Amount: {amount}",
-      inv_move_note_label: "Note", inv_move_note_label_adjust: "Reason for adjustment",
-      inv_move_note_placeholder: "e.g. supplier delivery, job card ref…",
-      inv_move_confirm: "Confirm",
+      inv_move_supplier_label: "Supplier / Reference", inv_move_supplier_placeholder: "e.g. Acme Traders, PO-1042",
+      inv_move_receivedby_label: "Received By",
+      inv_move_note_label: "Note (optional)",
+      inv_move_note_placeholder: "Anything worth noting about this delivery…",
+      inv_move_confirm: "Log Receipt",
       inv_move_current_line: "{name} — on hand: {qty} {unit}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
-      inv_err_bad_qty: "Enter a quantity of zero or more.",
-      inv_err_insufficient_stock: "Only {qty} on hand — cannot ship more than that.",
-      inv_err_adjust_needs_note: "Add a short reason for this adjustment.",
+      inv_err_bad_qty: "Enter a quantity greater than zero.",
       banner_inventory_sync_failed_prefix: "Inventory sync issue:"
     },
     hi: {
@@ -2194,45 +2198,45 @@
       banner_task_reorder_failed_prefix: "नया क्रम सेव नहीं हो सका:",
       task_drag_handle_title: "क्रम बदलने के लिए खींचें",
       nav_production: "प्रोडक्शन", nav_inventory: "इन्वेंटरी",
-      inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_low: "कम स्टॉक", inv_stat_out: "स्टॉक खत्म",
+      inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_value: "इन्वेंटरी मूल्य", inv_stat_reorder: "रीऑर्डर करने योग्य आइटम",
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
-      inv_search_placeholder: "आइटम, SKU, बिन खोजें…",
-      inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी", inv_th_bin: "बिन",
-      inv_th_onhand: "उपलब्ध मात्रा", inv_th_price: "मूल्य/यूनिट", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
-      inv_th_type: "प्रकार", inv_th_qty: "मात्रा", inv_th_balance: "शेष मात्रा", inv_th_amount: "राशि",
-      inv_empty: "अभी तक कोई इन्वेंटरी आइटम नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
-      inv_log_heading: "गतिविधि लॉग",
-      inv_log_search_placeholder: "आइटम या व्यक्ति खोजें…",
-      inv_log_empty: "अभी तक कोई गतिविधि नहीं।",
-      inv_type_receive: "प्राप्त", inv_type_ship: "भेजा गया", inv_type_adjust: "समायोजित",
-      inv_action_receive: "प्राप्त करें", inv_action_ship: "भेजें", inv_action_adjust: "समायोजित करें",
+      inv_search_placeholder: "आइटम, SKU, श्रेणी खोजें…",
+      inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी",
+      inv_th_onhand: "उपलब्ध मात्रा", inv_th_price: "मूल्य/यूनिट", inv_th_value: "मूल्य", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
+      inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
+      inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
+      inv_empty: "अभी तक कोई प्रोडक्ट नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
+      inv_reorder_heading: "रीऑर्डर सूची",
+      inv_reorder_empty: "अभी कुछ भी रीऑर्डर करने की ज़रूरत नहीं है।",
+      inv_log_heading: "खरीद इतिहास",
+      inv_log_search_placeholder: "आइटम, सप्लायर, या प्राप्तकर्ता खोजें…",
+      inv_log_empty: "अभी तक कोई खरीद दर्ज नहीं हुई।",
+      inv_action_receive: "प्राप्त करें",
       inv_status_ok: "स्टॉक में", inv_status_low: "कम स्टॉक", inv_status_out: "स्टॉक खत्म",
-      inv_zone_fast: "फास्ट-पिक (आगे)", inv_zone_mid: "मध्य गलियारा", inv_zone_bulk: "बल्क स्टोरेज (पीछे)", inv_zone_ctrl: "नियंत्रित भंडारण",
-      inv_suggest_zone: "सुझाव: {zone}",
       inv_items_title: "इन्वेंटरी आइटम प्रबंधित करें",
-      inv_items_desc: "अपने स्टोर के हर आइटम को जोड़ें — उसका SKU, श्रेणी, बिन/स्थान, सप्लायर, और रीऑर्डर पॉइंट। इन्वेंटरी स्क्रीन तक पहुंच रखने वाला कोई भी व्यक्ति फिर उस पर Receive/Ship कर सकता है; यहां आइटम जोड़ना, संपादित करना, या समायोजित-सुधार करना केवल Admin कर सकता है।",
+      inv_items_desc: "अपने वेयरहाउस का हर प्रोडक्ट जोड़ें — उसका SKU, श्रेणी, यूनिट, सप्लायर, और रीऑर्डर पॉइंट। इन्वेंटरी स्क्रीन तक पहुंच रखने वाला कोई भी व्यक्ति फिर उस पर स्टॉक प्राप्त कर सकता है; यहां आइटम जोड़ना, संपादित करना, या हटाना केवल Admin कर सकता है।",
       inv_items_search_placeholder: "नाम, SKU, या श्रेणी से खोजें…",
       inv_items_empty: "कोई आइटम नहीं मिला।",
       inv_item_name_placeholder: "जैसे, कोरुगेटेड शीट 3-प्लाई",
       inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
       inv_items_price: "डिफ़ॉल्ट मूल्य/यूनिट",
-      inv_bin_hint: "सुझाव: बिन की शुरुआत ज़ोन कोड से करें (FAST-, MID-, BULK-, या नियंत्रित भंडारण के लिए CTRL-) ताकि इन्वेंटरी स्क्रीन बेहतर जगह का सुझाव दे सके।",
       inv_items_add: "आइटम जोड़ें",
       inv_items_err_required: "आइटम का नाम और SKU आवश्यक हैं।",
       inv_items_err_duplicate_sku: "इस SKU वाला आइटम पहले से मौजूद है।",
       inv_items_err_save_failed: "आइटम सेव नहीं हो सका।",
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
-      inv_move_qty_label: "मात्रा", inv_move_qty_label_adjust: "नई गिनी गई मात्रा",
+      inv_move_title: "स्टॉक प्राप्त करें",
+      inv_move_qty_label: "प्राप्त मात्रा",
       inv_move_price_label: "मूल्य/यूनिट", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "राशि: {amount}",
-      inv_move_note_label: "नोट", inv_move_note_label_adjust: "समायोजन का कारण",
-      inv_move_note_placeholder: "जैसे, सप्लायर डिलीवरी, जॉब कार्ड संदर्भ…",
-      inv_move_confirm: "पुष्टि करें",
+      inv_move_supplier_label: "सप्लायर / संदर्भ", inv_move_supplier_placeholder: "जैसे, Acme Traders, PO-1042",
+      inv_move_receivedby_label: "प्राप्तकर्ता",
+      inv_move_note_label: "नोट (वैकल्पिक)",
+      inv_move_note_placeholder: "इस डिलीवरी के बारे में कोई भी उल्लेखनीय बात…",
+      inv_move_confirm: "रसीद दर्ज करें",
       inv_move_current_line: "{name} — उपलब्ध: {qty} {unit}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
-      inv_err_bad_qty: "शून्य या उससे अधिक मात्रा दर्ज करें।",
-      inv_err_insufficient_stock: "केवल {qty} उपलब्ध है — इससे अधिक नहीं भेजा जा सकता।",
-      inv_err_adjust_needs_note: "इस समायोजन के लिए संक्षिप्त कारण जोड़ें।",
+      inv_err_bad_qty: "शून्य से अधिक मात्रा दर्ज करें।",
       banner_inventory_sync_failed_prefix: "इन्वेंटरी सिंक समस्या:"
     },
     te: {
@@ -2412,45 +2416,45 @@
       banner_task_reorder_failed_prefix: "కొత్త క్రమం సేవ్ కాలేదు:",
       task_drag_handle_title: "క్రమం మార్చడానికి లాగండి",
       nav_production: "ప్రొడక్షన్", nav_inventory: "ఇన్వెంటరీ",
-      inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_low: "తక్కువ స్టాక్", inv_stat_out: "స్టాక్ లేదు",
+      inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_value: "ఇన్వెంటరీ విలువ", inv_stat_reorder: "రీఆర్డర్ చేయవలసిన ఐటమ్‌లు",
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
-      inv_search_placeholder: "ఐటమ్, SKU, బిన్ వెతకండి…",
-      inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ", inv_th_bin: "బిన్",
-      inv_th_onhand: "అందుబాటులో ఉంది", inv_th_price: "ధర/యూనిట్", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
-      inv_th_type: "రకం", inv_th_qty: "పరిమాణం", inv_th_balance: "మిగిలిన పరిమాణం", inv_th_amount: "మొత్తం",
-      inv_empty: "ఇంకా ఇన్వెంటరీ ఐటమ్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
-      inv_log_heading: "యాక్టివిటీ లాగ్",
-      inv_log_search_placeholder: "ఐటమ్ లేదా వ్యక్తిని వెతకండి…",
-      inv_log_empty: "ఇంకా ఎలాంటి యాక్టివిటీ లేదు.",
-      inv_type_receive: "స్వీకరించారు", inv_type_ship: "పంపారు", inv_type_adjust: "సవరించారు",
-      inv_action_receive: "స్వీకరించండి", inv_action_ship: "పంపండి", inv_action_adjust: "సవరించండి",
+      inv_search_placeholder: "ఐటమ్, SKU, కేటగిరీ వెతకండి…",
+      inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ",
+      inv_th_onhand: "అందుబాటులో ఉంది", inv_th_price: "ధర/యూనిట్", inv_th_value: "విలువ", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
+      inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
+      inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
+      inv_empty: "ఇంకా ప్రొడక్ట్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
+      inv_reorder_heading: "రీఆర్డర్ జాబితా",
+      inv_reorder_empty: "ప్రస్తుతం రీఆర్డర్ చేయవలసినది ఏమీ లేదు.",
+      inv_log_heading: "కొనుగోలు చరిత్ర",
+      inv_log_search_placeholder: "ఐటమ్, సప్లయర్, లేదా స్వీకరించినవారిని వెతకండి…",
+      inv_log_empty: "ఇంకా ఎలాంటి కొనుగోలు నమోదు కాలేదు.",
+      inv_action_receive: "స్వీకరించండి",
       inv_status_ok: "స్టాక్‌లో ఉంది", inv_status_low: "తక్కువ స్టాక్", inv_status_out: "స్టాక్ లేదు",
-      inv_zone_fast: "ఫాస్ట్-పిక్ (ముందు)", inv_zone_mid: "మధ్య వరుస", inv_zone_bulk: "బల్క్ స్టోరేజ్ (వెనుక)", inv_zone_ctrl: "నియంత్రిత నిల్వ",
-      inv_suggest_zone: "సూచన: {zone}",
       inv_items_title: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
-      inv_items_desc: "మీ స్టోర్‌లో ఉన్న ప్రతి ఐటమ్‌ను జోడించండి — దాని SKU, కేటగిరీ, బిన్/స్థానం, సప్లయర్, మరియు రీఆర్డర్ పాయింట్. ఇన్వెంటరీ స్క్రీన్‌కు యాక్సెస్ ఉన్న ఎవరైనా దానిపై Receive/Ship చేయవచ్చు; ఇక్కడ ఐటమ్‌లను జోడించడం, సవరించడం, లేదా సర్దుబాటు చేయడం అడ్మిన్ మాత్రమే చేయగలరు.",
+      inv_items_desc: "మీ వేర్‌హౌస్‌లో ఉన్న ప్రతి ప్రొడక్ట్‌ను జోడించండి — దాని SKU, కేటగిరీ, యూనిట్, సప్లయర్, మరియు రీఆర్డర్ పాయింట్. ఇన్వెంటరీ స్క్రీన్‌కు యాక్సెస్ ఉన్న ఎవరైనా దానిపై స్టాక్‌ను స్వీకరించవచ్చు; ఇక్కడ ఐటమ్‌లను జోడించడం, సవరించడం, లేదా తొలగించడం అడ్మిన్ మాత్రమే చేయగలరు.",
       inv_items_search_placeholder: "పేరు, SKU, లేదా కేటగిరీ ద్వారా వెతకండి…",
       inv_items_empty: "ఏ ఐటమ్‌లు కనుగొనబడలేదు.",
       inv_item_name_placeholder: "ఉదా. కొరుగేటెడ్ షీట్ 3-ప్లై",
       inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
       inv_items_price: "డిఫాల్ట్ ధర/యూనిట్",
-      inv_bin_hint: "సూచన: బిన్‌ను జోన్ కోడ్‌తో ప్రారంభించండి (FAST-, MID-, BULK-, లేదా నియంత్రిత నిల్వ కోసం CTRL-) తద్వారా ఇన్వెంటరీ స్క్రీన్ మెరుగైన స్థానాన్ని సూచించగలదు.",
       inv_items_add: "ఐటమ్ జోడించండి",
       inv_items_err_required: "ఐటమ్ పేరు మరియు SKU అవసరం.",
       inv_items_err_duplicate_sku: "ఈ SKUతో ఐటమ్ ఇప్పటికే ఉంది.",
       inv_items_err_save_failed: "ఐటమ్ సేవ్ కాలేదు.",
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
-      inv_move_qty_label: "పరిమాణం", inv_move_qty_label_adjust: "కొత్తగా లెక్కించిన పరిమాణం",
+      inv_move_title: "స్టాక్‌ను స్వీకరించండి",
+      inv_move_qty_label: "స్వీకరించిన పరిమాణం",
       inv_move_price_label: "ధర/యూనిట్", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "మొత్తం: {amount}",
-      inv_move_note_label: "నోట్", inv_move_note_label_adjust: "సర్దుబాటుకు కారణం",
-      inv_move_note_placeholder: "ఉదా. సప్లయర్ డెలివరీ, జాబ్ కార్డ్ రిఫరెన్స్…",
-      inv_move_confirm: "నిర్ధారించండి",
+      inv_move_supplier_label: "సప్లయర్ / రిఫరెన్స్", inv_move_supplier_placeholder: "ఉదా. Acme Traders, PO-1042",
+      inv_move_receivedby_label: "స్వీకరించినవారు",
+      inv_move_note_label: "నోట్ (ఐచ్ఛికం)",
+      inv_move_note_placeholder: "ఈ డెలివరీ గురించి గమనించదగినది ఏదైనా…",
+      inv_move_confirm: "రసీదు నమోదు చేయండి",
       inv_move_current_line: "{name} — అందుబాటులో ఉంది: {qty} {unit}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
-      inv_err_bad_qty: "సున్నా లేదా అంతకంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
-      inv_err_insufficient_stock: "అందుబాటులో {qty} మాత్రమే ఉంది — అంతకంటే ఎక్కువ పంపలేరు.",
-      inv_err_adjust_needs_note: "ఈ సర్దుబాటుకు సంక్షిప్త కారణాన్ని జోడించండి.",
+      inv_err_bad_qty: "సున్నా కంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
       banner_inventory_sync_failed_prefix: "ఇన్వెంటరీ సింక్ సమస్య:"
     }
   };
@@ -2554,10 +2558,10 @@
     db: firestoreDb,
     view: "board",
     appView: "production",  // "production" or "inventory" — see .mainNav / applyAppView
-    invCatalog: {},          // inventoryCatalog docs keyed by SKU — see subscribeInventory
-    invMovements: [],        // inventoryMovements, newest first — see subscribeInventory
+    invCatalog: {},          // `products` docs keyed by SKU — see subscribeInventory
+    invPurchases: [],        // `purchases` (receiving ledger), newest first — see subscribeInventory
     unsubInvCatalog: null,
-    unsubInvMovements: null,
+    unsubInvPurchases: null,
     date: todayStr(),
     shift: "",
     boardStage: "",
@@ -2610,15 +2614,16 @@
     inventoryView: document.getElementById("inventoryView"),
     invStatSkus: document.getElementById("invStatSkus"),
     invStatUnits: document.getElementById("invStatUnits"),
-    invStatLow: document.getElementById("invStatLow"),
-    invStatOut: document.getElementById("invStatOut"),
+    invStatValue: document.getElementById("invStatValue"),
+    invStatReorder: document.getElementById("invStatReorder"),
     manageInventoryItemsBtn: document.getElementById("manageInventoryItemsBtn"),
+    invReorderList: document.getElementById("invReorderList"),
+    invReorderEmpty: document.getElementById("invReorderEmpty"),
     invSearch: document.getElementById("invSearch"),
     invCategoryFilter: document.getElementById("invCategoryFilter"),
     invStockBody: document.getElementById("invStockBody"),
     invStockEmpty: document.getElementById("invStockEmpty"),
     invLogSearch: document.getElementById("invLogSearch"),
-    invLogTypeFilter: document.getElementById("invLogTypeFilter"),
     invLogBody: document.getElementById("invLogBody"),
     invLogEmpty: document.getElementById("invLogEmpty"),
     invItemsOverlay: document.getElementById("invItemsOverlay"),
@@ -2628,7 +2633,6 @@
     invItemNameInput: document.getElementById("invItemNameInput"),
     invItemSkuInput: document.getElementById("invItemSkuInput"),
     invItemCategorySelect: document.getElementById("invItemCategorySelect"),
-    invItemBinInput: document.getElementById("invItemBinInput"),
     invItemSupplierInput: document.getElementById("invItemSupplierInput"),
     invItemReorderInput: document.getElementById("invItemReorderInput"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
@@ -2638,16 +2642,14 @@
     invItemsError: document.getElementById("invItemsError"),
     invItemsCloseBtn: document.getElementById("invItemsCloseBtn"),
     invMoveOverlay: document.getElementById("invMoveOverlay"),
-    invMoveTitle: document.getElementById("invMoveTitle"),
     invMoveItemLine: document.getElementById("invMoveItemLine"),
-    invMoveQtyLabel: document.getElementById("invMoveQtyLabel"),
     invMoveQtyInput: document.getElementById("invMoveQtyInput"),
-    invMoveInvoiceFields: document.getElementById("invMoveInvoiceFields"),
     invMovePriceInput: document.getElementById("invMovePriceInput"),
     invMoveDiscountInput: document.getElementById("invMoveDiscountInput"),
     invMoveGstInput: document.getElementById("invMoveGstInput"),
     invMoveAmountLine: document.getElementById("invMoveAmountLine"),
-    invMoveNoteLabel: document.getElementById("invMoveNoteLabel"),
+    invMoveSupplierInput: document.getElementById("invMoveSupplierInput"),
+    invMoveReceivedByInput: document.getElementById("invMoveReceivedByInput"),
     invMoveNoteInput: document.getElementById("invMoveNoteInput"),
     invMoveError: document.getElementById("invMoveError"),
     invMoveCancelBtn: document.getElementById("invMoveCancelBtn"),
@@ -5214,28 +5216,18 @@
   }
 
   // ---------- Inventory Management (Store department's own screen — see .mainNav) ----------
-  // Two dedicated collections, separate from `entries`: inventoryCatalog (the item master, one
-  // doc per SKU, curated by Admin via Manage Inventory Items) and inventoryMovements (the ledger —
-  // one doc per Receive/Ship/Adjust event, generalizing Stock Summary's own proven
-  // opening+inward-outward=closing math to a per-SKU running balance instead of per
-  // Customer+Product). See the plan doc / PR description for why this isn't just another
-  // job-card stage.
+  // Receiving-only warehouse tracker (Ship/Adjust have been removed). Two dedicated collections,
+  // separate from `entries`: `products` (the item master, one doc per SKU, curated by Admin via
+  // Manage Inventory Items) and `purchases` (the receiving ledger — one immutable doc per Receive
+  // event). Stock on hand for a SKU is simply the live sum of its purchases' quantities; there is
+  // no running-balance field to keep in sync, so correcting a mistake means deleting the purchase
+  // row (Admin-only, from Purchase History) rather than editing history in place.
   var INV_CATEGORIES = ["Raw Material", "Packaging Consumable", "Spare Part", "Finished Component", "Chemical/Adhesive", "Stationery", "Other"];
-  var INV_ZONE_META = {
-    FAST: { label: function(){ return t("inv_zone_fast"); } },
-    MID:  { label: function(){ return t("inv_zone_mid"); } },
-    BULK: { label: function(){ return t("inv_zone_bulk"); } },
-    CTRL: { label: function(){ return t("inv_zone_ctrl"); } }
-  };
-  // Chemical/Adhesive always routes to Controlled Storage regardless of how often it moves —
-  // matches Manage Inventory Items' Category list above. Everything else is ranked by recent Ship
-  // velocity into Fast/Mid/Bulk (see suggestedInventoryZone).
-  var INV_FORCED_ZONE = { "chemical/adhesive": "CTRL" };
 
   function subscribeInventory(){
     if(state.unsubInvCatalog) state.unsubInvCatalog();
-    if(state.unsubInvMovements) state.unsubInvMovements();
-    state.unsubInvCatalog = state.db.collection("inventoryCatalog").onSnapshot(function(snap){
+    if(state.unsubInvPurchases) state.unsubInvPurchases();
+    state.unsubInvCatalog = state.db.collection("products").onSnapshot(function(snap){
       var map = {};
       snap.forEach(function(doc){ map[doc.id] = Object.assign({ sku: doc.id }, doc.data()); });
       state.invCatalog = map;
@@ -5243,24 +5235,20 @@
       if(state.appView === "inventory") renderInventory();
       if(el.invItemsOverlay && !el.invItemsOverlay.hidden) renderInvItemsList();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
-    // Newest first, capped — plenty for a store's day-to-day ledger; computeCurrentStockMap only
-    // needs the most recent row per SKU, and the Activity Log only shows a recent window anyway
-    // (same trade-off the main job-card Log view already makes).
-    state.unsubInvMovements = state.db.collection("inventoryMovements").orderBy("createdAt", "desc").limit(1000).onSnapshot(function(snap){
-      state.invMovements = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+    // Newest first, capped — plenty for a store's day-to-day ledger; computeCurrentStockMap sums
+    // every row per SKU (no running balance is stored), and Purchase History only shows a recent
+    // window anyway (same trade-off the main job-card Log view already makes).
+    state.unsubInvPurchases = state.db.collection("purchases").orderBy("createdAt", "desc").limit(1000).onSnapshot(function(snap){
+      state.invPurchases = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       if(state.appView === "inventory") renderInventory();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
 
-  // state.invMovements is newest-first; walking it oldest-to-newest and overwriting per SKU leaves
-  // each SKU's most recent quantityAfter — one pass, no per-item Firestore query needed (real-time
-  // stock visibility comes straight from the live onSnapshot above).
+  // Receive-only means stock on hand is just every purchase's qty summed per SKU — no running
+  // balance field, no need to walk newest-to-oldest looking for the latest one.
   function computeCurrentStockMap(){
     var map = {};
-    for(var i = state.invMovements.length - 1; i >= 0; i--){
-      var m = state.invMovements[i];
-      map[m.itemSku] = m.quantityAfter;
-    }
+    state.invPurchases.forEach(function(p){ map[p.sku] = (map[p.sku] || 0) + (Number(p.qty) || 0); });
     return map;
   }
   function currentStockFor(sku){ var map = computeCurrentStockMap(); return map.hasOwnProperty(sku) ? map[sku] : 0; }
@@ -5273,39 +5261,14 @@
   function inventoryStatusLabel(cls){
     return cls === "crit" ? t("inv_status_out") : cls === "warn" ? t("inv_status_low") : t("inv_status_ok");
   }
-  function shippedQtyFor(sku){
-    var total = 0;
-    state.invMovements.forEach(function(m){ if(m.itemSku === sku && m.type === "ship") total += Number(m.qty) || 0; });
-    return total;
-  }
-  function zoneFromBin(bin){
-    if(!bin) return null;
-    var z = String(bin).split("-")[0].toUpperCase();
-    return INV_ZONE_META[z] ? z : null;
-  }
-  function suggestedInventoryZone(item){
-    var cat = (item.category || "").toLowerCase();
-    if(INV_FORCED_ZONE[cat]) return INV_FORCED_ZONE[cat];
-    var pool = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
-      .filter(function(i){ return !INV_FORCED_ZONE[(i.category || "").toLowerCase()]; });
-    var ranked = pool.map(function(i){ return { sku: i.sku, shipped: shippedQtyFor(i.sku) }; })
-      .sort(function(a, b){ return b.shipped - a.shipped; });
-    var idx = -1;
-    for(var i = 0; i < ranked.length; i++){ if(ranked[i].sku === item.sku){ idx = i; break; } }
-    if(idx === -1 || ranked[idx].shipped <= 0) return "BULK";
-    var n = ranked.length, topCut = Math.max(1, Math.ceil(n / 3)), midCut = Math.max(topCut + 1, Math.ceil(2 * n / 3));
-    if(idx < topCut) return "FAST";
-    if(idx < midCut) return "MID";
-    return "BULK";
-  }
 
   function formatInr(n){
     n = Number(n) || 0;
     return "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  // Computes the invoice-style total for one movement's price fields, same order of operations as
-  // any GST purchase/sales invoice: qty*price = subtotal, minus a % discount, then GST % applied
-  // on top of the discounted (taxable) amount.
+  // Computes the invoice-style total for one purchase's price fields, same order of operations as
+  // any GST purchase invoice: qty*price = subtotal, minus a % discount, then GST % applied on top
+  // of the discounted (taxable) amount.
   function computeInventoryLineAmount(qty, pricePerUnit, discountPct, gstPct){
     var subtotal = (Number(qty) || 0) * (Number(pricePerUnit) || 0);
     var afterDiscount = subtotal - subtotal * ((Number(discountPct) || 0) / 100);
@@ -5313,38 +5276,23 @@
     return total;
   }
 
-  // Records one movement and returns the write's promise. `amount` means "quantity moved" for
-  // receive/ship, and "the new counted total" for adjust (delta is computed here either way) —
-  // mirrors how refreshStockSummaryCalc treats Stock Summary's Inward/Outward vs a plain balance.
-  // `priceFields` (Receive/Ship only) is the optional invoice-style line: { pricePerUnit,
-  // discountPct, gstPct } — Adjust never carries these since no money changes hands there.
-  function addInventoryMovement(sku, type, amount, note, priceFields){
+  // Records one receipt and returns the write's promise — the only inventory movement there is
+  // now. `priceFields` is { pricePerUnit, discountPct, gstPct }.
+  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
-    amount = Number(amount);
-    if(!isFinite(amount) || amount < 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
-    var current = currentStockFor(sku);
-    var delta, qtyForLog, newQty;
-    if(type === "receive"){ delta = amount; qtyForLog = amount; newQty = current + amount; }
-    else if(type === "ship"){
-      if(amount > current) return Promise.reject(new Error(tf("inv_err_insufficient_stock", { qty: current })));
-      delta = -amount; qtyForLog = -amount; newQty = current - amount;
-    } else { // adjust
-      delta = amount - current; qtyForLog = delta; newQty = amount;
-      if(!note){ return Promise.reject(new Error(t("inv_err_adjust_needs_note"))); }
-    }
+    qty = Number(qty);
+    if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    var pricePerUnit = Number(priceFields && priceFields.pricePerUnit) || 0;
+    var discountPct = Number(priceFields && priceFields.discountPct) || 0;
+    var gstPct = Number(priceFields && priceFields.gstPct) || 0;
     var payload = {
-      itemSku: sku, itemName: item.name, type: type, qty: qtyForLog, delta: delta, quantityAfter: newQty,
-      note: note || "", actor: deviceSupervisorName || "", role: deviceSupervisorRole || "",
+      sku: sku, itemName: item.name, qty: qty, pricePerUnit: pricePerUnit, discountPct: discountPct, gstPct: gstPct,
+      lineAmount: computeInventoryLineAmount(qty, pricePerUnit, discountPct, gstPct),
+      supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
       date: state.date, shift: state.shift || "", createdAt: Date.now()
     };
-    if(priceFields && (type === "receive" || type === "ship")){
-      payload.pricePerUnit = Number(priceFields.pricePerUnit) || 0;
-      payload.discountPct = Number(priceFields.discountPct) || 0;
-      payload.gstPct = Number(priceFields.gstPct) || 0;
-      payload.lineAmount = computeInventoryLineAmount(amount, payload.pricePerUnit, payload.discountPct, payload.gstPct);
-    }
-    return state.db.collection("inventoryMovements").add(payload);
+    return state.db.collection("purchases").add(payload);
   }
 
   function renderInventoryCategoryFilterOptions(){
@@ -5356,23 +5304,41 @@
     el.invCategoryFilter.value = cats[prev] ? prev : "";
   }
 
+  // Items at or below their reorder point, most urgent (biggest deficit) first — mirrors the
+  // stand-alone Intake Ledger tool's Dashboard reorder list.
+  function renderInventoryReorderList(items, stockMap){
+    var reorderItems = [];
+    items.forEach(function(item){
+      var qty = stockMap[item.sku] || 0;
+      var cls = inventoryStatus(qty, item.reorderPoint);
+      if(cls !== "good") reorderItems.push({ item: item, qty: qty, cls: cls, deficit: (Number(item.reorderPoint) || 0) - qty });
+    });
+    reorderItems.sort(function(a, b){ return b.deficit - a.deficit; });
+    el.invReorderEmpty.hidden = reorderItems.length !== 0;
+    el.invReorderList.innerHTML = reorderItems.map(function(r){
+      return '<div class="invReorderRow"><span class="invReorderName">' + esc(r.item.name) + "</span>" +
+        '<span class="invReorderMeta">' + r.qty.toLocaleString() + " / " + (Number(r.item.reorderPoint) || 0).toLocaleString() + " " + esc(r.item.unit || "") + "</span>" +
+        '<span class="capChip ' + r.cls + '">' + esc(inventoryStatusLabel(r.cls)) + "</span></div>";
+    }).join("");
+  }
+
   function renderInventory(){
     var items = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
       .sort(function(a, b){ return (a.name || "").localeCompare(b.name || ""); });
     var stockMap = computeCurrentStockMap();
 
-    var totalSkus = items.length, totalUnits = 0, lowCount = 0, outCount = 0;
+    var totalSkus = items.length, totalUnits = 0, totalValue = 0, reorderCount = 0;
     items.forEach(function(i){
       var qty = stockMap[i.sku] || 0;
       totalUnits += qty;
-      var s = inventoryStatus(qty, i.reorderPoint);
-      if(s === "warn") lowCount++;
-      if(s === "crit") outCount++;
+      totalValue += qty * (Number(i.defaultPrice) || 0);
+      if(inventoryStatus(qty, i.reorderPoint) !== "good") reorderCount++;
     });
     el.invStatSkus.textContent = totalSkus;
     el.invStatUnits.textContent = totalUnits.toLocaleString();
-    el.invStatLow.textContent = lowCount;
-    el.invStatOut.textContent = outCount;
+    el.invStatValue.textContent = formatInr(totalValue);
+    el.invStatReorder.textContent = reorderCount;
+    renderInventoryReorderList(items, stockMap);
 
     var q = (el.invSearch.value || "").trim().toLowerCase();
     var catFilter = el.invCategoryFilter.value;
@@ -5380,7 +5346,7 @@
     var canMove = canManage || deviceCanViewStage("Inventory Management");
     var rows = items.filter(function(i){
       if(catFilter && i.category !== catFilter) return false;
-      if(q && ((i.name || "") + " " + (i.sku || "") + " " + (i.bin || "")).toLowerCase().indexOf(q) === -1) return false;
+      if(q && ((i.name || "") + " " + (i.sku || "") + " " + (i.category || "")).toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
 
@@ -5389,18 +5355,15 @@
     rows.forEach(function(item){
       var qty = stockMap[item.sku] || 0;
       var sClass = inventoryStatus(qty, item.reorderPoint);
-      var curZone = zoneFromBin(item.bin);
-      var suggZone = suggestedInventoryZone(item);
-      var placementHint = (curZone && curZone !== suggZone)
-        ? '<span class="invPlacementHint">⚑ ' + tf("inv_suggest_zone", { zone: esc(INV_ZONE_META[suggZone].label()) }) + "</span>" : "";
+      var value = qty * (Number(item.defaultPrice) || 0);
       var tr = document.createElement("tr");
       tr.innerHTML =
-        "<td>" + esc(item.name) + placementHint + "</td>" +
+        "<td>" + esc(item.name) + "</td>" +
         '<td class="mono">' + esc(item.sku) + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
-        '<td><span class="capChip good" style="cursor:default;">' + esc(item.bin || "—") + "</span></td>" +
         '<td class="mono">' + qty.toLocaleString() + " " + esc(item.unit || "") + "</td>" +
         '<td class="mono">' + (item.defaultPrice ? esc(formatInr(item.defaultPrice)) : "—") + "</td>" +
+        '<td class="mono">' + esc(formatInr(value)) + "</td>" +
         '<td class="mono">' + (Number(item.reorderPoint) || 0).toLocaleString() + "</td>" +
         '<td><span class="capChip ' + sClass + '">' + esc(inventoryStatusLabel(sClass)) + "</span></td>" +
         '<td class="invRowActions"></td>';
@@ -5408,18 +5371,8 @@
       if(canMove){
         var recvBtn = document.createElement("button");
         recvBtn.type = "button"; recvBtn.className = "btn ghost invSmallBtn"; recvBtn.textContent = t("inv_action_receive");
-        recvBtn.addEventListener("click", function(){ openInventoryMovementModal(item.sku, "receive"); });
+        recvBtn.addEventListener("click", function(){ openReceiveModal(item.sku); });
         actionsCell.appendChild(recvBtn);
-        var shipBtn = document.createElement("button");
-        shipBtn.type = "button"; shipBtn.className = "btn ghost invSmallBtn"; shipBtn.textContent = t("inv_action_ship");
-        shipBtn.addEventListener("click", function(){ openInventoryMovementModal(item.sku, "ship"); });
-        actionsCell.appendChild(shipBtn);
-      }
-      if(canManage){
-        var adjBtn = document.createElement("button");
-        adjBtn.type = "button"; adjBtn.className = "btn ghost invSmallBtn"; adjBtn.textContent = t("inv_action_adjust");
-        adjBtn.addEventListener("click", function(){ openInventoryMovementModal(item.sku, "adjust"); });
-        actionsCell.appendChild(adjBtn);
       }
       el.invStockBody.appendChild(tr);
     });
@@ -5429,30 +5382,39 @@
 
   function renderInventoryLog(){
     var q = (el.invLogSearch.value || "").trim().toLowerCase();
-    var typeFilter = el.invLogTypeFilter.value;
-    var rows = state.invMovements.filter(function(m){
-      if(typeFilter && m.type !== typeFilter) return false;
-      if(q && ((m.itemName || "") + " " + (m.actor || "") + " " + (m.note || "")).toLowerCase().indexOf(q) === -1) return false;
-      return true;
+    var rows = state.invPurchases.filter(function(p){
+      if(!q) return true;
+      return ((p.itemName || "") + " " + (p.supplier || "") + " " + (p.receivedBy || "")).toLowerCase().indexOf(q) !== -1;
     });
+    var canManage = state.isAdminDevice;
     el.invLogBody.innerHTML = "";
     el.invLogEmpty.hidden = rows.length !== 0;
-    var typeLabel = { receive: t("inv_type_receive"), ship: t("inv_type_ship"), adjust: t("inv_type_adjust") };
-    rows.slice(0, 300).forEach(function(m){
+    rows.slice(0, 300).forEach(function(p){
       var tr = document.createElement("tr");
-      var qtySign = m.qty > 0 ? "+" : "";
-      // Amount only exists on Receive/Ship rows (see addInventoryMovement) — Adjust rows never
-      // carry pricing since no money changes hands on a cycle-count correction.
-      var amountText = m.lineAmount != null ? formatInr(m.lineAmount) : "—";
       tr.innerHTML =
-        "<td>" + esc(m.itemName) + "</td>" +
-        "<td>" + esc(m.date || "") + "</td>" +
-        "<td>" + esc(typeLabel[m.type] || m.type) + "</td>" +
-        '<td class="mono">' + qtySign + (Number(m.qty) || 0).toLocaleString() + "</td>" +
-        '<td class="mono">' + (Number(m.quantityAfter) || 0).toLocaleString() + "</td>" +
-        '<td class="mono">' + esc(amountText) + "</td>" +
-        "<td>" + esc(m.note || "") + "</td>" +
-        "<td>" + esc(m.actor || "") + "</td>";
+        "<td>" + esc(p.date || "") + "</td>" +
+        "<td>" + esc(p.itemName) + "</td>" +
+        '<td class="mono">' + (Number(p.qty) || 0).toLocaleString() + "</td>" +
+        '<td class="mono">' + esc(formatInr(p.pricePerUnit)) + "</td>" +
+        '<td class="mono">' + (Number(p.discountPct) || 0) + "</td>" +
+        '<td class="mono">' + (Number(p.gstPct) || 0) + "</td>" +
+        '<td class="mono">' + esc(formatInr(p.lineAmount)) + "</td>" +
+        "<td>" + esc(p.supplier || "—") + "</td>" +
+        "<td>" + esc(p.receivedBy || "—") + "</td>" +
+        "<td>" + esc(p.note || "") + "</td>" +
+        '<td class="invRowActions"></td>';
+      if(canManage){
+        var delBtn = document.createElement("button");
+        delBtn.type = "button"; delBtn.className = "btn ghost invSmallBtn"; delBtn.textContent = t("generic_delete");
+        delBtn.addEventListener("click", function(){
+          delBtn.disabled = true;
+          state.db.collection("purchases").doc(p.id).delete().catch(function(){
+            delBtn.disabled = false;
+            showBanner(t("inv_items_err_remove_failed"));
+          });
+        });
+        tr.querySelector(".invRowActions").appendChild(delBtn);
+      }
       el.invLogBody.appendChild(tr);
     });
   }
@@ -5460,7 +5422,6 @@
   el.invSearch.addEventListener("input", renderInventory);
   el.invCategoryFilter.addEventListener("change", renderInventory);
   el.invLogSearch.addEventListener("input", renderInventoryLog);
-  el.invLogTypeFilter.addEventListener("change", renderInventoryLog);
 
   // ---------- Manage Inventory Items (Admin-only catalog editor) ----------
   var editingInvSku = null;
@@ -5475,7 +5436,6 @@
     el.invItemSkuInput.value = "";
     el.invItemSkuInput.disabled = false;
     el.invItemCategorySelect.value = INV_CATEGORIES[0];
-    el.invItemBinInput.value = "";
     el.invItemSupplierInput.value = "";
     el.invItemReorderInput.value = "";
     el.invItemUnitInput.value = "";
@@ -5490,7 +5450,6 @@
     el.invItemSkuInput.value = item.sku;
     el.invItemSkuInput.disabled = true; // editing keeps the same SKU (the document id)
     el.invItemCategorySelect.value = item.category || INV_CATEGORIES[0];
-    el.invItemBinInput.value = item.bin || "";
     el.invItemSupplierInput.value = item.supplier || "";
     el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
     el.invItemUnitInput.value = item.unit || "";
@@ -5514,7 +5473,7 @@
       row.className = "invItemRow";
       row.innerHTML =
         '<div><div class="invItemName">' + esc(item.name) + '</div>' +
-        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") + " · " + esc(item.bin || "—") +
+        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") +
           (item.defaultPrice ? " · " + esc(formatInr(item.defaultPrice)) : "") + "</div></div>" +
         '<button type="button" class="btn ghost small" data-edit-sku="' + esc(item.sku) + '">' + esc(t("sup_edit")) + "</button> " +
         '<button type="button" class="btn danger small" data-del-sku="' + esc(item.sku) + '">' + esc(t("sup_remove")) + "</button>";
@@ -5530,10 +5489,10 @@
       btn.addEventListener("click", function(){
         var sku = btn.getAttribute("data-del-sku");
         btn.disabled = true;
-        // Deleting the catalog entry does not touch its movement history — inventoryMovements
-        // keeps itemName/itemSku by value, same as Stock Summary keeps a Customer+Product's
-        // entries even after that catalog pairing changes — so the Activity Log trail survives.
-        state.db.collection("inventoryCatalog").doc(sku).delete().then(function(){
+        // Deleting the catalog entry does not touch its purchase history — purchases keep
+        // itemName/sku by value, same as Stock Summary keeps a Customer+Product's entries even
+        // after that catalog pairing changes — so the Purchase History trail survives.
+        state.db.collection("products").doc(sku).delete().then(function(){
           if(editingInvSku === sku) resetInvItemForm();
         }).catch(function(){
           btn.disabled = false;
@@ -5572,7 +5531,7 @@
       return;
     }
     var payload = {
-      name: name, category: el.invItemCategorySelect.value, bin: el.invItemBinInput.value.trim(),
+      name: name, category: el.invItemCategorySelect.value,
       supplier: el.invItemSupplierInput.value.trim(), reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
       unit: el.invItemUnitInput.value.trim() || "units", defaultPrice: isFinite(defaultPrice) ? defaultPrice : 0,
       updatedAt: Date.now()
@@ -5580,8 +5539,8 @@
     if(!editingInvSku) payload.createdAt = Date.now();
     el.invItemAddBtn.disabled = true;
     var write = editingInvSku
-      ? state.db.collection("inventoryCatalog").doc(sku).update(payload)
-      : state.db.collection("inventoryCatalog").doc(sku).set(payload);
+      ? state.db.collection("products").doc(sku).update(payload)
+      : state.db.collection("products").doc(sku).set(payload);
     write.then(function(){
       el.invItemAddBtn.disabled = false;
       resetInvItemForm();
@@ -5593,33 +5552,27 @@
     });
   });
 
-  // ---------- Receive / Ship / Adjust modal ----------
-  var invMoveContext = null; // { sku, type }
+  // ---------- Receive Stock modal ----------
+  var invMoveContext = null; // { sku }
   function refreshInvMoveAmount(){
-    if(el.invMoveInvoiceFields.hidden) return;
     var total = computeInventoryLineAmount(el.invMoveQtyInput.value, el.invMovePriceInput.value, el.invMoveDiscountInput.value, el.invMoveGstInput.value);
     el.invMoveAmountLine.textContent = tf("inv_move_amount_line", { amount: formatInr(total) });
   }
-  function openInventoryMovementModal(sku, type){
+  function openReceiveModal(sku){
     var item = state.invCatalog[sku];
     if(!item) return;
-    invMoveContext = { sku: sku, type: type };
+    invMoveContext = { sku: sku };
     var current = currentStockFor(sku);
-    var titleKey = type === "receive" ? "inv_action_receive" : type === "ship" ? "inv_action_ship" : "inv_action_adjust";
-    el.invMoveTitle.textContent = t(titleKey);
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
-    el.invMoveQtyLabel.textContent = type === "adjust" ? t("inv_move_qty_label_adjust") : t("inv_move_qty_label");
-    el.invMoveQtyInput.value = type === "adjust" ? current : "";
-    // Invoice-style pricing only applies to Receive (cost) / Ship (sale value) — Adjust is a pure
-    // quantity correction, so no money is recorded against it. Price/Unit pre-fills from the
-    // item's catalog default (set in Manage Inventory Items) but stays editable per transaction,
-    // since the actual purchase/sale price can vary each time.
-    el.invMoveInvoiceFields.hidden = type === "adjust";
-    el.invMovePriceInput.value = (type !== "adjust" && item.defaultPrice) ? item.defaultPrice : "";
+    el.invMoveQtyInput.value = "";
+    // Price/Unit pre-fills from the item's catalog default (set in Manage Inventory Items) but
+    // stays editable per transaction, since the actual purchase price can vary each time.
+    el.invMovePriceInput.value = item.defaultPrice || "";
     el.invMoveDiscountInput.value = "";
     el.invMoveGstInput.value = "";
     refreshInvMoveAmount();
-    el.invMoveNoteLabel.textContent = type === "adjust" ? t("inv_move_note_label_adjust") : t("inv_move_note_label");
+    el.invMoveSupplierInput.value = item.supplier || "";
+    el.invMoveReceivedByInput.value = deviceSupervisorName || "";
     el.invMoveNoteInput.value = "";
     el.invMoveError.hidden = true;
     el.invMoveOverlay.hidden = false;
@@ -5636,10 +5589,8 @@
     if(!invMoveContext) return;
     el.invMoveError.hidden = true;
     el.invMoveConfirmBtn.disabled = true;
-    var priceFields = el.invMoveInvoiceFields.hidden ? null : {
-      pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value
-    };
-    addInventoryMovement(invMoveContext.sku, invMoveContext.type, el.invMoveQtyInput.value, el.invMoveNoteInput.value.trim(), priceFields)
+    var priceFields = { pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value };
+    addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value)
       .then(function(){
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveOverlay.hidden = true;
