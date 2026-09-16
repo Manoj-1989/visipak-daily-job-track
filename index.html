@@ -851,6 +851,7 @@
         <thead>
           <tr>
             <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
+            <th data-i18n="inv_items_unit">Unit</th>
             <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
             <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
             <th data-i18n="inv_th_status">Status</th><th></th>
@@ -1026,6 +1027,7 @@
     <div class="supAddRow">
       <label><span data-i18n="inv_th_category">Category</span>
         <select id="invItemCategorySelect"></select>
+        <input type="text" id="invItemCategoryCustomInput" placeholder="Type new category name" data-i18n-placeholder="inv_items_category_custom_placeholder" hidden style="margin-top:6px;">
       </label>
       <label><span data-i18n="inv_items_unit">Unit</span>
         <input type="text" id="invItemUnitInput" placeholder="e.g. sheets, kg, rolls" data-i18n-placeholder="inv_items_unit_placeholder">
@@ -2049,8 +2051,11 @@
       inv_item_name_placeholder: "e.g. Corrugated Sheet 3-ply",
       inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
       inv_items_price: "Default Price/Unit",
+      inv_items_category_custom_option: "+ Add new category…",
+      inv_items_category_custom_placeholder: "Type new category name",
       inv_items_add: "Add item",
       inv_items_err_required: "Item name and SKU are required.",
+      inv_items_err_category_required: "Please type a name for the new category.",
       inv_items_err_duplicate_sku: "An item with this SKU already exists.",
       inv_items_err_save_failed: "Couldn't save item.",
       inv_items_err_remove_failed: "Couldn't remove item.",
@@ -2279,8 +2284,11 @@
       inv_item_name_placeholder: "जैसे, कोरुगेटेड शीट 3-प्लाई",
       inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
       inv_items_price: "डिफ़ॉल्ट मूल्य/यूनिट",
+      inv_items_category_custom_option: "+ नई श्रेणी जोड़ें…",
+      inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
       inv_items_add: "आइटम जोड़ें",
       inv_items_err_required: "आइटम का नाम और SKU आवश्यक हैं।",
+      inv_items_err_category_required: "कृपया नई श्रेणी के लिए एक नाम लिखें।",
       inv_items_err_duplicate_sku: "इस SKU वाला आइटम पहले से मौजूद है।",
       inv_items_err_save_failed: "आइटम सेव नहीं हो सका।",
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
@@ -2509,8 +2517,11 @@
       inv_item_name_placeholder: "ఉదా. కొరుగేటెడ్ షీట్ 3-ప్లై",
       inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
       inv_items_price: "డిఫాల్ట్ ధర/యూనిట్",
+      inv_items_category_custom_option: "+ కొత్త కేటగిరీ జోడించండి…",
+      inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
       inv_items_add: "ఐటమ్ జోడించండి",
       inv_items_err_required: "ఐటమ్ పేరు మరియు SKU అవసరం.",
+      inv_items_err_category_required: "దయచేసి కొత్త కేటగిరీ కోసం ఒక పేరు టైప్ చేయండి.",
       inv_items_err_duplicate_sku: "ఈ SKUతో ఐటమ్ ఇప్పటికే ఉంది.",
       inv_items_err_save_failed: "ఐటమ్ సేవ్ కాలేదు.",
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
@@ -2719,6 +2730,7 @@
     invItemNameInput: document.getElementById("invItemNameInput"),
     invItemSkuInput: document.getElementById("invItemSkuInput"),
     invItemCategorySelect: document.getElementById("invItemCategorySelect"),
+    invItemCategoryCustomInput: document.getElementById("invItemCategoryCustomInput"),
     invItemSupplierInput: document.getElementById("invItemSupplierInput"),
     invItemReorderInput: document.getElementById("invItemReorderInput"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
@@ -5329,7 +5341,7 @@
       state.invCatalog = map;
       renderInventoryCategoryFilterOptions();
       if(state.appView === "inventory") renderInventory();
-      if(el.invItemsOverlay && !el.invItemsOverlay.hidden) renderInvItemsList();
+      if(el.invItemsOverlay && !el.invItemsOverlay.hidden){ renderInvItemsList(); renderInvItemCategoryOptions(); }
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
     // Newest first, capped — plenty for a store's day-to-day ledger; computeCurrentStockMap sums
     // every row per SKU (no running balance is stored), and Purchase History only shows a recent
@@ -5538,7 +5550,8 @@
         "<td>" + esc(item.name) + "</td>" +
         '<td class="mono">' + esc(item.sku) + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
-        '<td class="mono">' + b.available.toLocaleString() + " " + esc(item.unit || "") + "</td>" +
+        "<td>" + esc(item.unit || "—") + "</td>" +
+        '<td class="mono">' + b.available.toLocaleString() + "</td>" +
         '<td class="mono">' + b.inUse.toLocaleString() + "</td>" +
         '<td class="mono">' + b.damaged.toLocaleString() + "</td>" +
         '<td class="mono">' + (item.defaultPrice ? esc(formatInr(item.defaultPrice)) : "—") + "</td>" +
@@ -5608,13 +5621,13 @@
 
   // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
   function buildInventoryStockCsv(items, statusMap){
-    var header = ["Item", "SKU", "Category", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
+    var header = ["Item", "SKU", "Category", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
     var lines = [header.map(csvEscape).join(",")];
     items.forEach(function(item){
       var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       lines.push([
-        item.name, item.sku, item.category || "", b.available, b.inUse, b.damaged,
+        item.name, item.sku, item.category || "", item.unit || "", b.available, b.inUse, b.damaged,
         (Number(item.defaultPrice) || 0).toFixed(2), (b.available * (Number(item.defaultPrice) || 0)).toFixed(2),
         Number(item.reorderPoint) || 0, inventoryStatusLabel(sClass)
       ].map(csvEscape).join(","));
@@ -5646,9 +5659,27 @@
 
   // ---------- Manage Inventory Items (Admin-only catalog editor) ----------
   var editingInvSku = null;
-  INV_CATEGORIES.forEach(function(c){
-    var o = document.createElement("option"); o.value = c; o.textContent = c;
-    el.invItemCategorySelect.appendChild(o);
+  // The Category dropdown always offers the fixed starter list plus every category any product
+  // already uses (so a category someone typed in via "+ Add new category" stays selectable for
+  // every other item too), and a trailing "+ Add new category" option that reveals a free-text
+  // input — categories aren't a separate collection, they're just whatever string is saved on a
+  // product, the same way renderInventoryCategoryFilterOptions derives the Current Stock filter.
+  function renderInvItemCategoryOptions(){
+    var cats = {};
+    INV_CATEGORIES.forEach(function(c){ cats[c] = true; });
+    Object.keys(state.invCatalog).forEach(function(sku){ var c = state.invCatalog[sku].category; if(c) cats[c] = true; });
+    var prev = el.invItemCategorySelect.value;
+    el.invItemCategorySelect.innerHTML =
+      Object.keys(cats).sort().map(function(c){ return '<option value="' + esc(c) + '">' + esc(c) + "</option>"; }).join("") +
+      '<option value="__custom__">' + esc(t("inv_items_category_custom_option")) + "</option>";
+    el.invItemCategorySelect.value = (cats[prev] || prev === "__custom__") ? prev : INV_CATEGORIES[0];
+  }
+  renderInvItemCategoryOptions();
+  el.invItemCategorySelect.addEventListener("change", function(){
+    var isCustom = el.invItemCategorySelect.value === "__custom__";
+    el.invItemCategoryCustomInput.hidden = !isCustom;
+    if(isCustom) el.invItemCategoryCustomInput.focus();
+    else el.invItemCategoryCustomInput.value = "";
   });
 
   function resetInvItemForm(){
@@ -5656,7 +5687,10 @@
     el.invItemNameInput.value = "";
     el.invItemSkuInput.value = "";
     el.invItemSkuInput.disabled = false;
+    renderInvItemCategoryOptions();
     el.invItemCategorySelect.value = INV_CATEGORIES[0];
+    el.invItemCategoryCustomInput.hidden = true;
+    el.invItemCategoryCustomInput.value = "";
     el.invItemSupplierInput.value = "";
     el.invItemReorderInput.value = "";
     el.invItemUnitInput.value = "";
@@ -5670,7 +5704,20 @@
     el.invItemNameInput.value = item.name || "";
     el.invItemSkuInput.value = item.sku;
     el.invItemSkuInput.disabled = true; // editing keeps the same SKU (the document id)
-    el.invItemCategorySelect.value = item.category || INV_CATEGORIES[0];
+    renderInvItemCategoryOptions();
+    var cat = item.category || INV_CATEGORIES[0];
+    el.invItemCategorySelect.value = cat;
+    if(el.invItemCategorySelect.value !== cat){
+      // The item's category isn't one of the dropdown's options for some reason (shouldn't
+      // normally happen, since the dropdown includes every category in use) — fall back to the
+      // custom-entry slot so the existing value is never silently dropped.
+      el.invItemCategorySelect.value = "__custom__";
+      el.invItemCategoryCustomInput.hidden = false;
+      el.invItemCategoryCustomInput.value = cat;
+    } else {
+      el.invItemCategoryCustomInput.hidden = true;
+      el.invItemCategoryCustomInput.value = "";
+    }
     el.invItemSupplierInput.value = item.supplier || "";
     el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
     el.invItemUnitInput.value = item.unit || "";
@@ -5738,11 +5785,18 @@
   el.invItemAddBtn.addEventListener("click", function(){
     var sku = editingInvSku || el.invItemSkuInput.value.trim().toUpperCase().replace(/\s+/g, "-");
     var name = el.invItemNameInput.value.trim();
+    var category = el.invItemCategorySelect.value === "__custom__"
+      ? el.invItemCategoryCustomInput.value.trim() : el.invItemCategorySelect.value;
     var reorderPoint = Number(el.invItemReorderInput.value);
     var defaultPrice = Number(el.invItemPriceInput.value);
     el.invItemsError.hidden = true;
     if(!sku || !name){
       el.invItemsError.textContent = t("inv_items_err_required");
+      el.invItemsError.hidden = false;
+      return;
+    }
+    if(el.invItemCategorySelect.value === "__custom__" && !category){
+      el.invItemsError.textContent = t("inv_items_err_category_required");
       el.invItemsError.hidden = false;
       return;
     }
@@ -5752,7 +5806,7 @@
       return;
     }
     var payload = {
-      name: name, category: el.invItemCategorySelect.value,
+      name: name, category: category,
       supplier: el.invItemSupplierInput.value.trim(), reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
       unit: el.invItemUnitInput.value.trim() || "units", defaultPrice: isFinite(defaultPrice) ? defaultPrice : 0,
       updatedAt: Date.now()
