@@ -3695,19 +3695,6 @@
   }
   var rtdFgStockRequestToken = 0;
   function refreshRtdFgStockFields(){
-    // Existing entry: FG Stock Available and Balance Quantity Required both show exactly what was
-    // saved (see openModal) instead of being silently recomputed every time the entry is reopened —
-    // same "frozen unless brand-new" treatment Finished Goods already gives its own Opening Stock
-    // above (see refreshFgStockFields' matching state.editingId guard). Without this, a Job Card No
-    // that's ever shared by more than one document (computeLatestPlantQuantity has no Customer/
-    // Product filter, only Job Card No) could make the modal disagree with the board's own saved
-    // Quantity for that same entry. The purely-derived totals below still need to stay in sync with
-    // whatever f_qty/f_fgstockavailable currently hold.
-    if(state.editingId){
-      refreshRtdTotalDispatchQty();
-      refreshRtdBalanceQty();
-      return;
-    }
     if(!isReadyToDispatchStage(el.f_stage.value)){
       el.f_fgstockavailable.value = "";
       el.f_fgstockpalletno.value = "";
@@ -3719,30 +3706,45 @@
     if(!customerName || !productName){
       el.f_fgstockavailable.value = "";
       el.f_fgstockpalletno.value = "";
-      // Balance Quantity Required is Ready to Dispatch's own auto-calculated field (see below) —
-      // nothing to compute without a Customer + Product chosen yet.
-      el.f_qty.value = "";
+      // Balance Quantity Required is Ready to Dispatch's own auto-calculated field for a BRAND-NEW
+      // entry only (see the state.editingId check below) — nothing to compute without a Customer +
+      // Product chosen yet, for a new entry.
+      if(!state.editingId) el.f_qty.value = "";
       refreshRtdTotalDispatchQty();
       refreshRtdBalanceQty();
       return;
     }
     var myToken = ++rtdFgStockRequestToken;
-    Promise.all([
-      computeLatestFgStock(customerName, productName, el.f_date.value),
-      computeLatestPlantQuantity(el.f_jobcard.value, el.f_date.value)
-    ]).then(function(results){
+    var lookups = [computeLatestFgStock(customerName, productName, el.f_date.value)];
+    // Balance Quantity Required's own cross-document Plant lookup (computeLatestPlantQuantity)
+    // only ever runs for a BRAND-NEW entry now. That lookup matches purely by Job Card No — a
+    // free-typed field with no uniqueness enforcement anywhere in the app — with no Customer/
+    // Product filter at all, so on an EXISTING entry it could silently pick up a completely
+    // different document that just happens to share the same Job Card No, overwriting the very
+    // Quantity the board itself already shows for this entry (this was reported as "board shows
+    // 2500, opening it shows 10000"). An existing entry instead keeps showing whatever Quantity
+    // was actually saved with it (see openModal) — this matches the same "frozen unless brand-new"
+    // treatment Finished Goods already gives its own Opening Stock above. FG Stock Available has
+    // no such risk — it's looked up by Customer+Product, not Job Card No — so it still always
+    // refreshes live below, existing entry or not, same as before; that's also what lets the
+    // Quantity field (Balance Quantity Required + FG Stock Available) stay correctly auto-
+    // calculated for an existing entry too, off its own preserved Balance Quantity Required.
+    if(!state.editingId) lookups.push(computeLatestPlantQuantity(el.f_jobcard.value, el.f_date.value));
+    Promise.all(lookups).then(function(results){
       if(myToken !== rtdFgStockRequestToken) return; // superseded by a newer request
       var fgStock = results[0].openingStock;
-      var plantQty = results[1].quantity;
       el.f_fgstockavailable.value = fgStock;
       el.f_fgstockpalletno.value = results[0].palletNo || "";
-      // Balance Quantity Required mirrors Plant's own Balance Quantity Required formula exactly
-      // (that job's Quantity minus stock already on hand) — auto-calculated, not typed — so Total
-      // Quantity to Dispatch below (Balance Quantity Required + FG Stock Available) always
-      // reconciles back to the very same Quantity that was recorded when the job started at
-      // Plant, instead of drifting from whatever number happened to get typed in here.
-      var required = plantQty - fgStock;
-      el.f_qty.value = required < 0 ? 0 : required;
+      if(!state.editingId){
+        // Balance Quantity Required mirrors Plant's own Balance Quantity Required formula exactly
+        // (that job's Quantity minus stock already on hand) — auto-calculated, not typed — so Total
+        // Quantity to Dispatch below (Balance Quantity Required + FG Stock Available) always
+        // reconciles back to the very same Quantity that was recorded when the job started at
+        // Plant, instead of drifting from whatever number happened to get typed in here.
+        var plantQty = results[1].quantity;
+        var required = plantQty - fgStock;
+        el.f_qty.value = required < 0 ? 0 : required;
+      }
       refreshRtdTotalDispatchQty();
       refreshRtdBalanceQty();
     });
@@ -6058,13 +6060,11 @@
     el.f_palletno.value = entry ? (entry.palletNo || "") : "";
     el.f_palletarea.value = entry ? (entry.palletAllocationArea || "") : "";
     el.f_dispatchedqty.value = entry && entry.dispatchedQty != null ? entry.dispatchedQty : "";
-    // FG Stock Available / FG Stock Pallet No (Ready to Dispatch): an existing entry shows exactly
-    // what was saved with it, same as Balance Quantity Required (f_qty, populated above) — see the
-    // matching state.editingId guard in refreshRtdFgStockFields, which only queries Firestore and
-    // overwrites these for a brand-new entry. Without this, reopening an existing Ready to Dispatch
-    // entry could show a live-recomputed Quantity that disagrees with the board's saved figure.
-    el.f_fgstockavailable.value = entry && entry.fgStockAvailable != null ? entry.fgStockAvailable : "";
-    el.f_fgstockpalletno.value = entry ? (entry.fgStockPalletNo || "") : "";
+    // FG Stock Available / FG Stock Pallet No (Ready to Dispatch) don't need populating here at
+    // all — updateFormFieldsForStage below always calls refreshRtdFgStockFields(), which (re)looks
+    // these up live by Customer+Product (not Job Card No, so it's never at risk of the cross-
+    // document mix-up that Balance Quantity Required had — see that function's own comment), for a
+    // brand-new and an existing entry alike, same as before.
     // Balance Quantity is pure Quantity-minus-Dispatched-Qty math, so it doesn't need populating
     // here at all — updateFormFieldsForStage below calls refreshRtdBalanceQty(), which (re)computes
     // it from f_qty/f_dispatchedqty above, correctly for both a new and an existing entry alike.
