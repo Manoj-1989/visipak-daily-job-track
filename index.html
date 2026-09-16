@@ -3695,6 +3695,19 @@
   }
   var rtdFgStockRequestToken = 0;
   function refreshRtdFgStockFields(){
+    // Existing entry: FG Stock Available and Balance Quantity Required both show exactly what was
+    // saved (see openModal) instead of being silently recomputed every time the entry is reopened —
+    // same "frozen unless brand-new" treatment Finished Goods already gives its own Opening Stock
+    // above (see refreshFgStockFields' matching state.editingId guard). Without this, a Job Card No
+    // that's ever shared by more than one document (computeLatestPlantQuantity has no Customer/
+    // Product filter, only Job Card No) could make the modal disagree with the board's own saved
+    // Quantity for that same entry. The purely-derived totals below still need to stay in sync with
+    // whatever f_qty/f_fgstockavailable currently hold.
+    if(state.editingId){
+      refreshRtdTotalDispatchQty();
+      refreshRtdBalanceQty();
+      return;
+    }
     if(!isReadyToDispatchStage(el.f_stage.value)){
       el.f_fgstockavailable.value = "";
       el.f_fgstockpalletno.value = "";
@@ -6045,6 +6058,13 @@
     el.f_palletno.value = entry ? (entry.palletNo || "") : "";
     el.f_palletarea.value = entry ? (entry.palletAllocationArea || "") : "";
     el.f_dispatchedqty.value = entry && entry.dispatchedQty != null ? entry.dispatchedQty : "";
+    // FG Stock Available / FG Stock Pallet No (Ready to Dispatch): an existing entry shows exactly
+    // what was saved with it, same as Balance Quantity Required (f_qty, populated above) — see the
+    // matching state.editingId guard in refreshRtdFgStockFields, which only queries Firestore and
+    // overwrites these for a brand-new entry. Without this, reopening an existing Ready to Dispatch
+    // entry could show a live-recomputed Quantity that disagrees with the board's saved figure.
+    el.f_fgstockavailable.value = entry && entry.fgStockAvailable != null ? entry.fgStockAvailable : "";
+    el.f_fgstockpalletno.value = entry ? (entry.fgStockPalletNo || "") : "";
     // Balance Quantity is pure Quantity-minus-Dispatched-Qty math, so it doesn't need populating
     // here at all — updateFormFieldsForStage below calls refreshRtdBalanceQty(), which (re)computes
     // it from f_qty/f_dispatchedqty above, correctly for both a new and an existing entry alike.
@@ -6304,10 +6324,18 @@
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
       type: hasType ? el.f_type.value : "",
-      startTime: isSpecial ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
-      endTime: isSpecial ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
-      runtimeHrs: isSpecial ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
-      manpower: isSpecial ? null : (el.f_manpower.value === "" ? null : Number(el.f_manpower.value)),
+      // Start Time / End Time / Run Time (Hrs) / Man Power are each stage's OWN department entering
+      // its own figures — they must never carry forward onto the next stage's record when a job
+      // moves on via Next Stage (movedTo truthy), even though the very same document is what's
+      // being saved. isSpecial alone used to gate this, but that only reflects the CURRENT
+      // (chosenStage) stage, so a normal-department-to-normal-department move (e.g. RD-1CP ->
+      // RS-2CP) fell through and silently copied whatever the outgoing stage had typed into the
+      // incoming stage's own record. Blanking on movedTo forces every stage's department to enter
+      // these fresh, regardless of what the previous stage recorded.
+      startTime: (isSpecial || movedTo) ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
+      endTime: (isSpecial || movedTo) ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
+      runtimeHrs: (isSpecial || movedTo) ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
+      manpower: (isSpecial || movedTo) ? null : (el.f_manpower.value === "" ? null : Number(el.f_manpower.value)),
       updatedBy: el.f_updatedby.value.trim(),
       status: movedTo ? "Not Started" : chosenStatus,
       nextStage: movedTo ? "" : chosenNextStage,
