@@ -843,6 +843,7 @@
     <div class="logControls">
       <input type="text" id="invSearch" placeholder="Search item, SKU, category…" data-i18n-placeholder="inv_search_placeholder">
       <select id="invCategoryFilter"><option value="" data-i18n="filter_all">All</option></select>
+      <button class="btn ghost" id="invStockExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
     </div>
 
     <div class="tableWrap">
@@ -850,7 +851,8 @@
         <thead>
           <tr>
             <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
-            <th data-i18n="inv_th_onhand">On Hand</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+            <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+            <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
             <th data-i18n="inv_th_status">Status</th><th></th>
           </tr>
         </thead>
@@ -863,6 +865,7 @@
       <div class="invLogHead"><h3 data-i18n="inv_log_heading">Purchase History</h3></div>
       <div class="logControls">
         <input type="text" id="invLogSearch" placeholder="Search item, supplier, received by…" data-i18n-placeholder="inv_log_search_placeholder">
+        <button class="btn ghost" id="invLogExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
       </div>
       <div class="tableWrap">
         <table>
@@ -1099,6 +1102,49 @@
       <button type="button" class="btn ghost" id="invMoveCancelBtn" data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="invMoveConfirmBtn" data-i18n="inv_move_confirm">Log Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Status — moves quantity between Available / In Use / Damaged for one product. Nothing
+     is received or removed here; stock just moves between buckets in the `statusTransfers` ledger
+     (see computeStatusBucketsMap in the script below), and can be moved back to Available later
+     (e.g. an in-use tool is returned, or a damaged item gets repaired). -->
+<div class="modalOverlay invMoveModal" id="invStatusOverlay" hidden>
+  <div class="modal">
+    <h2 data-i18n="inv_status_title">Update Status</h2>
+    <p class="invMoveCurrentQty" id="invStatusItemLine"></p>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_status_from_label">From</span>
+        <select id="invStatusFromSelect">
+          <option value="available" data-i18n="inv_status_available">Available</option>
+          <option value="in_use" data-i18n="inv_status_inuse">In Use</option>
+          <option value="damaged" data-i18n="inv_status_damaged">Damaged</option>
+        </select>
+      </label>
+      <label><span data-i18n="inv_status_to_label">To</span>
+        <select id="invStatusToSelect">
+          <option value="available" data-i18n="inv_status_available">Available</option>
+          <option value="in_use" data-i18n="inv_status_inuse">In Use</option>
+          <option value="damaged" data-i18n="inv_status_damaged">Damaged</option>
+        </select>
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_status_qty_label">Quantity</span>
+        <input type="number" id="invStatusQtyInput" min="0" step="1">
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_status_note_label">Note (optional)</span>
+        <input type="text" id="invStatusNoteInput" placeholder="e.g. checked out for Job Card #.., dropped and cracked…" data-i18n-placeholder="inv_status_note_placeholder">
+      </label>
+    </div>
+    <div class="readOnlyNote" id="invStatusError" hidden style="margin-top:4px;"></div>
+    <div class="modalActions" style="margin-top:10px;">
+      <button type="button" class="btn ghost" id="invStatusCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="invStatusConfirmBtn" data-i18n="inv_status_confirm">Save</button>
     </div>
   </div>
 </div>
@@ -1984,7 +2030,8 @@
       btn_manage_inventory_items: "Manage Inventory Items",
       inv_search_placeholder: "Search item, SKU, category…",
       inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category",
-      inv_th_onhand: "On Hand", inv_th_price: "Price/Unit", inv_th_value: "Value", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
+      inv_th_available: "Available", inv_th_inuse: "In Use", inv_th_damaged: "Damaged",
+      inv_th_price: "Price/Unit", inv_th_value: "Value", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
       inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
       inv_empty: "No products yet. Use \"Manage Inventory Items\" to add your first one.",
@@ -1993,7 +2040,7 @@
       inv_log_heading: "Purchase History",
       inv_log_search_placeholder: "Search item, supplier, received by…",
       inv_log_empty: "No purchases logged yet.",
-      inv_action_receive: "Receive",
+      inv_action_receive: "Receive", inv_status_action: "Update Status",
       inv_status_ok: "In Stock", inv_status_low: "Low Stock", inv_status_out: "Out of Stock",
       inv_items_title: "Manage Inventory Items",
       inv_items_desc: "Add each product your warehouse stocks — its SKU, category, unit, supplier, and reorder point. Anyone with access to the Inventory screen can then receive stock against it; only Admin can add, edit, or remove items here.",
@@ -2019,6 +2066,17 @@
       inv_move_current_line: "{name} — on hand: {qty} {unit}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
       inv_err_bad_qty: "Enter a quantity greater than zero.",
+      inv_status_title: "Update Status",
+      inv_status_from_label: "From", inv_status_to_label: "To",
+      inv_status_available: "Available", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
+      inv_status_qty_label: "Quantity",
+      inv_status_note_label: "Note (optional)",
+      inv_status_note_placeholder: "e.g. checked out for Job Card #.., dropped and cracked…",
+      inv_status_confirm: "Save",
+      inv_status_current_line: "{name} — Available: {available} {unit} · In Use: {inUse} · Damaged: {damaged}",
+      inv_status_err_same: "From and To must be different statuses.",
+      inv_status_err_insufficient: "Only {qty} available in that status.",
+      inv_purchase_err_status_committed: "Can't delete: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
       banner_inventory_sync_failed_prefix: "Inventory sync issue:"
     },
     hi: {
@@ -2202,7 +2260,8 @@
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_search_placeholder: "आइटम, SKU, श्रेणी खोजें…",
       inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी",
-      inv_th_onhand: "उपलब्ध मात्रा", inv_th_price: "मूल्य/यूनिट", inv_th_value: "मूल्य", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
+      inv_th_available: "उपलब्ध", inv_th_inuse: "उपयोग में", inv_th_damaged: "क्षतिग्रस्त",
+      inv_th_price: "मूल्य/यूनिट", inv_th_value: "मूल्य", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
       inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
       inv_empty: "अभी तक कोई प्रोडक्ट नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
@@ -2211,7 +2270,7 @@
       inv_log_heading: "खरीद इतिहास",
       inv_log_search_placeholder: "आइटम, सप्लायर, या प्राप्तकर्ता खोजें…",
       inv_log_empty: "अभी तक कोई खरीद दर्ज नहीं हुई।",
-      inv_action_receive: "प्राप्त करें",
+      inv_action_receive: "प्राप्त करें", inv_status_action: "स्थिति अपडेट करें",
       inv_status_ok: "स्टॉक में", inv_status_low: "कम स्टॉक", inv_status_out: "स्टॉक खत्म",
       inv_items_title: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_items_desc: "अपने वेयरहाउस का हर प्रोडक्ट जोड़ें — उसका SKU, श्रेणी, यूनिट, सप्लायर, और रीऑर्डर पॉइंट। इन्वेंटरी स्क्रीन तक पहुंच रखने वाला कोई भी व्यक्ति फिर उस पर स्टॉक प्राप्त कर सकता है; यहां आइटम जोड़ना, संपादित करना, या हटाना केवल Admin कर सकता है।",
@@ -2237,6 +2296,17 @@
       inv_move_current_line: "{name} — उपलब्ध: {qty} {unit}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
       inv_err_bad_qty: "शून्य से अधिक मात्रा दर्ज करें।",
+      inv_status_title: "स्थिति अपडेट करें",
+      inv_status_from_label: "से", inv_status_to_label: "तक",
+      inv_status_available: "उपलब्ध", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
+      inv_status_qty_label: "मात्रा",
+      inv_status_note_label: "नोट (वैकल्पिक)",
+      inv_status_note_placeholder: "जैसे, जॉब कार्ड #.. के लिए निकाला गया, गिरकर टूट गया…",
+      inv_status_confirm: "सेव करें",
+      inv_status_current_line: "{name} — उपलब्ध: {available} {unit} · उपयोग में: {inUse} · क्षतिग्रस्त: {damaged}",
+      inv_status_err_same: "से और तक अलग-अलग स्थिति होनी चाहिए।",
+      inv_status_err_insufficient: "उस स्थिति में केवल {qty} ही उपलब्ध है।",
+      inv_purchase_err_status_committed: "हटाया नहीं जा सकता: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
       banner_inventory_sync_failed_prefix: "इन्वेंटरी सिंक समस्या:"
     },
     te: {
@@ -2420,7 +2490,8 @@
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_search_placeholder: "ఐటమ్, SKU, కేటగిరీ వెతకండి…",
       inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ",
-      inv_th_onhand: "అందుబాటులో ఉంది", inv_th_price: "ధర/యూనిట్", inv_th_value: "విలువ", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
+      inv_th_available: "అందుబాటులో", inv_th_inuse: "వాడుకలో", inv_th_damaged: "పాడైనవి",
+      inv_th_price: "ధర/యూనిట్", inv_th_value: "విలువ", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
       inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
       inv_empty: "ఇంకా ప్రొడక్ట్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
@@ -2429,7 +2500,7 @@
       inv_log_heading: "కొనుగోలు చరిత్ర",
       inv_log_search_placeholder: "ఐటమ్, సప్లయర్, లేదా స్వీకరించినవారిని వెతకండి…",
       inv_log_empty: "ఇంకా ఎలాంటి కొనుగోలు నమోదు కాలేదు.",
-      inv_action_receive: "స్వీకరించండి",
+      inv_action_receive: "స్వీకరించండి", inv_status_action: "స్థితిని అప్‌డేట్ చేయండి",
       inv_status_ok: "స్టాక్‌లో ఉంది", inv_status_low: "తక్కువ స్టాక్", inv_status_out: "స్టాక్ లేదు",
       inv_items_title: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_items_desc: "మీ వేర్‌హౌస్‌లో ఉన్న ప్రతి ప్రొడక్ట్‌ను జోడించండి — దాని SKU, కేటగిరీ, యూనిట్, సప్లయర్, మరియు రీఆర్డర్ పాయింట్. ఇన్వెంటరీ స్క్రీన్‌కు యాక్సెస్ ఉన్న ఎవరైనా దానిపై స్టాక్‌ను స్వీకరించవచ్చు; ఇక్కడ ఐటమ్‌లను జోడించడం, సవరించడం, లేదా తొలగించడం అడ్మిన్ మాత్రమే చేయగలరు.",
@@ -2455,6 +2526,17 @@
       inv_move_current_line: "{name} — అందుబాటులో ఉంది: {qty} {unit}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
       inv_err_bad_qty: "సున్నా కంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
+      inv_status_title: "స్థితిని అప్‌డేట్ చేయండి",
+      inv_status_from_label: "నుండి", inv_status_to_label: "కు",
+      inv_status_available: "అందుబాటులో", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
+      inv_status_qty_label: "పరిమాణం",
+      inv_status_note_label: "నోట్ (ఐచ్ఛికం)",
+      inv_status_note_placeholder: "ఉదా. జాబ్ కార్డ్ #.. కోసం తీసుకున్నారు, పడి పగిలింది…",
+      inv_status_confirm: "సేవ్ చేయండి",
+      inv_status_current_line: "{name} — అందుబాటులో: {available} {unit} · వాడుకలో: {inUse} · పాడైనవి: {damaged}",
+      inv_status_err_same: "నుండి మరియు కు వేర్వేరు స్థితులుగా ఉండాలి.",
+      inv_status_err_insufficient: "ఆ స్థితిలో {qty} మాత్రమే అందుబాటులో ఉంది.",
+      inv_purchase_err_status_committed: "తొలగించడం సాధ్యం కాదు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
       banner_inventory_sync_failed_prefix: "ఇన్వెంటరీ సింక్ సమస్య:"
     }
   };
@@ -2560,8 +2642,10 @@
     appView: "production",  // "production" or "inventory" — see .mainNav / applyAppView
     invCatalog: {},          // `products` docs keyed by SKU — see subscribeInventory
     invPurchases: [],        // `purchases` (receiving ledger), newest first — see subscribeInventory
+    invStatusTransfers: [],  // `statusTransfers` (Available/In Use/Damaged moves) — see subscribeInventory
     unsubInvCatalog: null,
     unsubInvPurchases: null,
+    unsubInvStatusTransfers: null,
     date: todayStr(),
     shift: "",
     boardStage: "",
@@ -2621,9 +2705,11 @@
     invReorderEmpty: document.getElementById("invReorderEmpty"),
     invSearch: document.getElementById("invSearch"),
     invCategoryFilter: document.getElementById("invCategoryFilter"),
+    invStockExportBtn: document.getElementById("invStockExportBtn"),
     invStockBody: document.getElementById("invStockBody"),
     invStockEmpty: document.getElementById("invStockEmpty"),
     invLogSearch: document.getElementById("invLogSearch"),
+    invLogExportBtn: document.getElementById("invLogExportBtn"),
     invLogBody: document.getElementById("invLogBody"),
     invLogEmpty: document.getElementById("invLogEmpty"),
     invItemsOverlay: document.getElementById("invItemsOverlay"),
@@ -2654,6 +2740,15 @@
     invMoveError: document.getElementById("invMoveError"),
     invMoveCancelBtn: document.getElementById("invMoveCancelBtn"),
     invMoveConfirmBtn: document.getElementById("invMoveConfirmBtn"),
+    invStatusOverlay: document.getElementById("invStatusOverlay"),
+    invStatusItemLine: document.getElementById("invStatusItemLine"),
+    invStatusFromSelect: document.getElementById("invStatusFromSelect"),
+    invStatusToSelect: document.getElementById("invStatusToSelect"),
+    invStatusQtyInput: document.getElementById("invStatusQtyInput"),
+    invStatusNoteInput: document.getElementById("invStatusNoteInput"),
+    invStatusError: document.getElementById("invStatusError"),
+    invStatusCancelBtn: document.getElementById("invStatusCancelBtn"),
+    invStatusConfirmBtn: document.getElementById("invStatusConfirmBtn"),
     logBody: document.getElementById("logBody"),
     logTableHeadRow: document.getElementById("logTableHeadRow"),
     logEmpty: document.getElementById("logEmpty"),
@@ -5227,6 +5322,7 @@
   function subscribeInventory(){
     if(state.unsubInvCatalog) state.unsubInvCatalog();
     if(state.unsubInvPurchases) state.unsubInvPurchases();
+    if(state.unsubInvStatusTransfers) state.unsubInvStatusTransfers();
     state.unsubInvCatalog = state.db.collection("products").onSnapshot(function(snap){
       var map = {};
       snap.forEach(function(doc){ map[doc.id] = Object.assign({ sku: doc.id }, doc.data()); });
@@ -5242,9 +5338,16 @@
       state.invPurchases = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       if(state.appView === "inventory") renderInventory();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
+    // Available/In Use/Damaged is a second, independent ledger on top of the same purchases — see
+    // computeStatusBucketsMap. A transfer never changes a purchase row, it just moves quantity
+    // between buckets, so this can stay its own small collection.
+    state.unsubInvStatusTransfers = state.db.collection("statusTransfers").orderBy("createdAt", "desc").limit(1000).onSnapshot(function(snap){
+      state.invStatusTransfers = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      if(state.appView === "inventory") renderInventory();
+    }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
 
-  // Receive-only means stock on hand is just every purchase's qty summed per SKU — no running
+  // Receive-only means total stock is just every purchase's qty summed per SKU — no running
   // balance field, no need to walk newest-to-oldest looking for the latest one.
   function computeCurrentStockMap(){
     var map = {};
@@ -5252,6 +5355,39 @@
     return map;
   }
   function currentStockFor(sku){ var map = computeCurrentStockMap(); return map.hasOwnProperty(sku) ? map[sku] : 0; }
+  // Every purchased unit starts life Available; a statusTransfer moves `qty` units from one
+  // bucket to another (Available -> In Use, In Use -> Damaged, Damaged -> Available once repaired,
+  // etc). Summing a SKU's total purchases plus the net of every transfer always reconstructs the
+  // same total, whichever bucket each unit currently sits in — nothing is created or destroyed,
+  // it just moves. See addStatusTransfer for the write side and its qty-available check.
+  function statusBucketKey(status){ return status === "in_use" ? "inUse" : status === "damaged" ? "damaged" : "available"; }
+  function computeStatusBucketsMap(){
+    var map = {};
+    var stockMap = computeCurrentStockMap();
+    Object.keys(stockMap).forEach(function(sku){ map[sku] = { available: stockMap[sku], inUse: 0, damaged: 0 }; });
+    state.invStatusTransfers.forEach(function(tr){
+      if(!map[tr.sku]) map[tr.sku] = { available: 0, inUse: 0, damaged: 0 };
+      var qty = Number(tr.qty) || 0;
+      map[tr.sku][statusBucketKey(tr.fromStatus)] -= qty;
+      map[tr.sku][statusBucketKey(tr.toStatus)] += qty;
+    });
+    return map;
+  }
+  function availableFor(sku){
+    var b = computeStatusBucketsMap()[sku];
+    return b ? b.available : 0;
+  }
+  // Deleting a purchase (an admin correction path) reduces that SKU's total purchased qty. If
+  // some of that SKU's stock has already been moved to In Use/Damaged, removing more than what's
+  // still sitting in Available would make those buckets negative — block it instead, same spirit
+  // as addStatusTransfer's own "can't move more than you have" check.
+  function purchaseDeletionWouldBreakStatusBuckets(purchase){
+    var sku = purchase.sku;
+    var totalAfterDelete = (computeCurrentStockMap()[sku] || 0) - (Number(purchase.qty) || 0);
+    var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
+    var committed = buckets.inUse + buckets.damaged;
+    return totalAfterDelete < committed;
+  }
   function inventoryStatus(qty, reorderPoint){
     qty = Number(qty) || 0; reorderPoint = Number(reorderPoint) || 0;
     if(qty <= 0) return "crit";
@@ -5295,6 +5431,27 @@
     return state.db.collection("purchases").add(payload);
   }
 
+  // Moves `qty` units of a SKU from one status bucket to another (Available/In Use/Damaged) and
+  // returns the write's promise. Rejects if there isn't enough quantity currently sitting in
+  // `fromStatus` — the same "can't move more than you have" check Ship used to do against total
+  // stock, now scoped to a single bucket.
+  function addStatusTransfer(sku, fromStatus, toStatus, qty, note){
+    var item = state.invCatalog[sku];
+    if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
+    qty = Number(qty);
+    if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    if(fromStatus === toStatus) return Promise.reject(new Error(t("inv_status_err_same")));
+    var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
+    var fromQty = buckets[statusBucketKey(fromStatus)] || 0;
+    if(qty > fromQty) return Promise.reject(new Error(tf("inv_status_err_insufficient", { qty: fromQty })));
+    var payload = {
+      sku: sku, itemName: item.name, fromStatus: fromStatus, toStatus: toStatus, qty: qty,
+      note: (note || "").trim(), by: deviceSupervisorName || "",
+      date: state.date, shift: state.shift || "", createdAt: Date.now()
+    };
+    return state.db.collection("statusTransfers").add(payload);
+  }
+
   function renderInventoryCategoryFilterOptions(){
     var cats = {};
     Object.keys(state.invCatalog).forEach(function(sku){ var c = state.invCatalog[sku].category; if(c) cats[c] = true; });
@@ -5304,12 +5461,13 @@
     el.invCategoryFilter.value = cats[prev] ? prev : "";
   }
 
-  // Items at or below their reorder point, most urgent (biggest deficit) first — mirrors the
+  // Items at or below their reorder point (by Available quantity — stock sitting In Use or
+  // Damaged can't fill a new request), most urgent (biggest deficit) first — mirrors the
   // stand-alone Intake Ledger tool's Dashboard reorder list.
-  function renderInventoryReorderList(items, stockMap){
+  function renderInventoryReorderList(items, statusMap){
     var reorderItems = [];
     items.forEach(function(item){
-      var qty = stockMap[item.sku] || 0;
+      var qty = (statusMap[item.sku] || { available: 0 }).available;
       var cls = inventoryStatus(qty, item.reorderPoint);
       if(cls !== "good") reorderItems.push({ item: item, qty: qty, cls: cls, deficit: (Number(item.reorderPoint) || 0) - qty });
     });
@@ -5322,46 +5480,67 @@
     }).join("");
   }
 
+  // Every product, filtered by the Current Stock search box / category select — shared by the
+  // table render and its CSV export so "export" always means "export what's on screen".
+  function getFilteredStockItems(){
+    var items = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
+      .sort(function(a, b){ return (a.name || "").localeCompare(b.name || ""); });
+    var q = (el.invSearch.value || "").trim().toLowerCase();
+    var catFilter = el.invCategoryFilter.value;
+    return items.filter(function(i){
+      if(catFilter && i.category !== catFilter) return false;
+      if(q && ((i.name || "") + " " + (i.sku || "") + " " + (i.category || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+  // Every purchase, filtered by the Purchase History search box — same reasoning as above.
+  function getFilteredPurchaseRows(){
+    var q = (el.invLogSearch.value || "").trim().toLowerCase();
+    return state.invPurchases.filter(function(p){
+      if(!q) return true;
+      return ((p.itemName || "") + " " + (p.supplier || "") + " " + (p.receivedBy || "")).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
   function renderInventory(){
     var items = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
       .sort(function(a, b){ return (a.name || "").localeCompare(b.name || ""); });
-    var stockMap = computeCurrentStockMap();
+    var statusMap = computeStatusBucketsMap();
 
+    // "On hand" for the stat tiles and the reorder trigger means Available — stock currently sitting
+    // In Use or Damaged doesn't count toward what you can fulfil a new request with, so it drops out
+    // of these totals automatically the moment its status changes (see addStatusTransfer).
     var totalSkus = items.length, totalUnits = 0, totalValue = 0, reorderCount = 0;
     items.forEach(function(i){
-      var qty = stockMap[i.sku] || 0;
-      totalUnits += qty;
-      totalValue += qty * (Number(i.defaultPrice) || 0);
-      if(inventoryStatus(qty, i.reorderPoint) !== "good") reorderCount++;
+      var b = statusMap[i.sku] || { available: 0 };
+      totalUnits += b.available;
+      totalValue += b.available * (Number(i.defaultPrice) || 0);
+      if(inventoryStatus(b.available, i.reorderPoint) !== "good") reorderCount++;
     });
     el.invStatSkus.textContent = totalSkus;
     el.invStatUnits.textContent = totalUnits.toLocaleString();
     el.invStatValue.textContent = formatInr(totalValue);
     el.invStatReorder.textContent = reorderCount;
-    renderInventoryReorderList(items, stockMap);
+    renderInventoryReorderList(items, statusMap);
 
-    var q = (el.invSearch.value || "").trim().toLowerCase();
-    var catFilter = el.invCategoryFilter.value;
     var canManage = state.isAdminDevice;
     var canMove = canManage || deviceCanViewStage("Inventory Management");
-    var rows = items.filter(function(i){
-      if(catFilter && i.category !== catFilter) return false;
-      if(q && ((i.name || "") + " " + (i.sku || "") + " " + (i.category || "")).toLowerCase().indexOf(q) === -1) return false;
-      return true;
-    });
+    var rows = getFilteredStockItems();
 
     el.invStockBody.innerHTML = "";
     el.invStockEmpty.hidden = rows.length !== 0;
     rows.forEach(function(item){
-      var qty = stockMap[item.sku] || 0;
-      var sClass = inventoryStatus(qty, item.reorderPoint);
-      var value = qty * (Number(item.defaultPrice) || 0);
+      var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
+      var sClass = inventoryStatus(b.available, item.reorderPoint);
+      var value = b.available * (Number(item.defaultPrice) || 0);
       var tr = document.createElement("tr");
       tr.innerHTML =
         "<td>" + esc(item.name) + "</td>" +
         '<td class="mono">' + esc(item.sku) + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
-        '<td class="mono">' + qty.toLocaleString() + " " + esc(item.unit || "") + "</td>" +
+        '<td class="mono">' + b.available.toLocaleString() + " " + esc(item.unit || "") + "</td>" +
+        '<td class="mono">' + b.inUse.toLocaleString() + "</td>" +
+        '<td class="mono">' + b.damaged.toLocaleString() + "</td>" +
         '<td class="mono">' + (item.defaultPrice ? esc(formatInr(item.defaultPrice)) : "—") + "</td>" +
         '<td class="mono">' + esc(formatInr(value)) + "</td>" +
         '<td class="mono">' + (Number(item.reorderPoint) || 0).toLocaleString() + "</td>" +
@@ -5373,6 +5552,10 @@
         recvBtn.type = "button"; recvBtn.className = "btn ghost invSmallBtn"; recvBtn.textContent = t("inv_action_receive");
         recvBtn.addEventListener("click", function(){ openReceiveModal(item.sku); });
         actionsCell.appendChild(recvBtn);
+        var statusBtn = document.createElement("button");
+        statusBtn.type = "button"; statusBtn.className = "btn ghost invSmallBtn"; statusBtn.textContent = t("inv_status_action");
+        statusBtn.addEventListener("click", function(){ openStatusModal(item.sku); });
+        actionsCell.appendChild(statusBtn);
       }
       el.invStockBody.appendChild(tr);
     });
@@ -5381,12 +5564,8 @@
   }
 
   function renderInventoryLog(){
-    var q = (el.invLogSearch.value || "").trim().toLowerCase();
-    var rows = state.invPurchases.filter(function(p){
-      if(!q) return true;
-      return ((p.itemName || "") + " " + (p.supplier || "") + " " + (p.receivedBy || "")).toLowerCase().indexOf(q) !== -1;
-    });
     var canManage = state.isAdminDevice;
+    var rows = getFilteredPurchaseRows();
     el.invLogBody.innerHTML = "";
     el.invLogEmpty.hidden = rows.length !== 0;
     rows.slice(0, 300).forEach(function(p){
@@ -5407,6 +5586,10 @@
         var delBtn = document.createElement("button");
         delBtn.type = "button"; delBtn.className = "btn ghost invSmallBtn"; delBtn.textContent = t("generic_delete");
         delBtn.addEventListener("click", function(){
+          if(purchaseDeletionWouldBreakStatusBuckets(p)){
+            showBanner(t("inv_purchase_err_status_committed"));
+            return;
+          }
           delBtn.disabled = true;
           state.db.collection("purchases").doc(p.id).delete().catch(function(){
             delBtn.disabled = false;
@@ -5422,6 +5605,44 @@
   el.invSearch.addEventListener("input", renderInventory);
   el.invCategoryFilter.addEventListener("change", renderInventory);
   el.invLogSearch.addEventListener("input", renderInventoryLog);
+
+  // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
+  function buildInventoryStockCsv(items, statusMap){
+    var header = ["Item", "SKU", "Category", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
+    var lines = [header.map(csvEscape).join(",")];
+    items.forEach(function(item){
+      var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
+      var sClass = inventoryStatus(b.available, item.reorderPoint);
+      lines.push([
+        item.name, item.sku, item.category || "", b.available, b.inUse, b.damaged,
+        (Number(item.defaultPrice) || 0).toFixed(2), (b.available * (Number(item.defaultPrice) || 0)).toFixed(2),
+        Number(item.reorderPoint) || 0, inventoryStatusLabel(sClass)
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  function buildInventoryPurchasesCsv(rows){
+    var header = ["Date", "Item", "Qty", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
+    var lines = [header.map(csvEscape).join(",")];
+    rows.forEach(function(p){
+      lines.push([
+        p.date || "", p.itemName, Number(p.qty) || 0, (Number(p.pricePerUnit) || 0).toFixed(2),
+        Number(p.discountPct) || 0, Number(p.gstPct) || 0, (Number(p.lineAmount) || 0).toFixed(2),
+        p.supplier || "", p.receivedBy || "", p.note || ""
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  el.invStockExportBtn.addEventListener("click", function(){
+    var items = getFilteredStockItems();
+    if(items.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    downloadCsv("visipak-inventory-stock.csv", buildInventoryStockCsv(items, computeStatusBucketsMap()));
+  });
+  el.invLogExportBtn.addEventListener("click", function(){
+    var rows = getFilteredPurchaseRows();
+    if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    downloadCsv("visipak-inventory-purchases.csv", buildInventoryPurchasesCsv(rows));
+  });
 
   // ---------- Manage Inventory Items (Admin-only catalog editor) ----------
   var editingInvSku = null;
@@ -5562,7 +5783,7 @@
     var item = state.invCatalog[sku];
     if(!item) return;
     invMoveContext = { sku: sku };
-    var current = currentStockFor(sku);
+    var current = availableFor(sku);
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
     el.invMoveQtyInput.value = "";
     // Price/Unit pre-fills from the item's catalog default (set in Manage Inventory Items) but
@@ -5599,6 +5820,45 @@
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
         el.invMoveError.hidden = false;
+      });
+  });
+
+  // ---------- Update Status modal (Available / In Use / Damaged) ----------
+  var invStatusContext = null; // { sku }
+  function openStatusModal(sku){
+    var item = state.invCatalog[sku];
+    if(!item) return;
+    invStatusContext = { sku: sku };
+    var b = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
+    el.invStatusItemLine.textContent = tf("inv_status_current_line", {
+      name: item.name, available: b.available.toLocaleString(), inUse: b.inUse.toLocaleString(),
+      damaged: b.damaged.toLocaleString(), unit: item.unit || ""
+    });
+    el.invStatusFromSelect.value = "available";
+    el.invStatusToSelect.value = "in_use";
+    el.invStatusQtyInput.value = "";
+    el.invStatusNoteInput.value = "";
+    el.invStatusError.hidden = true;
+    el.invStatusOverlay.hidden = false;
+    el.invStatusQtyInput.focus();
+  }
+  el.invStatusCancelBtn.addEventListener("click", function(){ el.invStatusOverlay.hidden = true; invStatusContext = null; });
+  el.invStatusOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.invStatusOverlay){ el.invStatusOverlay.hidden = true; invStatusContext = null; }
+  });
+  el.invStatusConfirmBtn.addEventListener("click", function(){
+    if(!invStatusContext) return;
+    el.invStatusError.hidden = true;
+    el.invStatusConfirmBtn.disabled = true;
+    addStatusTransfer(invStatusContext.sku, el.invStatusFromSelect.value, el.invStatusToSelect.value, el.invStatusQtyInput.value, el.invStatusNoteInput.value)
+      .then(function(){
+        el.invStatusConfirmBtn.disabled = false;
+        el.invStatusOverlay.hidden = true;
+        invStatusContext = null;
+      }).catch(function(err){
+        el.invStatusConfirmBtn.disabled = false;
+        el.invStatusError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
+        el.invStatusError.hidden = false;
       });
   });
 
