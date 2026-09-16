@@ -131,6 +131,17 @@
   .brand-text h1{font-size:20px;font-weight:600;color:var(--ink);}
   .brand-text p{margin:2px 0 0;font-size:12px;color:var(--ink-soft);}
 
+  /* Top-level app sections (Production / Inventory) — a real nav row of its own, distinct from the
+     Board/Log toggle inside Production (that one stays a small .viewToggle pill in .controls). */
+  .mainNav{display:flex;gap:24px;margin-bottom:16px;border-bottom:1px solid var(--line);}
+  .mainNavLink{
+    background:none;border:none;cursor:pointer;padding:0 2px 11px;margin-bottom:-1px;
+    font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:.01em;
+    color:var(--ink-soft);border-bottom:2px solid transparent;
+  }
+  .mainNavLink:hover{color:var(--ink);}
+  .mainNavLink.active{color:var(--accent);border-bottom-color:var(--accent);}
+
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;}
   .field{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;}
   .field input, .field select{
@@ -400,6 +411,21 @@
 
   /* ---------- Log view ---------- */
   .logView{display:flex;flex-direction:column;gap:12px;}
+  .inventoryView{display:flex;flex-direction:column;gap:16px;}
+  .invTopBar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;}
+  .invTiles{display:flex;flex-wrap:wrap;gap:12px;}
+  .invLogSection{display:flex;flex-direction:column;gap:12px;margin-top:6px;padding-top:16px;border-top:1px solid var(--line);}
+  .invLogHead h3{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--ink);}
+  .invPlacementHint{display:block;font-size:11px;color:var(--warn);margin-top:3px;}
+  .invRowActions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
+  .invSmallBtn{padding:5px 9px;font-size:11.5px;}
+  .invItemsList{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;margin-bottom:16px;}
+  .invItemRow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);}
+  .invItemRow .invItemName{font-weight:600;font-size:13px;flex:1;min-width:0;}
+  .invItemRow .invItemMeta{font-size:11.5px;color:var(--ink-soft);}
+  input.mono, select.mono{font-family:var(--font-mono);}
+  .invMoveModal .modal{max-width:420px;}
+  .invMoveCurrentQty{font-size:13px;color:var(--ink-soft);margin:-6px 0 4px;}
   .logControls{display:flex;flex-wrap:wrap;gap:10px;}
   .logControls input[type="text"], .logControls select{
     border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
@@ -659,7 +685,11 @@
         </div>
       </div>
     </div>
-    <div class="controls">
+    <nav class="mainNav" role="tablist">
+      <button type="button" class="mainNavLink active" data-appview="production" role="tab" aria-selected="true" data-i18n="nav_production">Production</button>
+      <button type="button" class="mainNavLink" id="navInventoryLink" role="tab" aria-selected="false" data-appview="inventory" hidden data-i18n="nav_inventory">Inventory</button>
+    </nav>
+    <div class="controls" id="controlsBar">
       <label class="field"><span data-i18n="filter_date">Date</span>
         <span class="dateFieldWrap">
           <input type="date" id="dateInput">
@@ -714,7 +744,7 @@
 
   <div id="statusBanner" class="banner" hidden></div>
 
-  <div class="summaryBar">
+  <div class="summaryBar" id="summaryBar">
     <div class="statTile manpower">
       <span class="statLabel" data-i18n="summary_manpower">Total Manpower Today</span>
       <span class="statValue" id="statManpower">0</span>
@@ -780,6 +810,66 @@
         <tbody id="logBody"></tbody>
       </table>
       <div class="logEmpty" id="logEmpty" hidden data-i18n="log_empty">No entries match. Try clearing filters.</div>
+    </div>
+  </main>
+
+  <!-- Inventory: a separate department/screen (not a board column — see NON_BOARD_STAGES), reached
+       via the "Inventory" link in .mainNav above. Real-time stock (live onSnapshot on
+       inventoryMovements), a smart placement hint per item, and the movement ledger doubles as the
+       traceability trail — see "Inventory Management" section of the script below. -->
+  <main id="inventoryView" class="inventoryView" hidden>
+    <div class="invTopBar">
+      <div class="invTiles">
+        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_skus">Total SKUs</span><span class="statValue" id="invStatSkus">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_units">Units on Hand</span><span class="statValue" id="invStatUnits">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_low">Low Stock</span><span class="statValue" id="invStatLow">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="inv_stat_out">Out of Stock</span><span class="statValue" id="invStatOut">0</span></div>
+      </div>
+      <button class="btn ghost" id="manageInventoryItemsBtn" type="button" hidden data-i18n="btn_manage_inventory_items">Manage Inventory Items</button>
+    </div>
+
+    <div class="logControls">
+      <input type="text" id="invSearch" placeholder="Search item, SKU, bin…" data-i18n-placeholder="inv_search_placeholder">
+      <select id="invCategoryFilter"><option value="" data-i18n="filter_all">All</option></select>
+    </div>
+
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
+            <th data-i18n="inv_th_bin">Bin</th><th data-i18n="inv_th_onhand">On Hand</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+            <th data-i18n="inv_th_status">Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="invStockBody"></tbody>
+      </table>
+      <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No inventory items yet. Use "Manage Inventory Items" to add your first one.</div>
+    </div>
+
+    <div class="invLogSection">
+      <div class="invLogHead"><h3 data-i18n="inv_log_heading">Activity Log</h3></div>
+      <div class="logControls">
+        <input type="text" id="invLogSearch" placeholder="Search item or person…" data-i18n-placeholder="inv_log_search_placeholder">
+        <select id="invLogTypeFilter">
+          <option value="" data-i18n="filter_all">All</option>
+          <option value="receive" data-i18n="inv_type_receive">Received</option>
+          <option value="ship" data-i18n="inv_type_ship">Shipped</option>
+          <option value="adjust" data-i18n="inv_type_adjust">Adjusted</option>
+        </select>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="inv_th_item">Item</th><th data-i18n="th_date">Date</th><th data-i18n="inv_th_type">Type</th>
+              <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_balance">Balance After</th><th data-i18n="th_remarks">Remarks</th><th data-i18n="th_updatedby">Updated By</th>
+            </tr>
+          </thead>
+          <tbody id="invLogBody"></tbody>
+        </table>
+        <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No activity yet.</div>
+      </div>
     </div>
   </main>
 </div>
@@ -898,6 +988,90 @@
     <div class="modalActions">
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="supervisorsCloseBtn" data-i18n="generic_done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Inventory Items: the item-master catalog for the Inventory screen, Admin-only, cloned
+     from Manage Users' own list+add/edit-form layout right above. -->
+<div class="modalOverlay" id="invItemsOverlay" hidden>
+  <div class="modal wide">
+    <h2 data-i18n="inv_items_title">Manage Inventory Items</h2>
+    <p data-i18n="inv_items_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      Add each item your store carries — its SKU, category, bin/location, supplier, and reorder point. Anyone with
+      access to the Inventory screen can then Receive/Ship against it; only Admin can add, edit, or adjust-correct
+      items here.
+    </p>
+    <input type="text" id="invItemsSearchInput" class="supSearchInput" placeholder="Search by name, SKU, or category…" data-i18n-placeholder="inv_items_search_placeholder">
+    <div class="invItemsList" id="invItemsList"></div>
+    <div class="supEmpty" id="invItemsEmpty" hidden data-i18n="inv_items_empty">No items found.</div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_th_item">Item name</span>
+        <input type="text" id="invItemNameInput" placeholder="e.g. Corrugated Sheet 3-ply" data-i18n-placeholder="inv_item_name_placeholder">
+      </label>
+      <label><span data-i18n="inv_th_sku">SKU</span>
+        <input type="text" id="invItemSkuInput" class="mono" placeholder="e.g. RM-CS3PLY">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_th_category">Category</span>
+        <select id="invItemCategorySelect"></select>
+      </label>
+      <label><span data-i18n="inv_th_bin">Bin / location</span>
+        <input type="text" id="invItemBinInput" class="mono" placeholder="e.g. FAST-A1">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_items_supplier">Supplier</span>
+        <input type="text" id="invItemSupplierInput" placeholder="e.g. Sri Lakshmi Paper Mills">
+      </label>
+      <label><span data-i18n="inv_th_reorder">Reorder point</span>
+        <input type="number" id="invItemReorderInput" min="0" step="1" placeholder="e.g. 100">
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_items_unit">Unit</span>
+        <input type="text" id="invItemUnitInput" placeholder="e.g. sheets, kg, rolls" data-i18n-placeholder="inv_items_unit_placeholder">
+      </label>
+    </div>
+    <p class="supStagesLabel" style="margin:2px 0 10px;font-weight:400;" data-i18n="inv_bin_hint">
+      Tip: start the bin with a zone code (FAST-, MID-, BULK-, or CTRL- for controlled storage) so the Inventory
+      screen can flag when an item might be better placed elsewhere.
+    </p>
+    <div class="modalActions" style="margin-top:2px;">
+      <button type="button" class="btn ghost" id="invItemClearBtn" hidden data-i18n="sup_cancel_edit">Cancel edit</button>
+      <div class="spacer"></div>
+      <button class="btn primary small" id="invItemAddBtn" type="button" data-i18n="inv_items_add">Add item</button>
+    </div>
+    <div class="readOnlyNote" id="invItemsError" hidden style="margin-top:12px;"></div>
+    <div class="modalActions">
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="invItemsCloseBtn" data-i18n="generic_done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receive / Ship / Adjust — one small shared modal, its fields relabeled per action by
+     openInventoryMovementModal (see script below). -->
+<div class="modalOverlay invMoveModal" id="invMoveOverlay" hidden>
+  <div class="modal">
+    <h2 id="invMoveTitle">Receive stock</h2>
+    <p class="invMoveCurrentQty" id="invMoveItemLine"></p>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span id="invMoveQtyLabel" data-i18n="inv_move_qty_label">Quantity</span>
+        <input type="number" id="invMoveQtyInput" min="0" step="1">
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span id="invMoveNoteLabel" data-i18n="inv_move_note_label">Note</span>
+        <input type="text" id="invMoveNoteInput" placeholder="e.g. supplier delivery, job card ref…" data-i18n-placeholder="inv_move_note_placeholder">
+      </label>
+    </div>
+    <div class="readOnlyNote" id="invMoveError" hidden style="margin-top:4px;"></div>
+    <div class="modalActions" style="margin-top:10px;">
+      <button type="button" class="btn ghost" id="invMoveCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="invMoveConfirmBtn" data-i18n="inv_move_confirm">Confirm</button>
     </div>
   </div>
 </div>
@@ -1559,7 +1733,8 @@
     "Rejected",
     "House keeping",
     "HR_Man Power",
-    "Stock Summary"
+    "Stock Summary",
+    "Inventory Management"
   ];
   // Plant through Rejected are the actual production line — a job card moves through them in
   // order (Rejected being where a job lands if it fails somewhere along the way). House keeping
@@ -1573,6 +1748,18 @@
   // Customer+Product, so stageHasCustomerName below carries an explicit exception for it.
   var DEPARTMENT_STAGES = ["House keeping", "HR_Man Power", "Stock Summary"];
   function boardSectionFor(stage){ return DEPARTMENT_STAGES.indexOf(stage) !== -1 ? "departments" : "production"; }
+  // Inventory Management is a STAGE only so it can ride the existing per-stage access-control
+  // machinery (Manage Users checkbox, deviceCanViewStage, deviceVisibleStages) — letting an admin
+  // assign a phone number to the Store department the same way they'd assign one to any production
+  // stage. It has its own dedicated top-level screen (see the "Inventory" nav link/#inventoryView)
+  // instead of a job-card form, so it must never appear as a Kanban column: renderBoard's column
+  // loop and deviceVisibleStages both skip anything listed here.
+  var NON_BOARD_STAGES = ["Inventory Management"];
+  // Everywhere a stage picker means "a stage a job card can sit in" (the entry form's own Stage
+  // field, the board/log Stage filters, a Priority Task's Stage) — as opposed to "Manage Users"
+  // and the manual device-setup picker, which assign a DEVICE to a stage and rightly still offer
+  // every stage including the non-board ones.
+  var JOB_CARD_STAGES = STAGES.filter(function(s){ return NON_BOARD_STAGES.indexOf(s) === -1; });
   var SLOTS = 10;
   // The one phone number that unlocks admin-only UI (Manage Users, Activity Log, the device tag).
   // Any other device — even one manually set to "All stages" for full add/edit access — never
@@ -1760,7 +1947,45 @@
       banner_task_save_failed_prefix: "Couldn't save task:",
       banner_task_delete_failed_prefix: "Couldn't delete task:",
       banner_task_reorder_failed_prefix: "Couldn't save new order:",
-      task_drag_handle_title: "Drag to reorder"
+      task_drag_handle_title: "Drag to reorder",
+      nav_production: "Production", nav_inventory: "Inventory",
+      inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_low: "Low Stock", inv_stat_out: "Out of Stock",
+      btn_manage_inventory_items: "Manage Inventory Items",
+      inv_search_placeholder: "Search item, SKU, bin…",
+      inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category", inv_th_bin: "Bin",
+      inv_th_onhand: "On Hand", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
+      inv_th_type: "Type", inv_th_qty: "Qty", inv_th_balance: "Balance After",
+      inv_empty: "No inventory items yet. Use \"Manage Inventory Items\" to add your first one.",
+      inv_log_heading: "Activity Log",
+      inv_log_search_placeholder: "Search item or person…",
+      inv_log_empty: "No activity yet.",
+      inv_type_receive: "Received", inv_type_ship: "Shipped", inv_type_adjust: "Adjusted",
+      inv_action_receive: "Receive", inv_action_ship: "Ship", inv_action_adjust: "Adjust",
+      inv_status_ok: "In Stock", inv_status_low: "Low Stock", inv_status_out: "Out of Stock",
+      inv_zone_fast: "Fast-Pick (Front)", inv_zone_mid: "Mid Aisle", inv_zone_bulk: "Bulk Storage (Back)", inv_zone_ctrl: "Controlled Storage",
+      inv_suggest_zone: "Suggested: {zone}",
+      inv_items_title: "Manage Inventory Items",
+      inv_items_desc: "Add each item your store carries — its SKU, category, bin/location, supplier, and reorder point. Anyone with access to the Inventory screen can then Receive/Ship against it; only Admin can add, edit, or adjust-correct items here.",
+      inv_items_search_placeholder: "Search by name, SKU, or category…",
+      inv_items_empty: "No items found.",
+      inv_item_name_placeholder: "e.g. Corrugated Sheet 3-ply",
+      inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
+      inv_bin_hint: "Tip: start the bin with a zone code (FAST-, MID-, BULK-, or CTRL- for controlled storage) so the Inventory screen can flag when an item might be better placed elsewhere.",
+      inv_items_add: "Add item",
+      inv_items_err_required: "Item name and SKU are required.",
+      inv_items_err_duplicate_sku: "An item with this SKU already exists.",
+      inv_items_err_save_failed: "Couldn't save item.",
+      inv_items_err_remove_failed: "Couldn't remove item.",
+      inv_move_qty_label: "Quantity", inv_move_qty_label_adjust: "New counted quantity",
+      inv_move_note_label: "Note", inv_move_note_label_adjust: "Reason for adjustment",
+      inv_move_note_placeholder: "e.g. supplier delivery, job card ref…",
+      inv_move_confirm: "Confirm",
+      inv_move_current_line: "{name} — on hand: {qty} {unit}",
+      inv_err_unknown_item: "That item couldn't be found — try again.",
+      inv_err_bad_qty: "Enter a quantity of zero or more.",
+      inv_err_insufficient_stock: "Only {qty} on hand — cannot ship more than that.",
+      inv_err_adjust_needs_note: "Add a short reason for this adjustment.",
+      banner_inventory_sync_failed_prefix: "Inventory sync issue:"
     },
     hi: {
       generic_cancel: "रद्द करें", generic_delete: "हटाएं", generic_save: "सेव करें", generic_done: "हो गया", generic_or: "या",
@@ -1936,7 +2161,45 @@
       banner_task_save_failed_prefix: "कार्य सेव नहीं हो सका:",
       banner_task_delete_failed_prefix: "कार्य हटाया नहीं जा सका:",
       banner_task_reorder_failed_prefix: "नया क्रम सेव नहीं हो सका:",
-      task_drag_handle_title: "क्रम बदलने के लिए खींचें"
+      task_drag_handle_title: "क्रम बदलने के लिए खींचें",
+      nav_production: "प्रोडक्शन", nav_inventory: "इन्वेंटरी",
+      inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_low: "कम स्टॉक", inv_stat_out: "स्टॉक खत्म",
+      btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
+      inv_search_placeholder: "आइटम, SKU, बिन खोजें…",
+      inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी", inv_th_bin: "बिन",
+      inv_th_onhand: "उपलब्ध मात्रा", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
+      inv_th_type: "प्रकार", inv_th_qty: "मात्रा", inv_th_balance: "शेष मात्रा",
+      inv_empty: "अभी तक कोई इन्वेंटरी आइटम नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
+      inv_log_heading: "गतिविधि लॉग",
+      inv_log_search_placeholder: "आइटम या व्यक्ति खोजें…",
+      inv_log_empty: "अभी तक कोई गतिविधि नहीं।",
+      inv_type_receive: "प्राप्त", inv_type_ship: "भेजा गया", inv_type_adjust: "समायोजित",
+      inv_action_receive: "प्राप्त करें", inv_action_ship: "भेजें", inv_action_adjust: "समायोजित करें",
+      inv_status_ok: "स्टॉक में", inv_status_low: "कम स्टॉक", inv_status_out: "स्टॉक खत्म",
+      inv_zone_fast: "फास्ट-पिक (आगे)", inv_zone_mid: "मध्य गलियारा", inv_zone_bulk: "बल्क स्टोरेज (पीछे)", inv_zone_ctrl: "नियंत्रित भंडारण",
+      inv_suggest_zone: "सुझाव: {zone}",
+      inv_items_title: "इन्वेंटरी आइटम प्रबंधित करें",
+      inv_items_desc: "अपने स्टोर के हर आइटम को जोड़ें — उसका SKU, श्रेणी, बिन/स्थान, सप्लायर, और रीऑर्डर पॉइंट। इन्वेंटरी स्क्रीन तक पहुंच रखने वाला कोई भी व्यक्ति फिर उस पर Receive/Ship कर सकता है; यहां आइटम जोड़ना, संपादित करना, या समायोजित-सुधार करना केवल Admin कर सकता है।",
+      inv_items_search_placeholder: "नाम, SKU, या श्रेणी से खोजें…",
+      inv_items_empty: "कोई आइटम नहीं मिला।",
+      inv_item_name_placeholder: "जैसे, कोरुगेटेड शीट 3-प्लाई",
+      inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
+      inv_bin_hint: "सुझाव: बिन की शुरुआत ज़ोन कोड से करें (FAST-, MID-, BULK-, या नियंत्रित भंडारण के लिए CTRL-) ताकि इन्वेंटरी स्क्रीन बेहतर जगह का सुझाव दे सके।",
+      inv_items_add: "आइटम जोड़ें",
+      inv_items_err_required: "आइटम का नाम और SKU आवश्यक हैं।",
+      inv_items_err_duplicate_sku: "इस SKU वाला आइटम पहले से मौजूद है।",
+      inv_items_err_save_failed: "आइटम सेव नहीं हो सका।",
+      inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
+      inv_move_qty_label: "मात्रा", inv_move_qty_label_adjust: "नई गिनी गई मात्रा",
+      inv_move_note_label: "नोट", inv_move_note_label_adjust: "समायोजन का कारण",
+      inv_move_note_placeholder: "जैसे, सप्लायर डिलीवरी, जॉब कार्ड संदर्भ…",
+      inv_move_confirm: "पुष्टि करें",
+      inv_move_current_line: "{name} — उपलब्ध: {qty} {unit}",
+      inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
+      inv_err_bad_qty: "शून्य या उससे अधिक मात्रा दर्ज करें।",
+      inv_err_insufficient_stock: "केवल {qty} उपलब्ध है — इससे अधिक नहीं भेजा जा सकता।",
+      inv_err_adjust_needs_note: "इस समायोजन के लिए संक्षिप्त कारण जोड़ें।",
+      banner_inventory_sync_failed_prefix: "इन्वेंटरी सिंक समस्या:"
     },
     te: {
       generic_cancel: "రద్దు చేయండి", generic_delete: "తొలగించండి", generic_save: "సేవ్ చేయండి", generic_done: "పూర్తయింది", generic_or: "లేదా",
@@ -2112,7 +2375,45 @@
       banner_task_save_failed_prefix: "పని సేవ్ కాలేదు:",
       banner_task_delete_failed_prefix: "పని తొలగించబడలేదు:",
       banner_task_reorder_failed_prefix: "కొత్త క్రమం సేవ్ కాలేదు:",
-      task_drag_handle_title: "క్రమం మార్చడానికి లాగండి"
+      task_drag_handle_title: "క్రమం మార్చడానికి లాగండి",
+      nav_production: "ప్రొడక్షన్", nav_inventory: "ఇన్వెంటరీ",
+      inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_low: "తక్కువ స్టాక్", inv_stat_out: "స్టాక్ లేదు",
+      btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
+      inv_search_placeholder: "ఐటమ్, SKU, బిన్ వెతకండి…",
+      inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ", inv_th_bin: "బిన్",
+      inv_th_onhand: "అందుబాటులో ఉంది", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
+      inv_th_type: "రకం", inv_th_qty: "పరిమాణం", inv_th_balance: "మిగిలిన పరిమాణం",
+      inv_empty: "ఇంకా ఇన్వెంటరీ ఐటమ్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
+      inv_log_heading: "యాక్టివిటీ లాగ్",
+      inv_log_search_placeholder: "ఐటమ్ లేదా వ్యక్తిని వెతకండి…",
+      inv_log_empty: "ఇంకా ఎలాంటి యాక్టివిటీ లేదు.",
+      inv_type_receive: "స్వీకరించారు", inv_type_ship: "పంపారు", inv_type_adjust: "సవరించారు",
+      inv_action_receive: "స్వీకరించండి", inv_action_ship: "పంపండి", inv_action_adjust: "సవరించండి",
+      inv_status_ok: "స్టాక్‌లో ఉంది", inv_status_low: "తక్కువ స్టాక్", inv_status_out: "స్టాక్ లేదు",
+      inv_zone_fast: "ఫాస్ట్-పిక్ (ముందు)", inv_zone_mid: "మధ్య వరుస", inv_zone_bulk: "బల్క్ స్టోరేజ్ (వెనుక)", inv_zone_ctrl: "నియంత్రిత నిల్వ",
+      inv_suggest_zone: "సూచన: {zone}",
+      inv_items_title: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
+      inv_items_desc: "మీ స్టోర్‌లో ఉన్న ప్రతి ఐటమ్‌ను జోడించండి — దాని SKU, కేటగిరీ, బిన్/స్థానం, సప్లయర్, మరియు రీఆర్డర్ పాయింట్. ఇన్వెంటరీ స్క్రీన్‌కు యాక్సెస్ ఉన్న ఎవరైనా దానిపై Receive/Ship చేయవచ్చు; ఇక్కడ ఐటమ్‌లను జోడించడం, సవరించడం, లేదా సర్దుబాటు చేయడం అడ్మిన్ మాత్రమే చేయగలరు.",
+      inv_items_search_placeholder: "పేరు, SKU, లేదా కేటగిరీ ద్వారా వెతకండి…",
+      inv_items_empty: "ఏ ఐటమ్‌లు కనుగొనబడలేదు.",
+      inv_item_name_placeholder: "ఉదా. కొరుగేటెడ్ షీట్ 3-ప్లై",
+      inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
+      inv_bin_hint: "సూచన: బిన్‌ను జోన్ కోడ్‌తో ప్రారంభించండి (FAST-, MID-, BULK-, లేదా నియంత్రిత నిల్వ కోసం CTRL-) తద్వారా ఇన్వెంటరీ స్క్రీన్ మెరుగైన స్థానాన్ని సూచించగలదు.",
+      inv_items_add: "ఐటమ్ జోడించండి",
+      inv_items_err_required: "ఐటమ్ పేరు మరియు SKU అవసరం.",
+      inv_items_err_duplicate_sku: "ఈ SKUతో ఐటమ్ ఇప్పటికే ఉంది.",
+      inv_items_err_save_failed: "ఐటమ్ సేవ్ కాలేదు.",
+      inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
+      inv_move_qty_label: "పరిమాణం", inv_move_qty_label_adjust: "కొత్తగా లెక్కించిన పరిమాణం",
+      inv_move_note_label: "నోట్", inv_move_note_label_adjust: "సర్దుబాటుకు కారణం",
+      inv_move_note_placeholder: "ఉదా. సప్లయర్ డెలివరీ, జాబ్ కార్డ్ రిఫరెన్స్…",
+      inv_move_confirm: "నిర్ధారించండి",
+      inv_move_current_line: "{name} — అందుబాటులో ఉంది: {qty} {unit}",
+      inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
+      inv_err_bad_qty: "సున్నా లేదా అంతకంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
+      inv_err_insufficient_stock: "అందుబాటులో {qty} మాత్రమే ఉంది — అంతకంటే ఎక్కువ పంపలేరు.",
+      inv_err_adjust_needs_note: "ఈ సర్దుబాటుకు సంక్షిప్త కారణాన్ని జోడించండి.",
+      banner_inventory_sync_failed_prefix: "ఇన్వెంటరీ సింక్ సమస్య:"
     }
   };
   function t(key){
@@ -2214,6 +2515,11 @@
   var state = {
     db: firestoreDb,
     view: "board",
+    appView: "production",  // "production" or "inventory" — see .mainNav / applyAppView
+    invCatalog: {},          // inventoryCatalog docs keyed by SKU — see subscribeInventory
+    invMovements: [],        // inventoryMovements, newest first — see subscribeInventory
+    unsubInvCatalog: null,
+    unsubInvMovements: null,
     date: todayStr(),
     shift: "",
     boardStage: "",
@@ -2260,6 +2566,48 @@
     addBtn: document.getElementById("addBtn"),
     boardView: document.getElementById("boardView"),
     logView: document.getElementById("logView"),
+    controlsBar: document.getElementById("controlsBar"),
+    summaryBar: document.getElementById("summaryBar"),
+    navInventoryLink: document.getElementById("navInventoryLink"),
+    inventoryView: document.getElementById("inventoryView"),
+    invStatSkus: document.getElementById("invStatSkus"),
+    invStatUnits: document.getElementById("invStatUnits"),
+    invStatLow: document.getElementById("invStatLow"),
+    invStatOut: document.getElementById("invStatOut"),
+    manageInventoryItemsBtn: document.getElementById("manageInventoryItemsBtn"),
+    invSearch: document.getElementById("invSearch"),
+    invCategoryFilter: document.getElementById("invCategoryFilter"),
+    invStockBody: document.getElementById("invStockBody"),
+    invStockEmpty: document.getElementById("invStockEmpty"),
+    invLogSearch: document.getElementById("invLogSearch"),
+    invLogTypeFilter: document.getElementById("invLogTypeFilter"),
+    invLogBody: document.getElementById("invLogBody"),
+    invLogEmpty: document.getElementById("invLogEmpty"),
+    invItemsOverlay: document.getElementById("invItemsOverlay"),
+    invItemsSearchInput: document.getElementById("invItemsSearchInput"),
+    invItemsList: document.getElementById("invItemsList"),
+    invItemsEmpty: document.getElementById("invItemsEmpty"),
+    invItemNameInput: document.getElementById("invItemNameInput"),
+    invItemSkuInput: document.getElementById("invItemSkuInput"),
+    invItemCategorySelect: document.getElementById("invItemCategorySelect"),
+    invItemBinInput: document.getElementById("invItemBinInput"),
+    invItemSupplierInput: document.getElementById("invItemSupplierInput"),
+    invItemReorderInput: document.getElementById("invItemReorderInput"),
+    invItemUnitInput: document.getElementById("invItemUnitInput"),
+    invItemClearBtn: document.getElementById("invItemClearBtn"),
+    invItemAddBtn: document.getElementById("invItemAddBtn"),
+    invItemsError: document.getElementById("invItemsError"),
+    invItemsCloseBtn: document.getElementById("invItemsCloseBtn"),
+    invMoveOverlay: document.getElementById("invMoveOverlay"),
+    invMoveTitle: document.getElementById("invMoveTitle"),
+    invMoveItemLine: document.getElementById("invMoveItemLine"),
+    invMoveQtyLabel: document.getElementById("invMoveQtyLabel"),
+    invMoveQtyInput: document.getElementById("invMoveQtyInput"),
+    invMoveNoteLabel: document.getElementById("invMoveNoteLabel"),
+    invMoveNoteInput: document.getElementById("invMoveNoteInput"),
+    invMoveError: document.getElementById("invMoveError"),
+    invMoveCancelBtn: document.getElementById("invMoveCancelBtn"),
+    invMoveConfirmBtn: document.getElementById("invMoveConfirmBtn"),
     logBody: document.getElementById("logBody"),
     logTableHeadRow: document.getElementById("logTableHeadRow"),
     logEmpty: document.getElementById("logEmpty"),
@@ -2517,19 +2865,23 @@
   // populate stage selects. f_nextstage is NOT populated here — its option list depends on which
   // stage the entry form is currently showing (see populateNextStageOptions, called from
   // updateFormFieldsForStage below), since Ready to Dispatch only offers a restricted subset.
-  STAGES.forEach(function(s){
+  JOB_CARD_STAGES.forEach(function(s){
     var o1 = document.createElement("option"); o1.value=s; o1.textContent=s;
     el.f_stage.appendChild(o1);
     var o2 = document.createElement("option"); o2.value=s; o2.textContent=s;
     el.logStageFilter.appendChild(o2);
     var o4 = document.createElement("option"); o4.value=s; o4.textContent=s;
     el.boardStageFilter.appendChild(o4);
-    var o5 = document.createElement("option"); o5.value=s; o5.textContent=s;
-    el.deviceStageSelect.appendChild(o5);
     // Priority Task's own Stage field — appended after the "— Unassigned —" option already sitting
     // in the markup (see the taskModalOverlay HTML above).
     var o6 = document.createElement("option"); o6.value=s; o6.textContent=s;
     el.t_stage.appendChild(o6);
+  });
+  // deviceStageSelect (manual device setup) assigns a DEVICE to a stage, so — unlike the job-card
+  // pickers above — it still offers every stage, Inventory Management included.
+  STAGES.forEach(function(s){
+    var o5 = document.createElement("option"); o5.value=s; o5.textContent=s;
+    el.deviceStageSelect.appendChild(o5);
   });
 
   // populate the "Manage Users" stage checkbox list (All stages + one checkbox per stage)
@@ -2564,7 +2916,7 @@
     var blankOpt = document.createElement("option");
     blankOpt.value = ""; blankOpt.textContent = blankLabel;
     selectEl.appendChild(blankOpt);
-    var stages = (allowed && allowed !== "ALL") ? allowed : STAGES;
+    var stages = (allowed && allowed !== "ALL") ? allowed : JOB_CARD_STAGES;
     stages.forEach(function(s){
       var o = document.createElement("option"); o.value = s; o.textContent = s;
       selectEl.appendChild(o);
@@ -3454,7 +3806,7 @@
   // Hold can be placed at any production stage, so QC now needs visibility into all of them, not
   // just the ones with a dedicated QC checklist (Plant, the artwork stages) — this is simply
   // every stage minus the two department columns, i.e. everywhere stageHasHold is true.
-  var QC_MANAGED_EXTRA_STAGES = STAGES.filter(function(s){ return DEPARTMENT_STAGES.indexOf(s) === -1; });
+  var QC_MANAGED_EXTRA_STAGES = STAGES.filter(function(s){ return DEPARTMENT_STAGES.indexOf(s) === -1 && NON_BOARD_STAGES.indexOf(s) === -1; });
   // A QC-access device also needs to be able to find and open these stages' entries in the first
   // place (to check them), even though the stages aren't in its own assigned stage list — so
   // viewing is a bit broader than editing.
@@ -3466,14 +3818,15 @@
   }
   // The set of stages this device's Board/Log/Export should show — its own assigned stages plus
   // the QC-managed extra stages when it has QC access, kept in the same order stages normally
-  // flow in.
+  // flow in. NON_BOARD_STAGES (Inventory Management) is always excluded here — it has its own
+  // "Inventory" nav screen instead of a board column; deviceCanViewStage (above) is what still
+  // gates that screen's own access, independent of this list.
   function deviceVisibleStages(){
-    if(state.deviceStages === "ALL") return STAGES;
-    var set = state.deviceStages.slice();
-    if(deviceHasQcAccess()){
-      QC_MANAGED_EXTRA_STAGES.forEach(function(s){ if(set.indexOf(s) === -1) set.push(s); });
+    var base = state.deviceStages === "ALL" ? STAGES.slice() : state.deviceStages.slice();
+    if(state.deviceStages !== "ALL" && deviceHasQcAccess()){
+      QC_MANAGED_EXTRA_STAGES.forEach(function(s){ if(base.indexOf(s) === -1) base.push(s); });
     }
-    return STAGES.filter(function(s){ return set.indexOf(s) !== -1; });
+    return STAGES.filter(function(s){ return base.indexOf(s) !== -1 && NON_BOARD_STAGES.indexOf(s) === -1; });
   }
 
   // Each spec row's Pass/Fail is a manual toggle (not auto-computed from the Client/Visipak
@@ -4315,6 +4668,23 @@
     // read-only mode and renderTasks' drag-handle/checkbox gating below), same admin-only pattern
     // as Manage Users/Activity Log above.
     el.addTaskBtn.hidden = !state.isAdminDevice;
+    // Inventory nav link: visible to Admin (full access, same as everywhere else) or to a device
+    // specifically assigned the "Inventory Management" stage via Manage Users — the Store
+    // department. Curating the item catalog itself stays Admin-only (see Manage Inventory Items).
+    var canSeeInventory = state.isAdminDevice || deviceCanViewStage("Inventory Management");
+    el.navInventoryLink.hidden = !canSeeInventory;
+    el.manageInventoryItemsBtn.hidden = !state.isAdminDevice;
+    if(!canSeeInventory && state.appView === "inventory"){
+      // Access was just revoked (a different, non-inventory device logged in on this browser) —
+      // fall back to Production rather than leaving an inaccessible screen showing.
+      state.appView = "production";
+      document.querySelectorAll(".mainNavLink").forEach(function(b){
+        var active = b.dataset.appview === "production";
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+      });
+    }
+    if(typeof applyAppView === "function") applyAppView();
     renderTasks();
     // The profile icon is always available (it's also where Language lives now), independent of
     // the admin-only device tag above. Anyone who logged in with a phone number (admin or regular
@@ -4755,16 +5125,425 @@
     el.banner.hidden = false;
   }
 
-  // ---------- View toggle ----------
+  // ---------- View toggle (Board/Log, inside Production) ----------
   document.querySelectorAll(".toggleBtn").forEach(function(btn){
     btn.addEventListener("click", function(){
       document.querySelectorAll(".toggleBtn").forEach(function(b){b.classList.remove("active");});
       btn.classList.add("active");
       state.view = btn.dataset.view;
-      el.boardView.hidden = state.view !== "board";
-      el.logView.hidden = state.view !== "log";
-      el.taskBoardSection.hidden = state.view !== "board";
+      applyAppView();
     });
+  });
+
+  // ---------- Top-level app nav (Production / Inventory) ----------
+  // Production and Inventory are peer sections (see .mainNav in the header): switching to
+  // Inventory hides the job-card filters/summary/board entirely rather than mixing it in as
+  // another column. Board vs Log (above) only matters while inside Production.
+  document.querySelectorAll(".mainNavLink").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      if(btn.hidden) return;
+      document.querySelectorAll(".mainNavLink").forEach(function(b){ b.classList.remove("active"); b.setAttribute("aria-selected","false"); });
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected","true");
+      state.appView = btn.dataset.appview;
+      applyAppView();
+    });
+  });
+  function applyAppView(){
+    var isInventory = state.appView === "inventory";
+    el.controlsBar.hidden = isInventory;
+    el.summaryBar.hidden = isInventory;
+    el.taskBoardSection.hidden = isInventory || state.view !== "board";
+    el.boardView.hidden = isInventory || state.view !== "board";
+    el.logView.hidden = isInventory || state.view !== "log";
+    el.inventoryView.hidden = !isInventory;
+    if(isInventory) renderInventory();
+  }
+
+  // ---------- Inventory Management (Store department's own screen — see .mainNav) ----------
+  // Two dedicated collections, separate from `entries`: inventoryCatalog (the item master, one
+  // doc per SKU, curated by Admin via Manage Inventory Items) and inventoryMovements (the ledger —
+  // one doc per Receive/Ship/Adjust event, generalizing Stock Summary's own proven
+  // opening+inward-outward=closing math to a per-SKU running balance instead of per
+  // Customer+Product). See the plan doc / PR description for why this isn't just another
+  // job-card stage.
+  var INV_CATEGORIES = ["Raw Material", "Packaging Consumable", "Spare Part", "Finished Component", "Chemical/Adhesive", "Stationery", "Other"];
+  var INV_ZONE_META = {
+    FAST: { label: function(){ return t("inv_zone_fast"); } },
+    MID:  { label: function(){ return t("inv_zone_mid"); } },
+    BULK: { label: function(){ return t("inv_zone_bulk"); } },
+    CTRL: { label: function(){ return t("inv_zone_ctrl"); } }
+  };
+  // Chemical/Adhesive always routes to Controlled Storage regardless of how often it moves —
+  // matches Manage Inventory Items' Category list above. Everything else is ranked by recent Ship
+  // velocity into Fast/Mid/Bulk (see suggestedInventoryZone).
+  var INV_FORCED_ZONE = { "chemical/adhesive": "CTRL" };
+
+  function subscribeInventory(){
+    if(state.unsubInvCatalog) state.unsubInvCatalog();
+    if(state.unsubInvMovements) state.unsubInvMovements();
+    state.unsubInvCatalog = state.db.collection("inventoryCatalog").onSnapshot(function(snap){
+      var map = {};
+      snap.forEach(function(doc){ map[doc.id] = Object.assign({ sku: doc.id }, doc.data()); });
+      state.invCatalog = map;
+      renderInventoryCategoryFilterOptions();
+      if(state.appView === "inventory") renderInventory();
+      if(el.invItemsOverlay && !el.invItemsOverlay.hidden) renderInvItemsList();
+    }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
+    // Newest first, capped — plenty for a store's day-to-day ledger; computeCurrentStockMap only
+    // needs the most recent row per SKU, and the Activity Log only shows a recent window anyway
+    // (same trade-off the main job-card Log view already makes).
+    state.unsubInvMovements = state.db.collection("inventoryMovements").orderBy("createdAt", "desc").limit(1000).onSnapshot(function(snap){
+      state.invMovements = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      if(state.appView === "inventory") renderInventory();
+    }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
+  }
+
+  // state.invMovements is newest-first; walking it oldest-to-newest and overwriting per SKU leaves
+  // each SKU's most recent quantityAfter — one pass, no per-item Firestore query needed (real-time
+  // stock visibility comes straight from the live onSnapshot above).
+  function computeCurrentStockMap(){
+    var map = {};
+    for(var i = state.invMovements.length - 1; i >= 0; i--){
+      var m = state.invMovements[i];
+      map[m.itemSku] = m.quantityAfter;
+    }
+    return map;
+  }
+  function currentStockFor(sku){ var map = computeCurrentStockMap(); return map.hasOwnProperty(sku) ? map[sku] : 0; }
+  function inventoryStatus(qty, reorderPoint){
+    qty = Number(qty) || 0; reorderPoint = Number(reorderPoint) || 0;
+    if(qty <= 0) return "crit";
+    if(qty <= reorderPoint) return "warn";
+    return "good";
+  }
+  function inventoryStatusLabel(cls){
+    return cls === "crit" ? t("inv_status_out") : cls === "warn" ? t("inv_status_low") : t("inv_status_ok");
+  }
+  function shippedQtyFor(sku){
+    var total = 0;
+    state.invMovements.forEach(function(m){ if(m.itemSku === sku && m.type === "ship") total += Number(m.qty) || 0; });
+    return total;
+  }
+  function zoneFromBin(bin){
+    if(!bin) return null;
+    var z = String(bin).split("-")[0].toUpperCase();
+    return INV_ZONE_META[z] ? z : null;
+  }
+  function suggestedInventoryZone(item){
+    var cat = (item.category || "").toLowerCase();
+    if(INV_FORCED_ZONE[cat]) return INV_FORCED_ZONE[cat];
+    var pool = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
+      .filter(function(i){ return !INV_FORCED_ZONE[(i.category || "").toLowerCase()]; });
+    var ranked = pool.map(function(i){ return { sku: i.sku, shipped: shippedQtyFor(i.sku) }; })
+      .sort(function(a, b){ return b.shipped - a.shipped; });
+    var idx = -1;
+    for(var i = 0; i < ranked.length; i++){ if(ranked[i].sku === item.sku){ idx = i; break; } }
+    if(idx === -1 || ranked[idx].shipped <= 0) return "BULK";
+    var n = ranked.length, topCut = Math.max(1, Math.ceil(n / 3)), midCut = Math.max(topCut + 1, Math.ceil(2 * n / 3));
+    if(idx < topCut) return "FAST";
+    if(idx < midCut) return "MID";
+    return "BULK";
+  }
+
+  // Records one movement and returns the write's promise. `amount` means "quantity moved" for
+  // receive/ship, and "the new counted total" for adjust (delta is computed here either way) —
+  // mirrors how refreshStockSummaryCalc treats Stock Summary's Inward/Outward vs a plain balance.
+  function addInventoryMovement(sku, type, amount, note){
+    var item = state.invCatalog[sku];
+    if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
+    amount = Number(amount);
+    if(!isFinite(amount) || amount < 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    var current = currentStockFor(sku);
+    var delta, qtyForLog, newQty;
+    if(type === "receive"){ delta = amount; qtyForLog = amount; newQty = current + amount; }
+    else if(type === "ship"){
+      if(amount > current) return Promise.reject(new Error(tf("inv_err_insufficient_stock", { qty: current })));
+      delta = -amount; qtyForLog = -amount; newQty = current - amount;
+    } else { // adjust
+      delta = amount - current; qtyForLog = delta; newQty = amount;
+      if(!note){ return Promise.reject(new Error(t("inv_err_adjust_needs_note"))); }
+    }
+    var payload = {
+      itemSku: sku, itemName: item.name, type: type, qty: qtyForLog, delta: delta, quantityAfter: newQty,
+      note: note || "", actor: deviceSupervisorName || "", role: deviceSupervisorRole || "",
+      date: state.date, shift: state.shift || "", createdAt: Date.now()
+    };
+    return state.db.collection("inventoryMovements").add(payload);
+  }
+
+  function renderInventoryCategoryFilterOptions(){
+    var cats = {};
+    Object.keys(state.invCatalog).forEach(function(sku){ var c = state.invCatalog[sku].category; if(c) cats[c] = true; });
+    var prev = el.invCategoryFilter.value;
+    el.invCategoryFilter.innerHTML = '<option value="" data-i18n="filter_all">' + esc(t("filter_all")) + "</option>" +
+      Object.keys(cats).sort().map(function(c){ return '<option value="' + esc(c) + '">' + esc(c) + "</option>"; }).join("");
+    el.invCategoryFilter.value = cats[prev] ? prev : "";
+  }
+
+  function renderInventory(){
+    var items = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
+      .sort(function(a, b){ return (a.name || "").localeCompare(b.name || ""); });
+    var stockMap = computeCurrentStockMap();
+
+    var totalSkus = items.length, totalUnits = 0, lowCount = 0, outCount = 0;
+    items.forEach(function(i){
+      var qty = stockMap[i.sku] || 0;
+      totalUnits += qty;
+      var s = inventoryStatus(qty, i.reorderPoint);
+      if(s === "warn") lowCount++;
+      if(s === "crit") outCount++;
+    });
+    el.invStatSkus.textContent = totalSkus;
+    el.invStatUnits.textContent = totalUnits.toLocaleString();
+    el.invStatLow.textContent = lowCount;
+    el.invStatOut.textContent = outCount;
+
+    var q = (el.invSearch.value || "").trim().toLowerCase();
+    var catFilter = el.invCategoryFilter.value;
+    var canManage = state.isAdminDevice;
+    var canMove = canManage || deviceCanViewStage("Inventory Management");
+    var rows = items.filter(function(i){
+      if(catFilter && i.category !== catFilter) return false;
+      if(q && ((i.name || "") + " " + (i.sku || "") + " " + (i.bin || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+
+    el.invStockBody.innerHTML = "";
+    el.invStockEmpty.hidden = rows.length !== 0;
+    rows.forEach(function(item){
+      var qty = stockMap[item.sku] || 0;
+      var sClass = inventoryStatus(qty, item.reorderPoint);
+      var curZone = zoneFromBin(item.bin);
+      var suggZone = suggestedInventoryZone(item);
+      var placementHint = (curZone && curZone !== suggZone)
+        ? '<span class="invPlacementHint">⚑ ' + tf("inv_suggest_zone", { zone: esc(INV_ZONE_META[suggZone].label()) }) + "</span>" : "";
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + esc(item.name) + placementHint + "</td>" +
+        '<td class="mono">' + esc(item.sku) + "</td>" +
+        "<td>" + esc(item.category || "—") + "</td>" +
+        '<td><span class="capChip good" style="cursor:default;">' + esc(item.bin || "—") + "</span></td>" +
+        '<td class="mono">' + qty.toLocaleString() + " " + esc(item.unit || "") + "</td>" +
+        '<td class="mono">' + (Number(item.reorderPoint) || 0).toLocaleString() + "</td>" +
+        '<td><span class="capChip ' + sClass + '">' + esc(inventoryStatusLabel(sClass)) + "</span></td>" +
+        '<td class="invRowActions"></td>';
+      var actionsCell = tr.querySelector(".invRowActions");
+      if(canMove){
+        var recvBtn = document.createElement("button");
+        recvBtn.type = "button"; recvBtn.className = "btn ghost invSmallBtn"; recvBtn.textContent = t("inv_action_receive");
+        recvBtn.addEventListener("click", function(){ openInventoryMovementModal(item.sku, "receive"); });
+        actionsCell.appendChild(recvBtn);
+        var shipBtn = document.createElement("button");
+        shipBtn.type = "button"; shipBtn.className = "btn ghost invSmallBtn"; shipBtn.textContent = t("inv_action_ship");
+        shipBtn.addEventListener("click", function(){ openInventoryMovementModal(item.sku, "ship"); });
+        actionsCell.appendChild(shipBtn);
+      }
+      if(canManage){
+        var adjBtn = document.createElement("button");
+        adjBtn.type = "button"; adjBtn.className = "btn ghost invSmallBtn"; adjBtn.textContent = t("inv_action_adjust");
+        adjBtn.addEventListener("click", function(){ openInventoryMovementModal(item.sku, "adjust"); });
+        actionsCell.appendChild(adjBtn);
+      }
+      el.invStockBody.appendChild(tr);
+    });
+
+    renderInventoryLog();
+  }
+
+  function renderInventoryLog(){
+    var q = (el.invLogSearch.value || "").trim().toLowerCase();
+    var typeFilter = el.invLogTypeFilter.value;
+    var rows = state.invMovements.filter(function(m){
+      if(typeFilter && m.type !== typeFilter) return false;
+      if(q && ((m.itemName || "") + " " + (m.actor || "") + " " + (m.note || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    el.invLogBody.innerHTML = "";
+    el.invLogEmpty.hidden = rows.length !== 0;
+    var typeLabel = { receive: t("inv_type_receive"), ship: t("inv_type_ship"), adjust: t("inv_type_adjust") };
+    rows.slice(0, 300).forEach(function(m){
+      var tr = document.createElement("tr");
+      var qtySign = m.qty > 0 ? "+" : "";
+      tr.innerHTML =
+        "<td>" + esc(m.itemName) + "</td>" +
+        "<td>" + esc(m.date || "") + "</td>" +
+        "<td>" + esc(typeLabel[m.type] || m.type) + "</td>" +
+        '<td class="mono">' + qtySign + (Number(m.qty) || 0).toLocaleString() + "</td>" +
+        '<td class="mono">' + (Number(m.quantityAfter) || 0).toLocaleString() + "</td>" +
+        "<td>" + esc(m.note || "") + "</td>" +
+        "<td>" + esc(m.actor || "") + "</td>";
+      el.invLogBody.appendChild(tr);
+    });
+  }
+
+  el.invSearch.addEventListener("input", renderInventory);
+  el.invCategoryFilter.addEventListener("change", renderInventory);
+  el.invLogSearch.addEventListener("input", renderInventoryLog);
+  el.invLogTypeFilter.addEventListener("change", renderInventoryLog);
+
+  // ---------- Manage Inventory Items (Admin-only catalog editor) ----------
+  var editingInvSku = null;
+  INV_CATEGORIES.forEach(function(c){
+    var o = document.createElement("option"); o.value = c; o.textContent = c;
+    el.invItemCategorySelect.appendChild(o);
+  });
+
+  function resetInvItemForm(){
+    editingInvSku = null;
+    el.invItemNameInput.value = "";
+    el.invItemSkuInput.value = "";
+    el.invItemSkuInput.disabled = false;
+    el.invItemCategorySelect.value = INV_CATEGORIES[0];
+    el.invItemBinInput.value = "";
+    el.invItemSupplierInput.value = "";
+    el.invItemReorderInput.value = "";
+    el.invItemUnitInput.value = "";
+    el.invItemAddBtn.textContent = t("inv_items_add");
+    el.invItemClearBtn.hidden = true;
+    el.invItemsError.hidden = true;
+  }
+  function fillInvItemForm(item){
+    editingInvSku = item.sku;
+    el.invItemNameInput.value = item.name || "";
+    el.invItemSkuInput.value = item.sku;
+    el.invItemSkuInput.disabled = true; // editing keeps the same SKU (the document id)
+    el.invItemCategorySelect.value = item.category || INV_CATEGORIES[0];
+    el.invItemBinInput.value = item.bin || "";
+    el.invItemSupplierInput.value = item.supplier || "";
+    el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
+    el.invItemUnitInput.value = item.unit || "";
+    el.invItemAddBtn.textContent = t("sup_save_changes");
+    el.invItemClearBtn.hidden = false;
+    el.invItemNameInput.focus();
+  }
+  function renderInvItemsList(){
+    var q = (el.invItemsSearchInput.value || "").trim().toLowerCase();
+    var items = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
+      .filter(function(i){
+        if(!q) return true;
+        return ((i.name||"") + " " + i.sku + " " + (i.category||"")).toLowerCase().indexOf(q) !== -1;
+      })
+      .sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); });
+    el.invItemsList.innerHTML = "";
+    el.invItemsEmpty.hidden = items.length > 0;
+    items.forEach(function(item){
+      var row = document.createElement("div");
+      row.className = "invItemRow";
+      row.innerHTML =
+        '<div><div class="invItemName">' + esc(item.name) + '</div>' +
+        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") + " · " + esc(item.bin || "—") + "</div></div>" +
+        '<button type="button" class="btn ghost small" data-edit-sku="' + esc(item.sku) + '">' + esc(t("sup_edit")) + "</button> " +
+        '<button type="button" class="btn danger small" data-del-sku="' + esc(item.sku) + '">' + esc(t("sup_remove")) + "</button>";
+      el.invItemsList.appendChild(row);
+    });
+    el.invItemsList.querySelectorAll("[data-edit-sku]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var item = state.invCatalog[btn.getAttribute("data-edit-sku")];
+        if(item) fillInvItemForm(item);
+      });
+    });
+    el.invItemsList.querySelectorAll("[data-del-sku]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var sku = btn.getAttribute("data-del-sku");
+        btn.disabled = true;
+        // Deleting the catalog entry does not touch its movement history — inventoryMovements
+        // keeps itemName/itemSku by value, same as Stock Summary keeps a Customer+Product's
+        // entries even after that catalog pairing changes — so the Activity Log trail survives.
+        state.db.collection("inventoryCatalog").doc(sku).delete().then(function(){
+          if(editingInvSku === sku) resetInvItemForm();
+        }).catch(function(){
+          btn.disabled = false;
+          el.invItemsError.textContent = t("inv_items_err_remove_failed");
+          el.invItemsError.hidden = false;
+        });
+      });
+    });
+  }
+  el.invItemsSearchInput.addEventListener("input", renderInvItemsList);
+  el.manageInventoryItemsBtn.addEventListener("click", function(){
+    el.invItemsOverlay.hidden = false;
+    el.invItemsSearchInput.value = "";
+    resetInvItemForm();
+    renderInvItemsList();
+  });
+  el.invItemsCloseBtn.addEventListener("click", function(){ el.invItemsOverlay.hidden = true; });
+  el.invItemsOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.invItemsOverlay) el.invItemsOverlay.hidden = true;
+  });
+  el.invItemClearBtn.addEventListener("click", resetInvItemForm);
+  el.invItemAddBtn.addEventListener("click", function(){
+    var sku = editingInvSku || el.invItemSkuInput.value.trim().toUpperCase().replace(/\s+/g, "-");
+    var name = el.invItemNameInput.value.trim();
+    var reorderPoint = Number(el.invItemReorderInput.value);
+    el.invItemsError.hidden = true;
+    if(!sku || !name){
+      el.invItemsError.textContent = t("inv_items_err_required");
+      el.invItemsError.hidden = false;
+      return;
+    }
+    if(!editingInvSku && state.invCatalog[sku]){
+      el.invItemsError.textContent = t("inv_items_err_duplicate_sku");
+      el.invItemsError.hidden = false;
+      return;
+    }
+    var payload = {
+      name: name, category: el.invItemCategorySelect.value, bin: el.invItemBinInput.value.trim(),
+      supplier: el.invItemSupplierInput.value.trim(), reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
+      unit: el.invItemUnitInput.value.trim() || "units", updatedAt: Date.now()
+    };
+    if(!editingInvSku) payload.createdAt = Date.now();
+    el.invItemAddBtn.disabled = true;
+    var write = editingInvSku
+      ? state.db.collection("inventoryCatalog").doc(sku).update(payload)
+      : state.db.collection("inventoryCatalog").doc(sku).set(payload);
+    write.then(function(){
+      el.invItemAddBtn.disabled = false;
+      resetInvItemForm();
+      renderInvItemsList();
+    }).catch(function(err){
+      el.invItemAddBtn.disabled = false;
+      el.invItemsError.textContent = t("inv_items_err_save_failed") + " " + (err && err.message ? err.message : "");
+      el.invItemsError.hidden = false;
+    });
+  });
+
+  // ---------- Receive / Ship / Adjust modal ----------
+  var invMoveContext = null; // { sku, type }
+  function openInventoryMovementModal(sku, type){
+    var item = state.invCatalog[sku];
+    if(!item) return;
+    invMoveContext = { sku: sku, type: type };
+    var current = currentStockFor(sku);
+    var titleKey = type === "receive" ? "inv_action_receive" : type === "ship" ? "inv_action_ship" : "inv_action_adjust";
+    el.invMoveTitle.textContent = t(titleKey);
+    el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
+    el.invMoveQtyLabel.textContent = type === "adjust" ? t("inv_move_qty_label_adjust") : t("inv_move_qty_label");
+    el.invMoveQtyInput.value = type === "adjust" ? current : "";
+    el.invMoveNoteLabel.textContent = type === "adjust" ? t("inv_move_note_label_adjust") : t("inv_move_note_label");
+    el.invMoveNoteInput.value = "";
+    el.invMoveError.hidden = true;
+    el.invMoveOverlay.hidden = false;
+    el.invMoveQtyInput.focus();
+  }
+  el.invMoveCancelBtn.addEventListener("click", function(){ el.invMoveOverlay.hidden = true; invMoveContext = null; });
+  el.invMoveOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.invMoveOverlay){ el.invMoveOverlay.hidden = true; invMoveContext = null; }
+  });
+  el.invMoveConfirmBtn.addEventListener("click", function(){
+    if(!invMoveContext) return;
+    el.invMoveError.hidden = true;
+    el.invMoveConfirmBtn.disabled = true;
+    addInventoryMovement(invMoveContext.sku, invMoveContext.type, el.invMoveQtyInput.value, el.invMoveNoteInput.value.trim())
+      .then(function(){
+        el.invMoveConfirmBtn.disabled = false;
+        el.invMoveOverlay.hidden = true;
+        invMoveContext = null;
+      }).catch(function(err){
+        el.invMoveConfirmBtn.disabled = false;
+        el.invMoveError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
+        el.invMoveError.hidden = false;
+      });
   });
 
   // ---------- Board rendering ----------
@@ -4816,7 +5595,7 @@
     renderSummary(filtered);
 
     el.boardView.innerHTML = "";
-    var stagesToShow = state.boardStage ? [state.boardStage] : (locked ? deviceVisibleStages() : STAGES);
+    var stagesToShow = state.boardStage ? [state.boardStage] : (locked ? deviceVisibleStages() : JOB_CARD_STAGES);
     var lastSection = null;
     stagesToShow.forEach(function(stage){
       // A dashed "Production" / "Departments" heading appears the first time a column from that
@@ -7086,6 +7865,9 @@
     renderBoard();
     renderLog();
     renderTasks();
+    renderInventoryCategoryFilterOptions();
+    if(state.appView === "inventory") renderInventory();
+    if(!el.invItemsOverlay.hidden) renderInvItemsList();
   }
   el.langSelect.value = state.lang;
   el.langSelect.addEventListener("change", function(){
@@ -7108,6 +7890,7 @@
   subscribeCatalog();
   subscribeMasterSheet();
   subscribeTasks();
+  subscribeInventory();
   fixMaraneTypoInEntries();
 })();
 </script>
