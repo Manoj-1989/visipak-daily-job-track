@@ -426,6 +426,8 @@
   input.mono, select.mono{font-family:var(--font-mono);}
   .invMoveModal .modal{max-width:420px;}
   .invMoveCurrentQty{font-size:13px;color:var(--ink-soft);margin:-6px 0 4px;}
+  .invMoveAmountLine{font-size:13.5px;font-weight:600;color:var(--ink);font-family:var(--font-mono);
+    margin:-4px 0 10px;padding:8px 10px;background:var(--surface-2);border-radius:6px;}
   .logControls{display:flex;flex-wrap:wrap;gap:10px;}
   .logControls input[type="text"], .logControls select{
     border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
@@ -863,7 +865,7 @@
           <thead>
             <tr>
               <th data-i18n="inv_th_item">Item</th><th data-i18n="th_date">Date</th><th data-i18n="inv_th_type">Type</th>
-              <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_balance">Balance After</th><th data-i18n="th_remarks">Remarks</th><th data-i18n="th_updatedby">Updated By</th>
+              <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_balance">Balance After</th><th data-i18n="inv_th_amount">Amount</th><th data-i18n="th_remarks">Remarks</th><th data-i18n="th_updatedby">Updated By</th>
             </tr>
           </thead>
           <tbody id="invLogBody"></tbody>
@@ -1061,6 +1063,24 @@
       <label><span id="invMoveQtyLabel" data-i18n="inv_move_qty_label">Quantity</span>
         <input type="number" id="invMoveQtyInput" min="0" step="1">
       </label>
+    </div>
+    <!-- Invoice-style pricing — only meaningful for Receive (purchase cost) and Ship (sale value);
+         hidden for Adjust, which is a pure quantity correction with no money changing hands. -->
+    <div id="invMoveInvoiceFields">
+      <div class="supAddRow">
+        <label><span data-i18n="inv_move_price_label">Price/Unit</span>
+          <input type="number" id="invMovePriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
+        </label>
+        <label><span data-i18n="inv_move_discount_label">Discount %</span>
+          <input type="number" id="invMoveDiscountInput" class="mono" min="0" max="100" step="0.01" placeholder="0">
+        </label>
+      </div>
+      <div class="supAddRow" style="grid-template-columns:1fr;">
+        <label><span data-i18n="inv_move_gst_label">GST %</span>
+          <input type="number" id="invMoveGstInput" class="mono" min="0" step="0.01" placeholder="0">
+        </label>
+      </div>
+      <p class="invMoveAmountLine" id="invMoveAmountLine"></p>
     </div>
     <div class="supAddRow" style="grid-template-columns:1fr;">
       <label><span id="invMoveNoteLabel" data-i18n="inv_move_note_label">Note</span>
@@ -1954,7 +1974,7 @@
       inv_search_placeholder: "Search item, SKU, bin…",
       inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category", inv_th_bin: "Bin",
       inv_th_onhand: "On Hand", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
-      inv_th_type: "Type", inv_th_qty: "Qty", inv_th_balance: "Balance After",
+      inv_th_type: "Type", inv_th_qty: "Qty", inv_th_balance: "Balance After", inv_th_amount: "Amount",
       inv_empty: "No inventory items yet. Use \"Manage Inventory Items\" to add your first one.",
       inv_log_heading: "Activity Log",
       inv_log_search_placeholder: "Search item or person…",
@@ -1977,6 +1997,8 @@
       inv_items_err_save_failed: "Couldn't save item.",
       inv_items_err_remove_failed: "Couldn't remove item.",
       inv_move_qty_label: "Quantity", inv_move_qty_label_adjust: "New counted quantity",
+      inv_move_price_label: "Price/Unit", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
+      inv_move_amount_line: "Amount: {amount}",
       inv_move_note_label: "Note", inv_move_note_label_adjust: "Reason for adjustment",
       inv_move_note_placeholder: "e.g. supplier delivery, job card ref…",
       inv_move_confirm: "Confirm",
@@ -2168,7 +2190,7 @@
       inv_search_placeholder: "आइटम, SKU, बिन खोजें…",
       inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी", inv_th_bin: "बिन",
       inv_th_onhand: "उपलब्ध मात्रा", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
-      inv_th_type: "प्रकार", inv_th_qty: "मात्रा", inv_th_balance: "शेष मात्रा",
+      inv_th_type: "प्रकार", inv_th_qty: "मात्रा", inv_th_balance: "शेष मात्रा", inv_th_amount: "राशि",
       inv_empty: "अभी तक कोई इन्वेंटरी आइटम नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
       inv_log_heading: "गतिविधि लॉग",
       inv_log_search_placeholder: "आइटम या व्यक्ति खोजें…",
@@ -2191,6 +2213,8 @@
       inv_items_err_save_failed: "आइटम सेव नहीं हो सका।",
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
       inv_move_qty_label: "मात्रा", inv_move_qty_label_adjust: "नई गिनी गई मात्रा",
+      inv_move_price_label: "मूल्य/यूनिट", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
+      inv_move_amount_line: "राशि: {amount}",
       inv_move_note_label: "नोट", inv_move_note_label_adjust: "समायोजन का कारण",
       inv_move_note_placeholder: "जैसे, सप्लायर डिलीवरी, जॉब कार्ड संदर्भ…",
       inv_move_confirm: "पुष्टि करें",
@@ -2382,7 +2406,7 @@
       inv_search_placeholder: "ఐటమ్, SKU, బిన్ వెతకండి…",
       inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ", inv_th_bin: "బిన్",
       inv_th_onhand: "అందుబాటులో ఉంది", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
-      inv_th_type: "రకం", inv_th_qty: "పరిమాణం", inv_th_balance: "మిగిలిన పరిమాణం",
+      inv_th_type: "రకం", inv_th_qty: "పరిమాణం", inv_th_balance: "మిగిలిన పరిమాణం", inv_th_amount: "మొత్తం",
       inv_empty: "ఇంకా ఇన్వెంటరీ ఐటమ్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
       inv_log_heading: "యాక్టివిటీ లాగ్",
       inv_log_search_placeholder: "ఐటమ్ లేదా వ్యక్తిని వెతకండి…",
@@ -2405,6 +2429,8 @@
       inv_items_err_save_failed: "ఐటమ్ సేవ్ కాలేదు.",
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
       inv_move_qty_label: "పరిమాణం", inv_move_qty_label_adjust: "కొత్తగా లెక్కించిన పరిమాణం",
+      inv_move_price_label: "ధర/యూనిట్", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
+      inv_move_amount_line: "మొత్తం: {amount}",
       inv_move_note_label: "నోట్", inv_move_note_label_adjust: "సర్దుబాటుకు కారణం",
       inv_move_note_placeholder: "ఉదా. సప్లయర్ డెలివరీ, జాబ్ కార్డ్ రిఫరెన్స్…",
       inv_move_confirm: "నిర్ధారించండి",
@@ -2603,6 +2629,11 @@
     invMoveItemLine: document.getElementById("invMoveItemLine"),
     invMoveQtyLabel: document.getElementById("invMoveQtyLabel"),
     invMoveQtyInput: document.getElementById("invMoveQtyInput"),
+    invMoveInvoiceFields: document.getElementById("invMoveInvoiceFields"),
+    invMovePriceInput: document.getElementById("invMovePriceInput"),
+    invMoveDiscountInput: document.getElementById("invMoveDiscountInput"),
+    invMoveGstInput: document.getElementById("invMoveGstInput"),
+    invMoveAmountLine: document.getElementById("invMoveAmountLine"),
     invMoveNoteLabel: document.getElementById("invMoveNoteLabel"),
     invMoveNoteInput: document.getElementById("invMoveNoteInput"),
     invMoveError: document.getElementById("invMoveError"),
@@ -5246,10 +5277,26 @@
     return "BULK";
   }
 
+  function formatInr(n){
+    n = Number(n) || 0;
+    return "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // Computes the invoice-style total for one movement's price fields, same order of operations as
+  // any GST purchase/sales invoice: qty*price = subtotal, minus a % discount, then GST % applied
+  // on top of the discounted (taxable) amount.
+  function computeInventoryLineAmount(qty, pricePerUnit, discountPct, gstPct){
+    var subtotal = (Number(qty) || 0) * (Number(pricePerUnit) || 0);
+    var afterDiscount = subtotal - subtotal * ((Number(discountPct) || 0) / 100);
+    var total = afterDiscount + afterDiscount * ((Number(gstPct) || 0) / 100);
+    return total;
+  }
+
   // Records one movement and returns the write's promise. `amount` means "quantity moved" for
   // receive/ship, and "the new counted total" for adjust (delta is computed here either way) —
   // mirrors how refreshStockSummaryCalc treats Stock Summary's Inward/Outward vs a plain balance.
-  function addInventoryMovement(sku, type, amount, note){
+  // `priceFields` (Receive/Ship only) is the optional invoice-style line: { pricePerUnit,
+  // discountPct, gstPct } — Adjust never carries these since no money changes hands there.
+  function addInventoryMovement(sku, type, amount, note, priceFields){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     amount = Number(amount);
@@ -5269,6 +5316,12 @@
       note: note || "", actor: deviceSupervisorName || "", role: deviceSupervisorRole || "",
       date: state.date, shift: state.shift || "", createdAt: Date.now()
     };
+    if(priceFields && (type === "receive" || type === "ship")){
+      payload.pricePerUnit = Number(priceFields.pricePerUnit) || 0;
+      payload.discountPct = Number(priceFields.discountPct) || 0;
+      payload.gstPct = Number(priceFields.gstPct) || 0;
+      payload.lineAmount = computeInventoryLineAmount(amount, payload.pricePerUnit, payload.discountPct, payload.gstPct);
+    }
     return state.db.collection("inventoryMovements").add(payload);
   }
 
@@ -5365,12 +5418,16 @@
     rows.slice(0, 300).forEach(function(m){
       var tr = document.createElement("tr");
       var qtySign = m.qty > 0 ? "+" : "";
+      // Amount only exists on Receive/Ship rows (see addInventoryMovement) — Adjust rows never
+      // carry pricing since no money changes hands on a cycle-count correction.
+      var amountText = m.lineAmount != null ? formatInr(m.lineAmount) : "—";
       tr.innerHTML =
         "<td>" + esc(m.itemName) + "</td>" +
         "<td>" + esc(m.date || "") + "</td>" +
         "<td>" + esc(typeLabel[m.type] || m.type) + "</td>" +
         '<td class="mono">' + qtySign + (Number(m.qty) || 0).toLocaleString() + "</td>" +
         '<td class="mono">' + (Number(m.quantityAfter) || 0).toLocaleString() + "</td>" +
+        '<td class="mono">' + esc(amountText) + "</td>" +
         "<td>" + esc(m.note || "") + "</td>" +
         "<td>" + esc(m.actor || "") + "</td>";
       el.invLogBody.appendChild(tr);
@@ -5510,6 +5567,11 @@
 
   // ---------- Receive / Ship / Adjust modal ----------
   var invMoveContext = null; // { sku, type }
+  function refreshInvMoveAmount(){
+    if(el.invMoveInvoiceFields.hidden) return;
+    var total = computeInventoryLineAmount(el.invMoveQtyInput.value, el.invMovePriceInput.value, el.invMoveDiscountInput.value, el.invMoveGstInput.value);
+    el.invMoveAmountLine.textContent = tf("inv_move_amount_line", { amount: formatInr(total) });
+  }
   function openInventoryMovementModal(sku, type){
     var item = state.invCatalog[sku];
     if(!item) return;
@@ -5520,12 +5582,22 @@
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
     el.invMoveQtyLabel.textContent = type === "adjust" ? t("inv_move_qty_label_adjust") : t("inv_move_qty_label");
     el.invMoveQtyInput.value = type === "adjust" ? current : "";
+    // Invoice-style pricing only applies to Receive (cost) / Ship (sale value) — Adjust is a pure
+    // quantity correction, so no money is recorded against it.
+    el.invMoveInvoiceFields.hidden = type === "adjust";
+    el.invMovePriceInput.value = "";
+    el.invMoveDiscountInput.value = "";
+    el.invMoveGstInput.value = "";
+    refreshInvMoveAmount();
     el.invMoveNoteLabel.textContent = type === "adjust" ? t("inv_move_note_label_adjust") : t("inv_move_note_label");
     el.invMoveNoteInput.value = "";
     el.invMoveError.hidden = true;
     el.invMoveOverlay.hidden = false;
     el.invMoveQtyInput.focus();
   }
+  [el.invMoveQtyInput, el.invMovePriceInput, el.invMoveDiscountInput, el.invMoveGstInput].forEach(function(input){
+    input.addEventListener("input", refreshInvMoveAmount);
+  });
   el.invMoveCancelBtn.addEventListener("click", function(){ el.invMoveOverlay.hidden = true; invMoveContext = null; });
   el.invMoveOverlay.addEventListener("click", function(ev){
     if(ev.target === el.invMoveOverlay){ el.invMoveOverlay.hidden = true; invMoveContext = null; }
@@ -5534,7 +5606,10 @@
     if(!invMoveContext) return;
     el.invMoveError.hidden = true;
     el.invMoveConfirmBtn.disabled = true;
-    addInventoryMovement(invMoveContext.sku, invMoveContext.type, el.invMoveQtyInput.value, el.invMoveNoteInput.value.trim())
+    var priceFields = el.invMoveInvoiceFields.hidden ? null : {
+      pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value
+    };
+    addInventoryMovement(invMoveContext.sku, invMoveContext.type, el.invMoveQtyInput.value, el.invMoveNoteInput.value.trim(), priceFields)
       .then(function(){
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveOverlay.hidden = true;
