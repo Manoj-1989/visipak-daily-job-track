@@ -840,7 +840,7 @@
         <thead>
           <tr>
             <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
-            <th data-i18n="inv_th_bin">Bin</th><th data-i18n="inv_th_onhand">On Hand</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+            <th data-i18n="inv_th_bin">Bin</th><th data-i18n="inv_th_onhand">On Hand</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_reorder">Reorder Point</th>
             <th data-i18n="inv_th_status">Status</th><th></th>
           </tr>
         </thead>
@@ -1031,9 +1031,12 @@
         <input type="number" id="invItemReorderInput" min="0" step="1" placeholder="e.g. 100">
       </label>
     </div>
-    <div class="supAddRow" style="grid-template-columns:1fr;">
+    <div class="supAddRow">
       <label><span data-i18n="inv_items_unit">Unit</span>
         <input type="text" id="invItemUnitInput" placeholder="e.g. sheets, kg, rolls" data-i18n-placeholder="inv_items_unit_placeholder">
+      </label>
+      <label><span data-i18n="inv_items_price">Default Price/Unit</span>
+        <input type="number" id="invItemPriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
       </label>
     </div>
     <p class="supStagesLabel" style="margin:2px 0 10px;font-weight:400;" data-i18n="inv_bin_hint">
@@ -1973,7 +1976,7 @@
       btn_manage_inventory_items: "Manage Inventory Items",
       inv_search_placeholder: "Search item, SKU, bin…",
       inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category", inv_th_bin: "Bin",
-      inv_th_onhand: "On Hand", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
+      inv_th_onhand: "On Hand", inv_th_price: "Price/Unit", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
       inv_th_type: "Type", inv_th_qty: "Qty", inv_th_balance: "Balance After", inv_th_amount: "Amount",
       inv_empty: "No inventory items yet. Use \"Manage Inventory Items\" to add your first one.",
       inv_log_heading: "Activity Log",
@@ -1990,6 +1993,7 @@
       inv_items_empty: "No items found.",
       inv_item_name_placeholder: "e.g. Corrugated Sheet 3-ply",
       inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
+      inv_items_price: "Default Price/Unit",
       inv_bin_hint: "Tip: start the bin with a zone code (FAST-, MID-, BULK-, or CTRL- for controlled storage) so the Inventory screen can flag when an item might be better placed elsewhere.",
       inv_items_add: "Add item",
       inv_items_err_required: "Item name and SKU are required.",
@@ -2189,7 +2193,7 @@
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_search_placeholder: "आइटम, SKU, बिन खोजें…",
       inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी", inv_th_bin: "बिन",
-      inv_th_onhand: "उपलब्ध मात्रा", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
+      inv_th_onhand: "उपलब्ध मात्रा", inv_th_price: "मूल्य/यूनिट", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
       inv_th_type: "प्रकार", inv_th_qty: "मात्रा", inv_th_balance: "शेष मात्रा", inv_th_amount: "राशि",
       inv_empty: "अभी तक कोई इन्वेंटरी आइटम नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
       inv_log_heading: "गतिविधि लॉग",
@@ -2206,6 +2210,7 @@
       inv_items_empty: "कोई आइटम नहीं मिला।",
       inv_item_name_placeholder: "जैसे, कोरुगेटेड शीट 3-प्लाई",
       inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
+      inv_items_price: "डिफ़ॉल्ट मूल्य/यूनिट",
       inv_bin_hint: "सुझाव: बिन की शुरुआत ज़ोन कोड से करें (FAST-, MID-, BULK-, या नियंत्रित भंडारण के लिए CTRL-) ताकि इन्वेंटरी स्क्रीन बेहतर जगह का सुझाव दे सके।",
       inv_items_add: "आइटम जोड़ें",
       inv_items_err_required: "आइटम का नाम और SKU आवश्यक हैं।",
@@ -2405,7 +2410,7 @@
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_search_placeholder: "ఐటమ్, SKU, బిన్ వెతకండి…",
       inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ", inv_th_bin: "బిన్",
-      inv_th_onhand: "అందుబాటులో ఉంది", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
+      inv_th_onhand: "అందుబాటులో ఉంది", inv_th_price: "ధర/యూనిట్", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
       inv_th_type: "రకం", inv_th_qty: "పరిమాణం", inv_th_balance: "మిగిలిన పరిమాణం", inv_th_amount: "మొత్తం",
       inv_empty: "ఇంకా ఇన్వెంటరీ ఐటమ్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
       inv_log_heading: "యాక్టివిటీ లాగ్",
@@ -2422,6 +2427,7 @@
       inv_items_empty: "ఏ ఐటమ్‌లు కనుగొనబడలేదు.",
       inv_item_name_placeholder: "ఉదా. కొరుగేటెడ్ షీట్ 3-ప్లై",
       inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
+      inv_items_price: "డిఫాల్ట్ ధర/యూనిట్",
       inv_bin_hint: "సూచన: బిన్‌ను జోన్ కోడ్‌తో ప్రారంభించండి (FAST-, MID-, BULK-, లేదా నియంత్రిత నిల్వ కోసం CTRL-) తద్వారా ఇన్వెంటరీ స్క్రీన్ మెరుగైన స్థానాన్ని సూచించగలదు.",
       inv_items_add: "ఐటమ్ జోడించండి",
       inv_items_err_required: "ఐటమ్ పేరు మరియు SKU అవసరం.",
@@ -2620,6 +2626,7 @@
     invItemSupplierInput: document.getElementById("invItemSupplierInput"),
     invItemReorderInput: document.getElementById("invItemReorderInput"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
+    invItemPriceInput: document.getElementById("invItemPriceInput"),
     invItemClearBtn: document.getElementById("invItemClearBtn"),
     invItemAddBtn: document.getElementById("invItemAddBtn"),
     invItemsError: document.getElementById("invItemsError"),
@@ -5378,6 +5385,7 @@
         "<td>" + esc(item.category || "—") + "</td>" +
         '<td><span class="capChip good" style="cursor:default;">' + esc(item.bin || "—") + "</span></td>" +
         '<td class="mono">' + qty.toLocaleString() + " " + esc(item.unit || "") + "</td>" +
+        '<td class="mono">' + (item.defaultPrice ? esc(formatInr(item.defaultPrice)) : "—") + "</td>" +
         '<td class="mono">' + (Number(item.reorderPoint) || 0).toLocaleString() + "</td>" +
         '<td><span class="capChip ' + sClass + '">' + esc(inventoryStatusLabel(sClass)) + "</span></td>" +
         '<td class="invRowActions"></td>';
@@ -5456,6 +5464,7 @@
     el.invItemSupplierInput.value = "";
     el.invItemReorderInput.value = "";
     el.invItemUnitInput.value = "";
+    el.invItemPriceInput.value = "";
     el.invItemAddBtn.textContent = t("inv_items_add");
     el.invItemClearBtn.hidden = true;
     el.invItemsError.hidden = true;
@@ -5470,6 +5479,7 @@
     el.invItemSupplierInput.value = item.supplier || "";
     el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
     el.invItemUnitInput.value = item.unit || "";
+    el.invItemPriceInput.value = item.defaultPrice != null ? item.defaultPrice : "";
     el.invItemAddBtn.textContent = t("sup_save_changes");
     el.invItemClearBtn.hidden = false;
     el.invItemNameInput.focus();
@@ -5489,7 +5499,8 @@
       row.className = "invItemRow";
       row.innerHTML =
         '<div><div class="invItemName">' + esc(item.name) + '</div>' +
-        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") + " · " + esc(item.bin || "—") + "</div></div>" +
+        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") + " · " + esc(item.bin || "—") +
+          (item.defaultPrice ? " · " + esc(formatInr(item.defaultPrice)) : "") + "</div></div>" +
         '<button type="button" class="btn ghost small" data-edit-sku="' + esc(item.sku) + '">' + esc(t("sup_edit")) + "</button> " +
         '<button type="button" class="btn danger small" data-del-sku="' + esc(item.sku) + '">' + esc(t("sup_remove")) + "</button>";
       el.invItemsList.appendChild(row);
@@ -5533,6 +5544,7 @@
     var sku = editingInvSku || el.invItemSkuInput.value.trim().toUpperCase().replace(/\s+/g, "-");
     var name = el.invItemNameInput.value.trim();
     var reorderPoint = Number(el.invItemReorderInput.value);
+    var defaultPrice = Number(el.invItemPriceInput.value);
     el.invItemsError.hidden = true;
     if(!sku || !name){
       el.invItemsError.textContent = t("inv_items_err_required");
@@ -5547,7 +5559,8 @@
     var payload = {
       name: name, category: el.invItemCategorySelect.value, bin: el.invItemBinInput.value.trim(),
       supplier: el.invItemSupplierInput.value.trim(), reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
-      unit: el.invItemUnitInput.value.trim() || "units", updatedAt: Date.now()
+      unit: el.invItemUnitInput.value.trim() || "units", defaultPrice: isFinite(defaultPrice) ? defaultPrice : 0,
+      updatedAt: Date.now()
     };
     if(!editingInvSku) payload.createdAt = Date.now();
     el.invItemAddBtn.disabled = true;
@@ -5583,9 +5596,11 @@
     el.invMoveQtyLabel.textContent = type === "adjust" ? t("inv_move_qty_label_adjust") : t("inv_move_qty_label");
     el.invMoveQtyInput.value = type === "adjust" ? current : "";
     // Invoice-style pricing only applies to Receive (cost) / Ship (sale value) — Adjust is a pure
-    // quantity correction, so no money is recorded against it.
+    // quantity correction, so no money is recorded against it. Price/Unit pre-fills from the
+    // item's catalog default (set in Manage Inventory Items) but stays editable per transaction,
+    // since the actual purchase/sale price can vary each time.
     el.invMoveInvoiceFields.hidden = type === "adjust";
-    el.invMovePriceInput.value = "";
+    el.invMovePriceInput.value = (type !== "adjust" && item.defaultPrice) ? item.defaultPrice : "";
     el.invMoveDiscountInput.value = "";
     el.invMoveGstInput.value = "";
     refreshInvMoveAmount();
