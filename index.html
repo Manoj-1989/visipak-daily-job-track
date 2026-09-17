@@ -450,6 +450,12 @@
   td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;}
   td.mono{font-family:var(--font-mono);}
   .logEmpty{padding:32px;text-align:center;color:var(--ink-faint);font-size:13px;}
+  /* Archived per-stage history rows (see the stageHistorySnapshot comment in the submit handler) —
+     a permanent record of a stage this job has already left, not a live document, so they read as
+     distinctly non-interactive: no hover highlight/pointer, and a faint italic to set them apart
+     from the live rows they're interleaved with. */
+  tr.logHistoryRow{font-style:italic;color:var(--ink-soft);}
+  tr.logHistoryRow:hover{background:none;cursor:default;}
 
   /* ---------- Modal ---------- */
   .modalOverlay{
@@ -2696,9 +2702,15 @@
     boardStatus: "",
     boardEntries: [],     // entries for current date (+shift filter applied client-side)
     logEntries: [],       // recent entries window for the log tab
+    // Archived per-stage snapshots (see the stageHistorySnapshot comment in the submit handler) —
+    // merged into logEntries wherever the Log is filtered/searched/exported, so a job's full
+    // journey through every stage shows up, not just wherever it's currently sitting. Never fed
+    // into the Board (state.boardEntries) — the Board only ever wants a job's current position.
+    stageHistoryEntries: [],
     editingId: null,
     unsubBoard: null,
     unsubLog: null,
+    unsubStageHistory: null,
     // Priority Tasks board — independent planning items for state.date, separate from job-card
     // entries above (see subscribeTasks/renderTasks). Kept sorted by `order` (manual drag position).
     tasks: [],
@@ -6572,11 +6584,17 @@
   }
 
   // ---------- Log rendering ----------
-  function renderLog(){
+  // Shared by renderLog and the Export CSV handler below, so both always agree on exactly which
+  // rows are "currently showing" — live entries (state.logEntries, one row per job card's CURRENT
+  // position) plus every archived per-stage snapshot (state.stageHistoryEntries — see the
+  // stageHistorySnapshot comment in the submit handler), so a search/filter/export for one Job
+  // Card No surfaces its full journey through every stage it passed through, not just wherever
+  // it's sitting right now.
+  function getVisibleLogRows(){
     var q = (el.logSearch.value || "").trim().toLowerCase();
     var stageFilter = el.logStageFilter.value;
     var statusFilter = el.logStatusFilter.value;
-    var rows = state.logEntries.filter(function(e){
+    var out = state.logEntries.concat(state.stageHistoryEntries).filter(function(e){
       if(!deviceCanViewStage(e.stage)) return false;
       if(stageFilter && e.stage !== stageFilter) return false;
       if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
@@ -6586,6 +6604,16 @@
       }
       return true;
     });
+    // Newest first overall (same ordering the Log has always used), with archived stage-history
+    // rows interleaved by when they actually happened rather than dumped in after the live rows —
+    // so searching one Job Card No reads top-to-bottom as its most recent stage first, its earliest
+    // (e.g. QC) last.
+    out.sort(function(a, b){ return (b.createdAt || 0) - (a.createdAt || 0); });
+    return out;
+  }
+  function renderLog(){
+    var stageFilter = el.logStageFilter.value;
+    var rows = getVisibleLogRows();
 
     var logColumns = getLogColumns();
     var columnKeys = stageFilter ? stageLogColumnKeys(stageFilter) : getGenericLogColumnKeys();
@@ -6598,6 +6626,10 @@
 
     rows.forEach(function(e){
       var tr = document.createElement("tr");
+      // Archived stage-history rows (see the stageHistorySnapshot comment in the submit handler)
+      // get their own muted styling and can't be opened for editing below — they're a permanent
+      // record of a stage this job has already left, not a live document.
+      if(e.isHistorical) tr.classList.add("logHistoryRow");
       tr.innerHTML = columnKeys.map(function(key){
         var col = logColumns[key];
         var cls = col.cellClass ? ' class="' + col.cellClass + '"' : "";
@@ -6609,6 +6641,10 @@
         // listener fires before a listener delegated on its parent tbody would get a chance to
         // stopPropagation, so the check has to live here instead.
         if(ev.target.closest && ev.target.closest(".logAttachmentThumb")) return;
+        // Archived stage-history rows aren't a live entries document — there's nothing to open or
+        // save back to (see stageHistorySnapshot's own comment above), so clicking one is a no-op
+        // rather than trying to edit a record that no longer has a matching document.
+        if(e.isHistorical) return;
         openModal(e);
       });
       el.logBody.appendChild(tr);
@@ -6679,19 +6715,11 @@
   }
 
   el.exportBtn.addEventListener("click", function(){
-    var q = (el.logSearch.value || "").trim().toLowerCase();
     var stageFilter = el.logStageFilter.value;
-    var statusFilter = el.logStatusFilter.value;
-    var rows = state.logEntries.filter(function(e){
-      if(!deviceCanViewStage(e.stage)) return false;
-      if(stageFilter && e.stage !== stageFilter) return false;
-      if(statusFilter && statusLabel(e.status) !== statusFilter) return false;
-      if(q){
-        var hay = ((e.jobCardNo||"") + " " + (e.productName||"")).toLowerCase();
-        if(hay.indexOf(q) === -1) return false;
-      }
-      return true;
-    });
+    // Same row-set the Log table itself is currently showing (see getVisibleLogRows) — live
+    // entries plus every archived per-stage snapshot, so exporting a specific Job Card No (via the
+    // search box) exports its complete stage-by-stage journey, not just its current position.
+    var rows = getVisibleLogRows();
     if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
     if(stageFilter === "HR_Man Power"){
       var hrCsv = buildHRManpowerCsv(rows);
@@ -7764,6 +7792,46 @@
       hrManpowerTotal: isHR ? hrManpowerData.total : null,
       updatedAt: Date.now()
     };
+    // ---------- Stage history snapshot ----------
+    // A job card is one Firestore document whose `stage` field is mutated in place as it advances
+    // (see the extensive comments on computeLatestPlantQuantity/PLANT_QTY_CARRY_STAGES above) — so
+    // once a job moves on, whatever chosenStage itself recorded (its own Quantity, times, Wastage,
+    // ...) is gone from the live document forever, overwritten by the next stage's own fields.
+    // That's exactly right for the Board (which only ever wants a job's CURRENT position) but it
+    // means the Log/Export could never show a job's full journey through the factory — only
+    // wherever it happens to be sitting right now, which is what was reported: the Log for a given
+    // Job Card No only ever showed its last stage or two, not QC/Plant/RD-1CP/etc along the way.
+    //
+    // So every time a job actually moves on (movedTo truthy), this permanently archives a snapshot
+    // of chosenStage's own data into its own collection (entryStageHistory — see
+    // subscribeStageHistory/state.stageHistoryEntries below for the read side, and renderLog's own
+    // row-click guard for why these rows can't be opened for editing). Built from `payload` (already
+    // scoped to chosenStage's own field-visibility rules via the has*/is* flags above) rather than
+    // re-deriving everything from scratch, with just the handful of fields `payload` deliberately
+    // blanks/redirects specifically BECAUSE of the move restored to what chosenStage's own form
+    // actually showed: Start/End Time, Run Time, Man Power and Wastage (each stage's own department
+    // figures, blanked in `payload` so the NEXT stage's record starts empty — see their own
+    // comments above), and Quantity (payload's own value is whatever should carry forward to the
+    // NEXT stage — e.g. Plant's Balance Quantity Required via movingPlantForward, or QC's via
+    // movingQcToPlant — not what chosenStage's own Quantity field actually showed).
+    var stageHistorySnapshot = null;
+    if(movedTo){
+      stageHistorySnapshot = Object.assign({}, payload, {
+        isHistorical: true,
+        stage: chosenStage,
+        status: chosenStatus,
+        nextStage: chosenNextStage,
+        startTime: isSpecial ? null : (el.f_starttime.value === "" ? null : el.f_starttime.value),
+        endTime: isSpecial ? null : (el.f_endtime.value === "" ? null : el.f_endtime.value),
+        runtimeHrs: isSpecial ? null : (el.f_runtime.value === "" ? null : Number(el.f_runtime.value)),
+        manpower: isSpecial ? null : (el.f_manpower.value === "" ? null : Number(el.f_manpower.value)),
+        wastage: stageHasWastage(chosenStage) ? (el.f_wastage.value === "" ? null : Number(el.f_wastage.value)) : null,
+        quantity: (isFG || isHR || isStockSummary) ? null
+          : movingRtdToDispatch ? (el.f_totaldispatchqty.value === "" ? null : Number(el.f_totaldispatchqty.value))
+          : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
+        createdAt: Date.now()
+      });
+    }
     // Artwork No/Check/Attachment/Active only ever get COLLECTED on QC, RD-1CP, RS-2CP, and
     // RS+RD-4CP (see ARTWORKNO_STAGES) — Plant sits between QC and those production stages in the
     // job's own lifecycle but never shows this section itself. Saving or moving on from Plant
@@ -7805,6 +7873,16 @@
       if(isNewEntry && res && res.id) logEntryId = res.id;
       saveBtn.disabled = false;
       logActivity(isNewEntry ? "add" : "edit", Object.assign({ id: logEntryId }, payload), payload.updatedBy);
+      // Archive chosenStage's own snapshot (see stageHistorySnapshot's own comment above) now that
+      // the main save is safely through — entryId is only known for certain at this point (a
+      // brand-new entry's id comes back on res, e.g. a fresh QC entry advancing straight to Plant
+      // in its very first save).
+      if(stageHistorySnapshot){
+        stageHistorySnapshot.entryId = logEntryId;
+        state.db.collection("entryStageHistory").add(stageHistorySnapshot).catch(function(err){
+          if(window.console) console.error("Stage history log failed:", err);
+        });
+      }
       // The entry itself is safely saved now — actually delete whichever attachment files were
       // replaced/removed during this edit (deferred until now so Cancel never destroys a file
       // that's still referenced by the saved entry).
@@ -7977,6 +8055,24 @@
     var query = state.db.collection("entries").orderBy("date", "desc").limit(300);
     state.unsubLog = query.onSnapshot(function(snap){
       state.logEntries = snap.docs.map(function(d){
+        var data = d.data() || {};
+        return Object.assign({ id: d.id }, data);
+      });
+      renderLog();
+    }, function(err){
+      showBanner(t("banner_log_updates_stopped_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  }
+  // Archived per-stage snapshots (see the stageHistorySnapshot comment in the submit handler) —
+  // same live-subscription pattern as subscribeLog just above, kept in its own array and merged
+  // into the Log's own rows wherever it filters/searches/exports (see getVisibleLogRows) rather
+  // than into state.logEntries directly, so the Board and anything else reading state.logEntries
+  // is completely unaffected by this.
+  function subscribeStageHistory(){
+    if(state.unsubStageHistory){ state.unsubStageHistory(); state.unsubStageHistory = null; }
+    var query = state.db.collection("entryStageHistory").orderBy("date", "desc").limit(1000);
+    state.unsubStageHistory = query.onSnapshot(function(snap){
+      state.stageHistoryEntries = snap.docs.map(function(d){
         var data = d.data() || {};
         return Object.assign({ id: d.id }, data);
       });
@@ -8457,6 +8553,7 @@
   applyTranslations();
   subscribeBoard();
   subscribeLog();
+  subscribeStageHistory();
   subscribeCatalog();
   subscribeMasterSheet();
   subscribeTasks();
