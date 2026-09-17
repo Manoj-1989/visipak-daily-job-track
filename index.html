@@ -568,6 +568,8 @@
     width:20px;height:20px;line-height:1;cursor:pointer;font-size:12px;flex:none;
   }
   .invExtractRemoveBtn:hover{background:var(--crit-soft);}
+  .invExtractTable input.invExtractUncertain{border-color:var(--warn);background:var(--warn-soft);}
+  .invExtractUncertainMark{color:var(--warn);font-size:13px;flex:none;cursor:help;}
   /* Manual Pass/Fail switch per spec row: ON (checked) = Pass (green), OFF = Fail (red).
      A plain checkbox is visually hidden and styled via its sibling <span> track + thumb. */
   .passFailCell{white-space:nowrap;}
@@ -2238,6 +2240,7 @@
       inv_extract_loading_ocr: "Loading OCR engine…", inv_extract_reading: "Reading invoice… this can take 10–30 seconds.",
       inv_extract_none_found: "Couldn't confidently detect any item rows — add them by hand below using \"+ Add row\".",
       inv_extract_found_count: "Detected {count} item row(s) — review before importing.",
+      inv_extract_rate_uncertain: "Rate didn't match the invoice's own math (Rate × Weight ≈ Amount) — please double-check this value against the invoice.",
       inv_extract_err_failed: "Couldn't read the invoice.",
       inv_extract_err_none_checked: "Check at least one row to import.",
       inv_extract_err_row_incomplete: "Every checked row needs a Name and a SKU.",
@@ -2494,6 +2497,7 @@
       inv_extract_loading_ocr: "OCR इंजन लोड हो रहा है…", inv_extract_reading: "इनवॉइस पढ़ी जा रही है… इसमें 10–30 सेकंड लग सकते हैं।",
       inv_extract_none_found: "कोई आइटम पंक्ति भरोसे से नहीं मिली — नीचे \"+ पंक्ति जोड़ें\" से हाथ से जोड़ें।",
       inv_extract_found_count: "{count} आइटम पंक्ति(यां) मिलीं — इंपोर्ट करने से पहले जांच लें।",
+      inv_extract_rate_uncertain: "Rate, invoice के अपने गणित (Rate × Weight ≈ Amount) से मेल नहीं खाया — कृपया इस वैल्यू को invoice से दोबारा जांचें।",
       inv_extract_err_failed: "इनवॉइस नहीं पढ़ी जा सकी।",
       inv_extract_err_none_checked: "इंपोर्ट के लिए कम से कम एक पंक्ति चुनें।",
       inv_extract_err_row_incomplete: "चुनी गई हर पंक्ति में नाम और SKU ज़रूरी है।",
@@ -2750,6 +2754,7 @@
       inv_extract_loading_ocr: "OCR ఇంజిన్ లోడ్ అవుతోంది…", inv_extract_reading: "ఇన్వాయిస్ చదువుతోంది… దీనికి 10–30 సెకన్లు పట్టవచ్చు.",
       inv_extract_none_found: "ఐటమ్ వరుసలు నమ్మకంగా కనుగొనబడలేదు — దిగువన \"+ వరుస జోడించండి\" ద్వారా చేతితో జోడించండి.",
       inv_extract_found_count: "{count} ఐటమ్ వరుస(లు) కనుగొనబడ్డాయి — దిగుమతి చేయడానికి ముందు తనిఖీ చేయండి.",
+      inv_extract_rate_uncertain: "Rate, invoice యొక్క సొంత లెక్క (Rate × Weight ≈ Amount) తో సరిపోలలేదు — దయచేసి ఈ విలువను invoice తో మళ్లీ సరిచూడండి.",
       inv_extract_err_failed: "ఇన్వాయిస్ చదవలేకపోయాము.",
       inv_extract_err_none_checked: "దిగుమతి చేయడానికి కనీసం ఒక వరుసను ఎంచుకోండి.",
       inv_extract_err_row_incomplete: "ఎంచుకున్న ప్రతి వరుసకు పేరు మరియు SKU అవసరం.",
@@ -6303,6 +6308,45 @@
     }
     return base;
   }
+  // Cross-checks a candidate Rate/Amount pair against the invoice's own arithmetic identity
+  // (Amount = Rate x Weight) rather than trusting raw reading order. Shared by both the strict,
+  // cleanly-formatted parse path and the looser fallback, because a corrupted decimal point or a
+  // split/garbled digit can happen to either one — even a row that otherwise matches the strict
+  // column layout can still carry a misread number. Returns {rate, amount, uncertain}: uncertain
+  // is true when nothing — including a dropped-decimal retry — reconciled within 2%, meaning the
+  // returned rate/amount is only a best guess and the row should be flagged for manual review.
+  function resolveRateAmount(a, b, weightNum){
+    if(a == null && b == null) return { rate: null, amount: null, uncertain: false };
+    if(b == null){
+      // Only one number available — decide which role fits better, then compute the other side.
+      if(weightNum > 0 && a > weightNum * 0.5){
+        return { rate: Math.round((a / weightNum) * 100) / 100, amount: a, uncertain: false };
+      }
+      return { rate: a, amount: weightNum > 0 ? Math.round(a * weightNum * 100) / 100 : null, uncertain: false };
+    }
+    var candidates = [
+      { rate: a, amount: b },
+      { rate: b, amount: a },
+      // A dropped decimal point turns "42.50" into "4250" — retried here as if the last two
+      // digits were always meant to be cents.
+      { rate: a / 100, amount: b },
+      { rate: b / 100, amount: a }
+    ];
+    var best = null, bestErr = Infinity;
+    candidates.forEach(function(c){
+      if(!(c.rate > 0 && c.amount > 0 && weightNum > 0)) return;
+      var err = Math.abs(c.rate * weightNum - c.amount) / c.amount;
+      if(err < bestErr){ bestErr = err; best = c; }
+    });
+    if(best && bestErr < 0.02){
+      return { rate: Math.round(best.rate * 100) / 100, amount: Math.round(best.amount * 100) / 100, uncertain: false };
+    }
+    // Nothing lines up cleanly with the invoice's own math — one of the two tokens is likely a
+    // garbled fragment (a lost digit, a merged neighbor). Reading order is kept as a last resort,
+    // but the row is flagged uncertain so the review table calls it out rather than importing a
+    // silently wrong number.
+    return { rate: a, amount: b, uncertain: true };
+  }
   // Best-effort text parser — tuned against a common Indian tax-invoice item table (S.No,
   // Description, HSN Code, BF, GSM, Size, Size Unit, Reels, Weight, Unit, Rate, Amount), with a
   // looser fallback for OCR text that lost exact column spacing. Never throws on an odd line —
@@ -6396,12 +6440,16 @@
         unitVal = afterTokens[0].replace(/[\d.]/g, "").toLowerCase();
         afterStart = 1;
       }
-      // Rate and Amount: simply the numeric tokens after Weight (and past any Unit word) — not
-      // gated on finding a clean Unit keyword, since correctly reading Rate/Amount is the actual
-      // point of this extraction and OCR reliably keeps their digits even when it mangles "KGS".
-      var afterNums = afterTokens.slice(afterStart).filter(function(tok){ return /^[\d.]+$/.test(tok); });
-      var rate = afterNums.length >= 1 ? Number(afterNums[0]) : null;
-      var amount = afterNums.length >= 2 ? Number(afterNums[1]) : null;
+      // Rate and Amount: the numeric tokens after Weight (and past any Unit word) — not gated on
+      // finding a clean Unit keyword, since correctly reading Rate/Amount is the actual point of
+      // this extraction and OCR reliably keeps their digits even when it mangles "KGS". Which
+      // token is which (and whether either is even trustworthy) is cross-checked against the
+      // invoice's own arithmetic via resolveRateAmount() rather than assumed from raw reading
+      // order — see that function for the failure modes this catches.
+      var afterNums = afterTokens.slice(afterStart).filter(function(tok){ return /^[\d.]+$/.test(tok); }).map(Number);
+      var weightNum = Number(weight);
+      var resolved = resolveRateAmount(afterNums[0] != null ? afterNums[0] : null, afterNums[1] != null ? afterNums[1] : null, weightNum);
+      var rate = resolved.rate, amount = resolved.amount, rateUncertain = resolved.uncertain;
 
       // A table's vertical border, misread as a stray "|" or punctuation mark, sometimes lands
       // right next to the row number — stripped here rather than kept as if it were text.
@@ -6411,17 +6459,21 @@
         bf: bf != null ? Number(bf) : null, gsm: gsm != null ? Number(gsm) : null,
         size: size, sizeUnit: "",
         reels: reels != null ? Number(reels) : null, weight: weight != null ? Number(weight) : null,
-        unit: unitVal || "kg", rate: rate, amount: amount
+        unit: unitVal || "kg", rate: rate, amount: amount, rateUncertain: rateUncertain
       };
     }
     lines.forEach(function(line){
       var m = line.match(strictRe);
       if(m){
+        var strictWeight = Number(m[9]);
+        // Even a cleanly-structured row can carry a misread digit (a dropped decimal, a garbled
+        // token) — cross-checked the same way as the fallback parser rather than trusted blindly.
+        var strictResolved = resolveRateAmount(Number(m[11]), Number(m[12]), strictWeight);
         items.push({
           description: titleCaseWords(m[2].trim()), hsnCode: m[3],
           bf: Number(m[4]), gsm: Number(m[5]), size: m[6], sizeUnit: (m[7] || "").toUpperCase(),
-          reels: Number(m[8]), weight: Number(m[9]), unit: (m[10] || "kg").toLowerCase(),
-          rate: Number(m[11]), amount: Number(m[12])
+          reels: Number(m[8]), weight: strictWeight, unit: (m[10] || "kg").toLowerCase(),
+          rate: strictResolved.rate, amount: strictResolved.amount, rateUncertain: strictResolved.uncertain
         });
         return;
       }
@@ -6459,7 +6511,9 @@
         '<td><input type="number" class="mono" data-f="reels" value="' + (row.reels != null ? row.reels : "") + '"></td>' +
         '<td><input type="number" step="0.001" class="mono" data-f="weight" value="' + (row.weight != null ? row.weight : "") + '"></td>' +
         '<td style="display:flex;align-items:center;gap:4px;">' +
-          '<input type="number" step="0.01" class="mono" data-f="rate" value="' + (row.rate != null ? row.rate : "") + '" style="flex:1;">' +
+          '<input type="number" step="0.01" class="mono' + (row.rateUncertain ? " invExtractUncertain" : "") + '" data-f="rate" value="' + (row.rate != null ? row.rate : "") + '"' +
+            (row.rateUncertain ? ' title="' + esc(t("inv_extract_rate_uncertain")) + '"' : "") + ' style="flex:1;">' +
+          (row.rateUncertain ? '<span class="invExtractUncertainMark" title="' + esc(t("inv_extract_rate_uncertain")) + '">⚠</span>' : "") +
           '<button type="button" class="invExtractRemoveBtn" title="Remove row">✕</button>' +
         '</td>';
       tr.querySelectorAll("[data-f]").forEach(function(input){
@@ -6473,6 +6527,14 @@
             row.sizeUnit = parts.slice(1).join(" ") || "";
           } else if(field === "gsm" || field === "bf" || field === "reels" || field === "weight" || field === "rate"){
             row[field] = input.value === "" ? null : Number(input.value);
+            if(field === "rate" && row.rateUncertain){
+              // The user has looked at this row and edited it — the flag has served its purpose.
+              row.rateUncertain = false;
+              input.classList.remove("invExtractUncertain");
+              input.removeAttribute("title");
+              var markEl = input.parentElement.querySelector(".invExtractUncertainMark");
+              if(markEl) markEl.remove();
+            }
           } else {
             row[field] = input.value;
           }
@@ -6543,7 +6605,8 @@
           name: it.description, sku: sku, category: INV_CATEGORIES[0], unit: it.unit || "kg",
           hsnCode: it.hsnCode || "", gsm: it.gsm || null, bf: it.bf || null,
           size: it.size || "", sizeUnit: it.sizeUnit || "", reels: it.reels || null,
-          weight: it.weight || null, rate: it.rate || null, amount: it.amount || null
+          weight: it.weight || null, rate: it.rate || null, amount: it.amount || null,
+          rateUncertain: !!it.rateUncertain
         };
       });
       renderInvExtractTable();
@@ -6565,7 +6628,8 @@
   el.invExtractAddRowBtn.addEventListener("click", function(){
     invExtractRows.push({
       include: true, name: "", sku: "", category: INV_CATEGORIES[0], unit: "kg", hsnCode: "",
-      gsm: null, bf: null, size: "", sizeUnit: "", reels: null, weight: null, rate: null, amount: null
+      gsm: null, bf: null, size: "", sizeUnit: "", reels: null, weight: null, rate: null, amount: null,
+      rateUncertain: false
     });
     el.invExtractSection.hidden = false;
     renderInvExtractTable();
