@@ -1254,6 +1254,25 @@
         <input type="number" id="f_totaldispatchqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="form_totaldispatchqty_placeholder">
       </label>
       <label id="fld_artworkno"><span data-i18n="form_artworkno_label">Artwork No</span> <input type="text" id="f_artworkno" placeholder="e.g. AW-2031" data-i18n-placeholder="form_artworkno_placeholder"></label>
+      <!-- QC-only: before a job's Quantity is sent on to Plant, QC checks how much of this
+           Customer+Product already exists as Finished Goods stock — the same "most recent
+           Finished Goods entry" lookup Plant/Priority Tasks use for their own Opening Stock
+           (see computeLatestFgStock/refreshQcStockFields in the script below) — and the Balance
+           Quantity Required still to actually produce: this Quantity minus that FG Stock
+           Available. Whichever of the two Quantity/Balance Quantity Required reflects what's
+           still needed is what carries forward as Plant's own incoming Quantity once QC advances
+           the job on to Plant (see the movingQcToPlant carry-over in the submit handler below) —
+           if no FG stock exists at all, Balance Quantity Required just equals the full Quantity,
+           so Plant still gets sent the whole order either way. Frozen once this entry is first
+           saved (see refreshQcStockFields's own state.editingId guard) so a later re-visit to QC
+           (once Plant's tested sample comes back — see PLANT_NEXTSTAGE_OPTIONS) doesn't
+           re-subtract the same stock a second time. -->
+      <label id="fld_qcfgstockavailable"><span data-i18n="qc_fgstockavailable_label">FG Stock Available</span>
+        <input type="number" id="f_qcfgstockavailable" readonly placeholder="Auto-calculated" data-i18n-placeholder="qc_fgstockavailable_placeholder">
+      </label>
+      <label id="fld_qcbalanceqty"><span data-i18n="qc_balanceqty_label">Balance Quantity Required</span>
+        <input type="number" id="f_qcbalanceqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="qc_balanceqty_placeholder">
+      </label>
       <!-- Plant-only: before starting production on this (new) Job Card, shows how much of this
            Customer+Product is already sitting in Finished Goods stock — the exact same "most recent
            Finished Goods entry" lookup Priority Tasks use for their own Opening Stock Qty/Job Card No
@@ -1439,9 +1458,9 @@
       </div>
       <div class="span2 qcSpecsBlock" id="fld_qcspecs">
         <div class="qcSpecsHead" data-i18n="qc_specs_heading">Specifications</div>
-        <!-- The Visipak Specs column (class="visipakSpecCol") is Plant-only — see the
+        <!-- The Visipak Specs column (class="visipakSpecCol") is QC-only — see the
              visipakSpecCol toggling in updateFormFieldsForStage. Client Specs and Result stay
-             visible on both QC and Plant. -->
+             visible on both QC and Plant (Plant just doesn't get the Visipak column). -->
         <table class="qcSpecsTable">
           <thead>
             <tr><th></th><th data-i18n="qc_th_client">Client Specs</th><th data-i18n="qc_th_visipak" class="visipakSpecCol">Visipak Specs</th><th data-i18n="qc_th_result">Result</th></tr>
@@ -1506,11 +1525,8 @@
         </div>
         <!-- Visipak Specifications attachment for this whole table — Visipak's own spec sheet —
              one image or PDF, captured or uploaded, saved as base64 data on the entry (see
-             makeAttachmentController). Plant-only: the whole widget (including the Verified
-             toggle nested below) is hidden at QC by updateFormFieldsForStage, which sets
-             hidden on this div directly by id — Visipak's own figures and spec sheet are now
-             measured and captured downstream at Plant, not at QC (mirrors how the Visipak Specs
-             table column above is also Plant-only via the visipakSpecCol class). -->
+             makeAttachmentController). QC-only, same as the Visipak Specs table column above
+             (visipakSpecCol) — QC captures its own spec sheet against the physical test sample. -->
         <div class="attachmentWidget" id="attachVisipakSpecsWidget">
           <div class="attachmentLabel" data-i18n="attach_visipak_specs_label">Visipak Specifications</div>
           <div class="attachmentControls">
@@ -1520,13 +1536,13 @@
             <button type="button" class="btn ghost attachBtn" id="attachVisipakSpecsUploadBtn" data-i18n="attach_upload_btn">📎 Upload</button>
             <span class="attachStatus" id="attachVisipakSpecsStatus"></span>
           </div>
-          <!-- Plant-only: a plain informational confirmation that whoever's at Plant has actually
-               checked the Visipak Specifications attachment above against the physical spec sheet
-               — same switch widget/wording as the Finished Goods Verified toggle (see fld_verified
-               above), but its own field, gated to Plant specifically (see isPlantStage in
-               updateFormFieldsForStage). Nested inside attachVisipakSpecsWidget, so it's also
-               covered by that div's own QC-hiding above — this field's own hidden flag just keeps
-               it Plant-only specifically (not also shown on any other non-QC stage). -->
+          <!-- QC-only: a plain informational confirmation that QC has actually checked the Visipak
+               Specifications attachment above against the physical spec sheet — same switch
+               widget/wording as the Finished Goods Verified toggle (see fld_verified above), but
+               its own field, gated to QC specifically (see isQCStage in updateFormFieldsForStage).
+               Nested inside attachVisipakSpecsWidget, so it's also covered by that div's own
+               QC-only visibility above — this field's own hidden flag just keeps it QC-only
+               specifically (not also shown on any other stage). -->
           <div class="formGridItem attachVerifiedRow" id="fld_visipakspecsverified">
             <span data-i18n="form_verified_label">Verified</span>
             <label class="passFailToggle">
@@ -1990,6 +2006,9 @@
       active_on_label: "Active", active_off_label: "Inactive",
       form_artworkactive_label: "Artwork Active", form_specsactive_label: "Client Specs Active",
       master_export_btn: "Export Master Sheet",
+      qc_fgstockavailable_label: "FG Stock Available", qc_fgstockavailable_placeholder: "Auto-calculated",
+      qc_balanceqty_label: "Balance Quantity Required", qc_balanceqty_placeholder: "Auto-calculated",
+      qc_err_specs_not_passed: "Can't move to the next stage: one or more Specifications rows is marked Fail. Mark every row Pass before advancing.",
       plant_openingstock_label: "Available Stock Qty", plant_openingstock_placeholder: "Auto-calculated",
       plant_openingstockjobcard_label: "Available Stock Job Card No", plant_openingstockjobcard_placeholder: "Auto-calculated",
       plant_balanceqty_label: "Balance Quantity Required", plant_balanceqty_placeholder: "Auto-calculated",
@@ -2223,6 +2242,9 @@
       active_on_label: "सक्रिय", active_off_label: "निष्क्रिय",
       form_artworkactive_label: "आर्टवर्क सक्रिय", form_specsactive_label: "क्लाइंट स्पेसिफिकेशन सक्रिय",
       master_export_btn: "मास्टर शीट एक्सपोर्ट करें",
+      qc_fgstockavailable_label: "उपलब्ध एफजी स्टॉक", qc_fgstockavailable_placeholder: "स्वतः गणना",
+      qc_balanceqty_label: "आवश्यक शेष मात्रा", qc_balanceqty_placeholder: "स्वतः गणना",
+      qc_err_specs_not_passed: "अगले चरण में नहीं भेजा जा सकता: एक या अधिक विशिष्टता पंक्तियाँ 'फेल' चिह्नित हैं। आगे बढ़ने से पहले सभी पंक्तियों को 'पास' करें।",
       plant_openingstock_label: "उपलब्ध स्टॉक मात्रा", plant_openingstock_placeholder: "स्वतः गणना",
       plant_openingstockjobcard_label: "उपलब्ध स्टॉक जॉब कार्ड नंबर", plant_openingstockjobcard_placeholder: "स्वतः गणना",
       plant_balanceqty_label: "आवश्यक शेष मात्रा", plant_balanceqty_placeholder: "स्वतः गणना",
@@ -2456,6 +2478,9 @@
       active_on_label: "యాక్టివ్", active_off_label: "ఇనాక్టివ్",
       form_artworkactive_label: "ఆర్ట్‌వర్క్ యాక్టివ్", form_specsactive_label: "క్లయింట్ స్పెసిఫికేషన్ యాక్టివ్",
       master_export_btn: "మాస్టర్ షీట్ ఎగుమతి చేయండి",
+      qc_fgstockavailable_label: "అందుబాటులో ఉన్న FG స్టాక్", qc_fgstockavailable_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      qc_balanceqty_label: "అవసరమైన మిగులు పరిమాణం", qc_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
+      qc_err_specs_not_passed: "తదుపరి దశకు తరలించలేరు: ఒకటి లేదా అంతకంటే ఎక్కువ స్పెసిఫికేషన్ల వరుసలు ఫెయిల్‌గా గుర్తించబడ్డాయి. ముందుకు వెళ్లే ముందు అన్ని వరుసలను పాస్‌గా గుర్తించండి.",
       plant_openingstock_label: "అందుబాటులో ఉన్న స్టాక్ పరిమాణం", plant_openingstock_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_openingstockjobcard_label: "అందుబాటులో ఉన్న స్టాక్ జాబ్ కార్డ్ నంబర్", plant_openingstockjobcard_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       plant_balanceqty_label: "అవసరమైన మిగులు పరిమాణం", plant_balanceqty_placeholder: "ఆటో-కాలిక్యులేటెడ్",
@@ -2939,6 +2964,10 @@
     fld_qty: document.getElementById("fld_qty"),
     f_type: document.getElementById("f_type"),
     fld_type: document.getElementById("fld_type"),
+    f_qcfgstockavailable: document.getElementById("f_qcfgstockavailable"),
+    fld_qcfgstockavailable: document.getElementById("fld_qcfgstockavailable"),
+    f_qcbalanceqty: document.getElementById("f_qcbalanceqty"),
+    fld_qcbalanceqty: document.getElementById("fld_qcbalanceqty"),
     f_plantopeningstock: document.getElementById("f_plantopeningstock"),
     fld_plantopeningstock: document.getElementById("fld_plantopeningstock"),
     f_plantopeningstockjobcard: document.getElementById("f_plantopeningstockjobcard"),
@@ -3193,7 +3222,22 @@
   // Quantity Required carry-over in the submit handler below, where whichever of Plant's own
   // Quantity / Balance Quantity Required actually reflects what still needs producing is what gets
   // forwarded as the next stage's own Quantity.
+  //
+  // NOTE: PLANT_NEXTSTAGE_OPTIONS just below now restricts Plant's own Next Stage dropdown to QC
+  // only, so this list is effectively unreachable straight from Plant any more — Plant can no
+  // longer advance directly into RD-1CP/RS-2CP/etc, it always goes back to QC first (Plant sends
+  // its running-sheet sample there for testing). Left in place rather than removed in case that
+  // changes again; QC's own SECOND pass (once the sample passes — see the hard-block validation in
+  // the submit handler below) is what now sends the job on to whichever real production stage
+  // comes next, using the same generic "whatever's currently in Quantity carries forward" rule
+  // every other stage-to-stage move already uses (QC doesn't need its own carry-stages list the
+  // way Plant did, since by the second QC pass Quantity already holds the right figure).
   var PLANT_QTY_CARRY_STAGES = ["RD-1CP", "RS-2CP", "RS+RD-4CP", "Auto Gluing", "Bundling"];
+  // Plant's own leftover only ever goes one place next — back to QC, carrying the running-sheet
+  // sample for testing against the client's specification (see the Visipak Specs section on the
+  // QC form) — never straight on to the next production stage, so its Next Stage dropdown offers
+  // only QC, the same restricted-list idea as Ready to Dispatch's own RTD_NEXTSTAGE_OPTIONS.
+  var PLANT_NEXTSTAGE_OPTIONS = ["QC"];
   // Rebuilds Next Stage's own option list for the given stage — called from
   // updateFormFieldsForStage below, since which stages are offered depends on the CURRENT stage,
   // not just whether Next Stage shows at all (stageHasNextStage above). Preserves whatever's
@@ -3201,7 +3245,9 @@
   // otherwise resets to "— stays here —" rather than silently keeping a choice that's no longer
   // offered.
   function populateNextStageOptions(stage){
-    var allowed = isReadyToDispatchStage(stage) ? RTD_NEXTSTAGE_OPTIONS : STAGES;
+    var allowed = isReadyToDispatchStage(stage) ? RTD_NEXTSTAGE_OPTIONS
+      : isPlantStage(stage) ? PLANT_NEXTSTAGE_OPTIONS
+      : STAGES;
     var currentValue = el.f_nextstage.value;
     el.f_nextstage.innerHTML = "";
     var stayOpt = document.createElement("option");
@@ -3377,6 +3423,7 @@
     applyCatalogAutofill();
     applyMasterSheetAutofill();
     refreshStockOpeningBalance();
+    refreshQcStockFields();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
   }
@@ -3393,6 +3440,7 @@
     applyCatalogAutofill();
     applyMasterSheetAutofill();
     refreshStockOpeningBalance();
+    refreshQcStockFields();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
   }
@@ -3637,15 +3685,15 @@
   // QC is the one deliberate source of truth for a Customer+Product's Artwork No/attachment and
   // Client Specifications attachment — captured once at QC, then reused everywhere that same job
   // downstream (RD-1CP/RS-2CP/RS+RD-4CP for artwork, Plant for Client Specs) would otherwise need
-  // the same file re-uploaded by hand. Visipak Specifications is deliberately NOT part of this —
-  // it's Plant's own field, freshly captured there each time (see applyMasterSheetAutofill's own
-  // comment) — but the record below still has room for it (visipakSpecsAttachment*) so an existing
-  // entry's older, QC-captured Visipak data (from before Visipak Specs moved to Plant) round-trips
-  // through an edit-and-resave without being silently dropped. One Firestore document per
-  // Customer+Product (collection "masterSheet", doc id = masterSheetKey below) rather than the
-  // shared catalog's single nested doc, since each record here can carry several base64
-  // attachments and a single shared document could grow past Firestore's 1MB cap once enough
-  // products are on file.
+  // the same file re-uploaded by hand. Visipak Specifications is deliberately NOT part of the
+  // autofill loop (see applyMasterSheetAutofill's own comment) — it's independently
+  // measured/judged by QC against the physical test sample every time, not reference data to
+  // carry forward — but the record below still has room for it (visipakSpecsAttachment*) purely
+  // so an edit-and-resave round-trips whatever was last saved rather than silently dropping it.
+  // One Firestore document per Customer+Product (collection "masterSheet", doc id =
+  // masterSheetKey below) rather than the shared catalog's single nested doc, since each record
+  // here can carry several base64 attachments and a single shared document could grow past
+  // Firestore's 1MB cap once enough products are on file.
   function masterSheetKey(customerName, productName){
     return normalizeKey(customerName) + "__" + normalizeKey(productName);
   }
@@ -3705,8 +3753,8 @@
   // overwrite-on-change behavior as applyCatalogAutofill, not just when blank. QC itself is
   // excluded: it's the stage that WRITES the Master Sheet, not one that reads it back. Visipak
   // Specifications (the attachment and its table column) is deliberately NOT autofilled here even
-  // though it's part of the same specs block — it's Plant's own field now, freshly
-  // captured/measured downstream each time, not reference data carried forward from QC.
+  // though it's part of the same specs block — it's QC's own field, independently
+  // captured/measured against the physical test sample every time, not reference data.
   function attachmentValFromMaster(dataKey, nameKey, typeKey, record){
     return record[dataKey] ? { data: record[dataKey], name: record[nameKey], type: record[typeKey] } : null;
   }
@@ -4160,6 +4208,67 @@
   }
   el.f_qty.addEventListener("input", refreshNoOfBundles);
   el.f_qtyperbundle.addEventListener("input", refreshNoOfBundles);
+
+  // ---------- QC: FG Stock Available / Balance Quantity Required ----------
+  // Before a job's Quantity is sent on to Plant, QC checks how much of this Customer+Product
+  // already exists as Finished Goods stock — the same computeLatestFgStock lookup Plant/Priority
+  // Tasks use for their own Opening Stock (see the shared-lookup comment above it) — and Balance
+  // Quantity Required, this entry's own Quantity minus that FG Stock Available: how much still
+  // actually needs producing once existing stock is counted in. If there's no FG stock at all,
+  // Balance Quantity Required just equals the full Quantity, so the whole order still carries
+  // forward either way.
+  //
+  // UNLIKE Plant's own equivalent fields just below (refreshPlantStockFields), this does NOT keep
+  // recomputing live once the entry has been saved once. QC sends a job's Balance Quantity
+  // Required on to Plant (see movingQcToPlant in the submit handler), but Plant's own Next Stage
+  // is now restricted to QC only (see PLANT_NEXTSTAGE_OPTIONS) — Plant sends its tested sample
+  // back to QC — so the very same document comes back to QC a second time. If FG Stock Available
+  // were looked up fresh on that second visit, it would subtract the same Finished Goods stock a
+  // second time against Quantity (which by then already only holds the first pass's Balance
+  // Quantity Required), silently under-counting what's actually needed. So the live Firestore
+  // lookup below only ever runs for a BRAND-NEW entry (state.editingId not yet set) — the same
+  // "frozen unless brand-new" discipline computeLatestPlantQuantity's own comment and
+  // refreshRtdFgStockFields already use for this identical cross-visit drift risk. An existing
+  // entry just keeps showing whatever FG Stock Available was saved the first time, recomputing
+  // only the Balance Quantity Required math live off it (so hand-editing Quantity still updates
+  // Balance correctly).
+  function refreshQcBalanceQty(){
+    if(!isQCStage(el.f_stage.value) || el.f_qcfgstockavailable.value === "" || el.f_qty.value === ""){
+      el.f_qcbalanceqty.value = "";
+      return;
+    }
+    var required = Number(el.f_qty.value) - Number(el.f_qcfgstockavailable.value);
+    el.f_qcbalanceqty.value = required < 0 ? 0 : required;
+  }
+  var qcStockRequestToken = 0;
+  function refreshQcStockFields(){
+    if(!isQCStage(el.f_stage.value)){
+      el.f_qcfgstockavailable.value = "";
+      refreshQcBalanceQty();
+      return;
+    }
+    // Existing entry: FG Stock Available stays exactly what was saved the first time around (see
+    // this function's own comment above) — just keep Balance Quantity Required in sync with it.
+    if(state.editingId){
+      refreshQcBalanceQty();
+      return;
+    }
+    var customerName = el.f_clientname.value;
+    var productName = el.f_product.value;
+    if(!customerName || !productName){
+      el.f_qcfgstockavailable.value = "";
+      refreshQcBalanceQty();
+      return;
+    }
+    var myToken = ++qcStockRequestToken;
+    computeLatestFgStock(customerName, productName, el.f_date.value).then(function(result){
+      if(myToken !== qcStockRequestToken) return; // superseded by a newer request
+      el.f_qcfgstockavailable.value = result.openingStock;
+      refreshQcBalanceQty();
+    });
+  }
+  el.f_qty.addEventListener("input", refreshQcBalanceQty);
+  el.f_date.addEventListener("change", refreshQcStockFields);
 
   // ---------- Plant: Opening Stock Qty / Opening Stock Job Card No / Balance Quantity Required
   // ----------
@@ -4692,20 +4801,24 @@
     // has no single quantity at all (its table is the whole entry); Stock Summary has its own
     // Opening/Inward/Outward/Closing quantities in its own table instead.
     el.fld_qty.hidden = fg || hr || stockSummary;
+    // QC-only: FG Stock Available and the Balance Quantity Required that carries on to Plant —
+    // see refreshQcStockFields above the modal code.
+    el.fld_qcfgstockavailable.hidden = !qc;
+    el.fld_qcbalanceqty.hidden = !qc;
     // Plant-only: Opening Stock Qty/Job Card No (from Finished Goods) and the Balance Quantity
     // Required they leave to produce — see refreshPlantStockFields above the modal code.
     el.fld_plantopeningstock.hidden = !plant;
     el.fld_plantopeningstockjobcard.hidden = !plant;
     el.fld_plantbalanceqty.hidden = !plant;
-    // Client Specs vs Visipak Specs comparison table — QC and Plant. The Visipak Specs column
-    // and its whole "Visipak Specifications" attachment section (Capture/Upload + Verified
-    // toggle) are Plant-only within that shared block — Visipak's own figures/spec sheet are
-    // measured and captured downstream at Plant, not at QC (see the visipakSpecCol class and the
+    // Client Specs vs Visipak Specs comparison table — QC and Plant both show the block, but the
+    // Visipak Specs column and its whole "Visipak Specifications" attachment section (Capture/
+    // Upload + Verified toggle) are QC-only within that shared block — QC measures/captures its
+    // own spec sheet against the physical test sample there (see the visipakSpecCol class and the
     // attachVisipakSpecsWidget/fld_visipakspecsverified comments in the HTML).
     el.fld_qcspecs.hidden = !stageHasQcSpecs(stage);
-    document.querySelectorAll(".visipakSpecCol").forEach(function(c){ c.hidden = !plant; });
+    document.querySelectorAll(".visipakSpecCol").forEach(function(c){ c.hidden = !qc; });
     var attachVisipakSpecsWidgetEl = document.getElementById("attachVisipakSpecsWidget");
-    if(attachVisipakSpecsWidgetEl) attachVisipakSpecsWidgetEl.hidden = !plant;
+    if(attachVisipakSpecsWidgetEl) attachVisipakSpecsWidgetEl.hidden = !qc;
     // HR Man Power has no product/job-card of its own — it's a whole-factory daily headcount,
     // not tied to a job — so it swaps those out for the manpower table instead. Stock Summary
     // keeps Product Name (it's tracking one product's stock) but doesn't need a Job Card No either.
@@ -4726,9 +4839,9 @@
     el.fld_hold.hidden = !stageHasHold(stage);
     // Verified is Finished Goods-only — see the toggle's own comment in the HTML above.
     el.fld_verified.hidden = !fg;
-    // Visipak Specifications' own Verified toggle is Plant-only now, along with the rest of that
+    // Visipak Specifications' own Verified toggle is QC-only, along with the rest of that
     // section — see the toggle's own comment in the HTML.
-    el.fld_visipakspecsverified.hidden = !plant;
+    el.fld_visipakspecsverified.hidden = !qc;
     // Artwork Active / Client Specs Active gate the Master Sheet — QC-only, even though the
     // Artwork No / Client Specs sections themselves also show on other stages (RD-1CP etc./Plant).
     el.fld_artworkactive.hidden = !qc;
@@ -4767,6 +4880,7 @@
     refreshRtdBalanceQty();
     refreshRtdFgStockFields();
     refreshFgStockFields();
+    refreshQcStockFields();
     refreshPlantStockFields();
     refreshStockOpeningBalance();
     refreshStockSummaryCalc();
@@ -6346,6 +6460,10 @@
     visipakSpecsVerified: { header: function(){ return t("form_verified_label"); },
       html: function(e){ return esc(e.visipakSpecsVerified ? t("verified_on_label") : t("verified_off_label")); },
       csv: function(e){ return e.visipakSpecsVerified ? t("verified_on_label") : t("verified_off_label"); } },
+    qcFgStockAvailable: { header: function(){ return t("qc_fgstockavailable_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.qcFgStockAvailable != null ? e.qcFgStockAvailable : ""); }, csv: function(e){ return e.qcFgStockAvailable != null ? e.qcFgStockAvailable : ""; } },
+    qcBalanceQtyRequired: { header: function(){ return t("qc_balanceqty_label"); }, cellClass: "num",
+      html: function(e){ return esc(e.qcBalanceQtyRequired != null ? e.qcBalanceQtyRequired : ""); }, csv: function(e){ return e.qcBalanceQtyRequired != null ? e.qcBalanceQtyRequired : ""; } },
     plantOpeningStock: { header: function(){ return t("plant_openingstock_label"); }, cellClass: "num",
       html: function(e){ return esc(e.plantOpeningStock != null ? e.plantOpeningStock : ""); }, csv: function(e){ return e.plantOpeningStock != null ? e.plantOpeningStock : ""; } },
     plantOpeningStockJobCard: { header: function(){ return t("plant_openingstockjobcard_label"); },
@@ -6420,6 +6538,7 @@
     if(hasType) keys.push("type");
     if(stageHasArtworkNo(stage)) keys.push("artworkNo", "artworkCheck", "artworkAttachment");
     if(!(fg || hr || stockSummary)) keys.push("quantity");
+    if(qc) keys.push("qcFgStockAvailable", "qcBalanceQtyRequired");
     if(plant) keys.push("plantOpeningStock", "plantOpeningStockJobCard", "plantBalanceQtyRequired");
     if(fg) keys.push("totalBundle", "openingStock", "ageingDays");
     if(stageHasPly(stage)) keys.push("ply");
@@ -6445,8 +6564,8 @@
     if(stageHasWastage(stage)) keys.push("wastage");
     if(!special) keys.push("remarks");
     if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment", "visipakSpecsAttachment");
-    // Visipak Specifications' own Verified toggle is Plant-only now — see updateFormFieldsForStage.
-    if(plant) keys.push("visipakSpecsVerified");
+    // Visipak Specifications' own Verified toggle is QC-only — see updateFormFieldsForStage.
+    if(qc) keys.push("visipakSpecsVerified");
     if(hr) keys.push("hrTotalOperator", "hrTotalMh", "hrTotalFh", "hrTotalGrand");
     keys.push("lastUpdated");
     return keys;
@@ -7191,6 +7310,12 @@
     el.f_artworkactive.checked = !entry || entry.artworkActive !== false;
     el.f_specsactive.checked = !entry || entry.specsActive !== false;
     el.f_qty.value = entry && entry.quantity != null ? entry.quantity : "";
+    // FG Stock Available (QC) is frozen once first saved (see refreshQcStockFields's own comment)
+    // — an existing entry shows exactly what was saved with it; only a brand-new entry gets it
+    // auto-filled live, via updateFormFieldsForStage's refreshQcStockFields call below. Balance
+    // Quantity Required doesn't need populating here at all — that same call always (re)computes
+    // it live from FG Stock Available/Quantity, for a brand-new and an existing entry alike.
+    el.f_qcfgstockavailable.value = entry && entry.qcFgStockAvailable != null ? entry.qcFgStockAvailable : "";
     el.f_ply.value = entry ? (entry.ply || "") : "";
     // Layers: populate whichever rows the saved entry actually has data for (up to 7); a new
     // entry, or one saved before/without Layers, just leaves them blank.
@@ -7408,6 +7533,22 @@
     if(chosenStatus === "Completed" && chosenNextStage && chosenNextStage !== chosenStage){
       movedTo = chosenNextStage;
     }
+    // Hard block: QC can't advance a job on to its Next Stage (whether that's the first hop into
+    // Plant, or the second hop onward once Plant's tested sample comes back — see
+    // PLANT_NEXTSTAGE_OPTIONS/movingQcToPlant above) while any one of the five Specifications rows
+    // is marked Fail. A brand-new entry (nothing tested yet) defaults every row to Pass — see
+    // openModal's own comment on that default — so this only ever actually stops someone who has
+    // explicitly flipped a row to Fail, exactly the "only move it on once the sample passes"
+    // requirement. Saving QC in place (no Next Stage chosen) is never blocked — only the move.
+    if(isQC && movedTo){
+      var qcAllSpecsPass = el.f_qc_boardgsm_pass.checked && el.f_qc_bustingstrength_pass.checked &&
+        el.f_qc_moisture_pass.checked && el.f_qc_weight_pass.checked && el.f_qc_bct_pass.checked;
+      if(!qcAllSpecsPass){
+        saveBtn.disabled = false;
+        showBanner(t("qc_err_specs_not_passed"));
+        return;
+      }
+    }
     // Ready to Dispatch's own leftover (Balance Quantity) carries straight into the moved
     // document's Opening Stock the moment it advances to Finished Goods — see the openingStock
     // payload field below and refreshRtdBalanceQty above the modal code. Ageing needs no such
@@ -7447,6 +7588,16 @@
     // original Quantity still carries forward unchanged, same as before this carry-over existed.
     var movingPlantForward = isPlant && !!movedTo && PLANT_QTY_CARRY_STAGES.indexOf(movedTo) !== -1;
     var plantBalanceQtyRequiredNum = (isPlant && el.f_plantbalanceqty.value !== "") ? Number(el.f_plantbalanceqty.value) : 0;
+    // QC -> Plant: Quantity would otherwise just carry over unchanged from whatever QC typed in
+    // (see refreshQcStockFields's own comment above the modal code). QC's own Balance Quantity
+    // Required (this Quantity minus whatever FG Stock Available already covers) is what actually
+    // still needs producing, so THAT'S what gets forwarded as Plant's own incoming Quantity —
+    // unlike Plant's own movingPlantForward above, this applies even when it comes out to exactly
+    // 0 (existing FG stock fully covers the order — Plant genuinely has nothing left to produce),
+    // since refreshQcBalanceQty's own formula already folds in the "no FG stock at all" case by
+    // just equalling the full Quantity, so there's no separate fallback needed here.
+    var movingQcToPlant = isQC && movedTo === "Plant";
+    var qcBalanceQtyRequiredNum = (isQC && el.f_qcbalanceqty.value !== "") ? Number(el.f_qcbalanceqty.value) : 0;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
     // Quantity Per Bundle is a per-product catalog fact (see applyCatalogAutofill), not something
@@ -7496,6 +7647,7 @@
       quantity: (isFG || isHR || isStockSummary) ? null
         : movingRtdToDispatch ? rtdDispatchedQtyNum
         : (movingPlantForward && plantBalanceQtyRequiredNum > 0) ? plantBalanceQtyRequiredNum
+        : movingQcToPlant ? qcBalanceQtyRequiredNum
         : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
       layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
@@ -7519,9 +7671,9 @@
       // Plain informational flag, Finished Goods only — see refreshVerifiedLabel above the modal
       // code and the toggle's own comment in the HTML.
       verified: isFG ? el.f_verified.checked : null,
-      // Visipak Specifications' own Verified toggle — same plain informational flag, Plant stage
-      // only now (see fld_visipakspecsverified's own comment in the HTML).
-      visipakSpecsVerified: isPlant ? el.f_visipakspecsverified.checked : null,
+      // Visipak Specifications' own Verified toggle — same plain informational flag, QC-only
+      // (see fld_visipakspecsverified's own comment in the HTML).
+      visipakSpecsVerified: isQC ? el.f_visipakspecsverified.checked : null,
       // Wastage, like Start Time/End Time/Run Time/Man Power just above, is each stage's own
       // department reporting its own figure — it must not carry forward onto the next stage's
       // record when a job moves on via Next Stage, so it's blanked on movedTo the same way.
@@ -7560,6 +7712,12 @@
       // needs no special-casing for it the way Opening Stock does.
       openingStock: isFG ? (el.f_openingstock.value === "" ? null : Number(el.f_openingstock.value))
         : (movingRtdToFg ? (el.f_balanceqty.value === "" ? null : Number(el.f_balanceqty.value)) : null),
+      // QC's own FG Stock Available/Balance Quantity Required — see refreshQcStockFields above
+      // the modal code. UNLIKE Plant's own equivalent fields just below, FG Stock Available IS
+      // meant to be read back as a frozen snapshot on re-open (see that function's own comment on
+      // why it can't keep recomputing live once this document may revisit QC a second time).
+      qcFgStockAvailable: isQC ? (el.f_qcfgstockavailable.value === "" ? null : Number(el.f_qcfgstockavailable.value)) : null,
+      qcBalanceQtyRequired: isQC ? (el.f_qcbalanceqty.value === "" ? null : Number(el.f_qcbalanceqty.value)) : null,
       // Plant's own Opening Stock Qty/Job Card No/Balance Quantity Required — see
       // refreshPlantStockFields above the modal code. Snapshotted purely for display on the
       // card/log; like Ready to Dispatch's Opening Stock, reopening the entry always recomputes
@@ -7621,6 +7779,16 @@
       delete payload.artworkCheckAttachmentName;
       delete payload.artworkCheckAttachmentType;
       delete payload.artworkActive;
+    }
+    // QC's own FG Stock Available / Balance Quantity Required (see refreshQcStockFields above the
+    // modal code) must survive this same document moving on to Plant and then back to QC a second
+    // time — deleting them here (the same "leave Firestore's existing value alone" trick as the
+    // Artwork block just above) rather than writing them back as null is what lets QC's SECOND
+    // visit still read back its own frozen snapshot, instead of the Plant save in between having
+    // silently wiped it out to null.
+    if(!isQC && state.editingId){
+      delete payload.qcFgStockAvailable;
+      delete payload.qcBalanceQtyRequired;
     }
     lastUpdatedBy = payload.updatedBy;
 
