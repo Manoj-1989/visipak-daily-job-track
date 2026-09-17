@@ -1439,39 +1439,42 @@
       </div>
       <div class="span2 qcSpecsBlock" id="fld_qcspecs">
         <div class="qcSpecsHead" data-i18n="qc_specs_heading">Specifications</div>
+        <!-- The Visipak Specs column (class="visipakSpecCol") is Plant-only — see the
+             visipakSpecCol toggling in updateFormFieldsForStage. Client Specs and Result stay
+             visible on both QC and Plant. -->
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="qc_th_client">Client Specs</th><th data-i18n="qc_th_visipak">Visipak Specs</th><th data-i18n="qc_th_result">Result</th></tr>
+            <tr><th></th><th data-i18n="qc_th_client">Client Specs</th><th data-i18n="qc_th_visipak" class="visipakSpecCol">Visipak Specs</th><th data-i18n="qc_th_result">Result</th></tr>
           </thead>
           <tbody>
             <tr>
               <td data-i18n="qc_spec_boardgsm">Board GSM</td>
               <td><input type="text" id="f_qc_boardgsm_client"></td>
-              <td><input type="text" id="f_qc_boardgsm_visipak"></td>
+              <td class="visipakSpecCol"><input type="text" id="f_qc_boardgsm_visipak"></td>
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_boardgsm_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_bustingstrength">Busting Strength</td>
               <td><input type="text" id="f_qc_bustingstrength_client"></td>
-              <td><input type="text" id="f_qc_bustingstrength_visipak"></td>
+              <td class="visipakSpecCol"><input type="text" id="f_qc_bustingstrength_visipak"></td>
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_bustingstrength_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_moisture">Moisture</td>
               <td><input type="text" id="f_qc_moisture_client"></td>
-              <td><input type="text" id="f_qc_moisture_visipak"></td>
+              <td class="visipakSpecCol"><input type="text" id="f_qc_moisture_visipak"></td>
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_moisture_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_weight">Box Weight</td>
               <td><input type="text" id="f_qc_weight_client"></td>
-              <td><input type="text" id="f_qc_weight_visipak"></td>
+              <td class="visipakSpecCol"><input type="text" id="f_qc_weight_visipak"></td>
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_weight_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
             <tr>
               <td data-i18n="qc_spec_bct">BCT</td>
               <td><input type="text" id="f_qc_bct_client"></td>
-              <td><input type="text" id="f_qc_bct_visipak"></td>
+              <td class="visipakSpecCol"><input type="text" id="f_qc_bct_visipak"></td>
               <td class="passFailCell"><label class="passFailToggle"><input type="checkbox" id="f_qc_bct_pass"><span class="pfTrack"></span><span class="pfLabel"></span></label></td>
             </tr>
           </tbody>
@@ -1501,9 +1504,13 @@
             <span class="pfLabel"></span>
           </label>
         </div>
-        <!-- Visipak Specifications attachment for this whole table — Visipak's own spec sheet,
-             alongside the Client Specifications attachment above — one image or PDF, captured or
-             uploaded, saved as base64 data on the entry (see makeAttachmentController). -->
+        <!-- Visipak Specifications attachment for this whole table — Visipak's own spec sheet —
+             one image or PDF, captured or uploaded, saved as base64 data on the entry (see
+             makeAttachmentController). Plant-only: the whole widget (including the Verified
+             toggle nested below) is hidden at QC by updateFormFieldsForStage, which sets
+             hidden on this div directly by id — Visipak's own figures and spec sheet are now
+             measured and captured downstream at Plant, not at QC (mirrors how the Visipak Specs
+             table column above is also Plant-only via the visipakSpecCol class). -->
         <div class="attachmentWidget" id="attachVisipakSpecsWidget">
           <div class="attachmentLabel" data-i18n="attach_visipak_specs_label">Visipak Specifications</div>
           <div class="attachmentControls">
@@ -1513,12 +1520,13 @@
             <button type="button" class="btn ghost attachBtn" id="attachVisipakSpecsUploadBtn" data-i18n="attach_upload_btn">📎 Upload</button>
             <span class="attachStatus" id="attachVisipakSpecsStatus"></span>
           </div>
-          <!-- QC-only: a plain informational confirmation that whoever's at QC has actually checked
-               the Visipak Specifications attachment above against the physical spec sheet — same
-               switch widget/wording as the Finished Goods Verified toggle (see fld_verified above),
-               but its own field, and gated to QC specifically (see isQCStage in
-               updateFormFieldsForStage) even though the Visipak Specifications section itself is
-               shared with Plant. -->
+          <!-- Plant-only: a plain informational confirmation that whoever's at Plant has actually
+               checked the Visipak Specifications attachment above against the physical spec sheet
+               — same switch widget/wording as the Finished Goods Verified toggle (see fld_verified
+               above), but its own field, gated to Plant specifically (see isPlantStage in
+               updateFormFieldsForStage). Nested inside attachVisipakSpecsWidget, so it's also
+               covered by that div's own QC-hiding above — this field's own hidden flag just keeps
+               it Plant-only specifically (not also shown on any other non-QC stage). -->
           <div class="formGridItem attachVerifiedRow" id="fld_visipakspecsverified">
             <span data-i18n="form_verified_label">Verified</span>
             <label class="passFailToggle">
@@ -3627,12 +3635,17 @@
 
   // ---------- QC Master Sheet ----------
   // QC is the one deliberate source of truth for a Customer+Product's Artwork No/attachment and
-  // Client+Visipak Specifications attachments — captured once at QC, then reused everywhere that
-  // same job downstream (RD-1CP/RS-2CP/RS+RD-4CP for artwork, Plant for specs) would otherwise need
-  // the same file re-uploaded by hand. One Firestore document per Customer+Product (collection
-  // "masterSheet", doc id = masterSheetKey below) rather than the shared catalog's single nested
-  // doc, since each record here can carry several base64 attachments and a single shared document
-  // could grow past Firestore's 1MB cap once enough products are on file.
+  // Client Specifications attachment — captured once at QC, then reused everywhere that same job
+  // downstream (RD-1CP/RS-2CP/RS+RD-4CP for artwork, Plant for Client Specs) would otherwise need
+  // the same file re-uploaded by hand. Visipak Specifications is deliberately NOT part of this —
+  // it's Plant's own field, freshly captured there each time (see applyMasterSheetAutofill's own
+  // comment) — but the record below still has room for it (visipakSpecsAttachment*) so an existing
+  // entry's older, QC-captured Visipak data (from before Visipak Specs moved to Plant) round-trips
+  // through an edit-and-resave without being silently dropped. One Firestore document per
+  // Customer+Product (collection "masterSheet", doc id = masterSheetKey below) rather than the
+  // shared catalog's single nested doc, since each record here can carry several base64
+  // attachments and a single shared document could grow past Firestore's 1MB cap once enough
+  // products are on file.
   function masterSheetKey(customerName, productName){
     return normalizeKey(customerName) + "__" + normalizeKey(productName);
   }
@@ -3688,9 +3701,12 @@
   }
   // Extends applyCatalogAutofill's own Customer/Product-change trigger: on a downstream production
   // stage, pulls this Customer+Product's ACTIVE Master Sheet record into the Artwork No field/
-  // attachment (RD-1CP/RS-2CP/RS+RD-4CP) and the Client+Visipak Specifications attachments (Plant) —
-  // same overwrite-on-change behavior as applyCatalogAutofill, not just when blank. QC itself is
-  // excluded: it's the stage that WRITES the Master Sheet, not one that reads it back.
+  // attachment (RD-1CP/RS-2CP/RS+RD-4CP) and the Client Specifications attachment (Plant) — same
+  // overwrite-on-change behavior as applyCatalogAutofill, not just when blank. QC itself is
+  // excluded: it's the stage that WRITES the Master Sheet, not one that reads it back. Visipak
+  // Specifications (the attachment and its table column) is deliberately NOT autofilled here even
+  // though it's part of the same specs block — it's Plant's own field now, freshly
+  // captured/measured downstream each time, not reference data carried forward from QC.
   function attachmentValFromMaster(dataKey, nameKey, typeKey, record){
     return record[dataKey] ? { data: record[dataKey], name: record[nameKey], type: record[typeKey] } : null;
   }
@@ -3710,10 +3726,8 @@
     if(stageHasQcSpecs(stage) && record.specsActive !== false){
       qcSpecsAttachmentCtrl.setValue(attachmentValFromMaster(
         "qcSpecsAttachmentData", "qcSpecsAttachmentName", "qcSpecsAttachmentType", record));
-      visipakSpecsAttachmentCtrl.setValue(attachmentValFromMaster(
-        "visipakSpecsAttachmentData", "visipakSpecsAttachmentName", "visipakSpecsAttachmentType", record));
       // Specifications table CLIENT column — same overwrite-on-Customer/Product-change behavior as
-      // the attachments just above, only ever reached here on Plant (QC itself returned already,
+      // the attachment just above, only ever reached here on Plant (QC itself returned already,
       // and Plant is the only other stage stageHasQcSpecs allows).
       if(record.qcBoardGsmClient) el.f_qc_boardgsm_client.value = record.qcBoardGsmClient;
       if(record.qcBustingStrengthClient) el.f_qc_bustingstrength_client.value = record.qcBustingStrengthClient;
@@ -4683,8 +4697,15 @@
     el.fld_plantopeningstock.hidden = !plant;
     el.fld_plantopeningstockjobcard.hidden = !plant;
     el.fld_plantbalanceqty.hidden = !plant;
-    // Client Specs vs Visipak Specs comparison table — QC and Plant.
+    // Client Specs vs Visipak Specs comparison table — QC and Plant. The Visipak Specs column
+    // and its whole "Visipak Specifications" attachment section (Capture/Upload + Verified
+    // toggle) are Plant-only within that shared block — Visipak's own figures/spec sheet are
+    // measured and captured downstream at Plant, not at QC (see the visipakSpecCol class and the
+    // attachVisipakSpecsWidget/fld_visipakspecsverified comments in the HTML).
     el.fld_qcspecs.hidden = !stageHasQcSpecs(stage);
+    document.querySelectorAll(".visipakSpecCol").forEach(function(c){ c.hidden = !plant; });
+    var attachVisipakSpecsWidgetEl = document.getElementById("attachVisipakSpecsWidget");
+    if(attachVisipakSpecsWidgetEl) attachVisipakSpecsWidgetEl.hidden = !plant;
     // HR Man Power has no product/job-card of its own — it's a whole-factory daily headcount,
     // not tied to a job — so it swaps those out for the manpower table instead. Stock Summary
     // keeps Product Name (it's tracking one product's stock) but doesn't need a Job Card No either.
@@ -4705,9 +4726,9 @@
     el.fld_hold.hidden = !stageHasHold(stage);
     // Verified is Finished Goods-only — see the toggle's own comment in the HTML above.
     el.fld_verified.hidden = !fg;
-    // Visipak Specifications' own Verified toggle is QC-only, even though the Visipak
-    // Specifications section itself also shows on Plant — see the toggle's own comment in the HTML.
-    el.fld_visipakspecsverified.hidden = !qc;
+    // Visipak Specifications' own Verified toggle is Plant-only now, along with the rest of that
+    // section — see the toggle's own comment in the HTML.
+    el.fld_visipakspecsverified.hidden = !plant;
     // Artwork Active / Client Specs Active gate the Master Sheet — QC-only, even though the
     // Artwork No / Client Specs sections themselves also show on other stages (RD-1CP etc./Plant).
     el.fld_artworkactive.hidden = !qc;
@@ -6424,7 +6445,8 @@
     if(stageHasWastage(stage)) keys.push("wastage");
     if(!special) keys.push("remarks");
     if(stageHasQcSpecs(stage)) keys.push("qcBoardGsm", "qcBustingStrength", "qcMoisture", "qcWeight", "qcBct", "qcSpecsAttachment", "visipakSpecsAttachment");
-    if(qc) keys.push("visipakSpecsVerified");
+    // Visipak Specifications' own Verified toggle is Plant-only now — see updateFormFieldsForStage.
+    if(plant) keys.push("visipakSpecsVerified");
     if(hr) keys.push("hrTotalOperator", "hrTotalMh", "hrTotalFh", "hrTotalGrand");
     keys.push("lastUpdated");
     return keys;
@@ -7497,8 +7519,9 @@
       // Plain informational flag, Finished Goods only — see refreshVerifiedLabel above the modal
       // code and the toggle's own comment in the HTML.
       verified: isFG ? el.f_verified.checked : null,
-      // Visipak Specifications' own Verified toggle — same plain informational flag, QC stage only.
-      visipakSpecsVerified: isQC ? el.f_visipakspecsverified.checked : null,
+      // Visipak Specifications' own Verified toggle — same plain informational flag, Plant stage
+      // only now (see fld_visipakspecsverified's own comment in the HTML).
+      visipakSpecsVerified: isPlant ? el.f_visipakspecsverified.checked : null,
       // Wastage, like Start Time/End Time/Run Time/Man Power just above, is each stage's own
       // department reporting its own figure — it must not carry forward onto the next stage's
       // record when a job moves on via Next Stage, so it's blanked on movedTo the same way.
