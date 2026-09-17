@@ -1067,7 +1067,7 @@
       <label><span data-i18n="inv_th_reorder">Reorder point</span>
         <input type="number" id="invItemReorderInput" min="0" step="1" placeholder="e.g. 100">
       </label>
-      <label><span data-i18n="inv_items_price">Default Price/Unit</span>
+      <label><span data-i18n="inv_items_price">Unit/Price</span>
         <input type="number" id="invItemPriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
       </label>
     </div>
@@ -1107,18 +1107,26 @@
       </label>
     </div>
     <div class="supAddRow">
+      <!-- Mirrors Unit/Price above (same underlying value, kept in sync both ways — see
+           syncInvItemRateFields in the script) so the invoice's own Rate sits right alongside
+           HSN/GSM/BF/Size/Reels/Weight instead of only appearing further up the form. -->
+      <label><span data-i18n="inv_extract_th_rate">Rate</span>
+        <input type="number" id="invItemRateInput" class="mono" min="0" step="0.01" placeholder="0.00">
+      </label>
       <label><span data-i18n="inv_extract_invoiceno">Last Invoice No.</span>
         <input type="text" id="invItemInvoiceNoInput" class="mono">
       </label>
+    </div>
+    <div class="supAddRow">
       <label><span data-i18n="inv_extract_invoicedate">Last Invoice Date</span>
         <input type="text" id="invItemInvoiceDateInput" placeholder="e.g. 08/Sep/2026">
       </label>
-    </div>
-    <div class="supAddRow">
       <label><span data-i18n="inv_extract_gstin">Supplier GSTIN</span>
         <input type="text" id="invItemGstinInput" class="mono">
       </label>
-      <label><span data-i18n="inv_extract_lastamount">Last Invoice Amount</span>
+    </div>
+    <div class="supAddRow">
+      <label style="grid-column:1 / -1;"><span data-i18n="inv_extract_lastamount">Last Invoice Amount</span>
         <input type="number" id="invItemLastAmountInput" class="mono" min="0" step="0.01">
       </label>
     </div>
@@ -2213,7 +2221,7 @@
       inv_items_empty: "No items found.",
       inv_item_name_placeholder: "e.g. Corrugated Sheet 3-ply",
       inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
-      inv_items_price: "Default Price/Unit",
+      inv_items_price: "Unit/Price",
       inv_items_category_custom_option: "+ Add new category…",
       inv_items_category_custom_placeholder: "Type new category name",
       inv_items_specs_heading: "Paper / Invoice Specifications (optional)",
@@ -2469,7 +2477,7 @@
       inv_items_empty: "कोई आइटम नहीं मिला।",
       inv_item_name_placeholder: "जैसे, कोरुगेटेड शीट 3-प्लाई",
       inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
-      inv_items_price: "डिफ़ॉल्ट मूल्य/यूनिट",
+      inv_items_price: "यूनिट/मूल्य",
       inv_items_category_custom_option: "+ नई श्रेणी जोड़ें…",
       inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
       inv_items_specs_heading: "पेपर / इनवॉइस स्पेसिफिकेशन (वैकल्पिक)",
@@ -2725,7 +2733,7 @@
       inv_items_empty: "ఏ ఐటమ్‌లు కనుగొనబడలేదు.",
       inv_item_name_placeholder: "ఉదా. కొరుగేటెడ్ షీట్ 3-ప్లై",
       inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
-      inv_items_price: "డిఫాల్ట్ ధర/యూనిట్",
+      inv_items_price: "యూనిట్/ధర",
       inv_items_category_custom_option: "+ కొత్త కేటగిరీ జోడించండి…",
       inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
       inv_items_specs_heading: "పేపర్ / ఇన్వాయిస్ స్పెసిఫికేషన్లు (ఐచ్ఛికం)",
@@ -2969,6 +2977,7 @@
     invItemReorderInput: document.getElementById("invItemReorderInput"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
     invItemPriceInput: document.getElementById("invItemPriceInput"),
+    invItemRateInput: document.getElementById("invItemRateInput"),
     invItemHsnInput: document.getElementById("invItemHsnInput"),
     invItemSizeInput: document.getElementById("invItemSizeInput"),
     invItemSizeUnitInput: document.getElementById("invItemSizeUnitInput"),
@@ -6019,6 +6028,11 @@
     var n = Number(v);
     return isFinite(n) ? n : null;
   }
+  // Unit/Price (near the top of the form) and Rate (in Paper/Invoice Specifications, right after
+  // Weight) are the exact same underlying value — defaultPrice — shown in two places rather than
+  // stored twice, so editing either one keeps the other in step instead of letting them drift.
+  el.invItemPriceInput.addEventListener("input", function(){ el.invItemRateInput.value = el.invItemPriceInput.value; });
+  el.invItemRateInput.addEventListener("input", function(){ el.invItemPriceInput.value = el.invItemRateInput.value; });
   // The Category dropdown always offers the fixed starter list plus every category any product
   // already uses (so a category someone typed in via "+ Add new category" stays selectable for
   // every other item too), and a trailing "+ Add new category" option that reveals a free-text
@@ -6055,6 +6069,7 @@
     el.invItemReorderInput.value = "";
     el.invItemUnitInput.value = "";
     el.invItemPriceInput.value = "";
+    el.invItemRateInput.value = "";
     el.invItemHsnInput.value = "";
     el.invItemSizeInput.value = "";
     el.invItemSizeUnitInput.value = "";
@@ -6095,6 +6110,7 @@
     el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
     el.invItemUnitInput.value = item.unit || "";
     el.invItemPriceInput.value = item.defaultPrice != null ? item.defaultPrice : "";
+    el.invItemRateInput.value = item.defaultPrice != null ? item.defaultPrice : "";
     el.invItemHsnInput.value = item.hsnCode || "";
     el.invItemSizeInput.value = item.size || "";
     el.invItemSizeUnitInput.value = item.sizeUnit || "";
@@ -6306,50 +6322,87 @@
     // keeping the rest of that OCR line — a scanned invoice's header often runs the company name
     // together with an address, stamp text or registration code on what OCR reports as one line,
     // and keeping all of it produced garbled suppliers like "Vijay Anand ... Private Limited
-    // Zh423 Ee" in practice.
+    // Zh423 Ee" in practice. Matched against a version with line breaks flattened to spaces, since
+    // a large header company name is also sometimes split across two OCR lines.
     var supplierName = "";
-    var supplierMatch = joined.match(/([A-Z][A-Za-z0-9 &.,'-]{2,60}?(?:PRIVATE LIMITED|PVT\.?\s*LTD\.?|LLP))\b/i);
+    var flattened = joined.replace(/\s+/g, " ");
+    var supplierMatch = flattened.match(/([A-Z][A-Za-z0-9 &.,'-]{2,60}?(?:PRIVATE LIMITED|PVT\.?\s*LTD\.?|LLP))\b/i);
     if(supplierMatch) supplierName = titleCaseWords(supplierMatch[1].trim());
     var items = [];
     var strictRe = /^(\d{1,2})[\s.]+([A-Za-z][A-Za-z \-\/]{2,40}?)\s+(\d{6,8})\s+(\d{1,3})\s+(\d{2,4})\s+([\d.]+)\s*(CM|MM|IN)?\s+(\d{1,4})\s+([\d.]+)\s*(KGS?|PCS|NOS|UNITS?)?\s+([\d.]+)\s+([\d.]+)\s*$/i;
     // Looser fallback for a line the strict pattern above didn't match — tried per line (not only
     // when the whole document had zero strict matches), since one invoice can OCR cleanly on some
-    // rows and messily on others. Earlier this picked Rate/Amount as "whatever the last two
-    // numeric tokens on the line are" — on real (noisier) OCR that silently mislabeled Weight as
-    // Rate whenever Rate/Amount themselves went missing or unrecognized, since Weight then became
-    // the actual last numeric token. Rate and Amount are money; Weight is a physical quantity —
-    // they must never be confused with each other, so this instead anchors on the Unit keyword
-    // (KGS/PCS/NOS/UNITS) that separates them on a real invoice: everything before it is read
-    // backwards as weight, reels, size, gsm, bf (however many are present); Rate and Amount are
-    // only ever read from tokens strictly after that keyword. If the keyword can't be found,
-    // Rate/Amount are left blank rather than guessed — safe to fill in by hand in the review
-    // table, unlike a wrong number that looks plausible and gets missed.
+    // rows and messily on others.
+    //
+    // This anchors on WEIGHT rather than the Unit keyword, using this invoice format's own
+    // convention of weighing reels to three decimal places (e.g. "4311.000") — Rate and Amount,
+    // right after it, are quoted to two ("39.00", "168129.00"), so the decimal-place count alone
+    // reliably tells them apart even when OCR drops or mangles the "KGS" label itself (which is
+    // common — it's small printed text easy to lose on a skewed phone photo). Earlier this looked
+    // for "KGS" first and only trusted Rate/Amount when it found that exact word, which left Rate
+    // blank on real photos far more often than necessary; worse, an even earlier version picked
+    // Rate as "whatever the last numeric token on the line is", which silently duplicated Weight
+    // into Rate whenever Rate/Amount went missing (a real, reported bug — Rate and Amount are
+    // money, Weight is a physical quantity, and they must never be confused). Reading Rate/Amount
+    // strictly from tokens AFTER the located weight token — never from weight's own token or
+    // anything before it — makes that specific mistake structurally impossible here.
     function looseParseLine(line){
-      var tokens = line.split(" ");
+      var tokens = line.split(" ").filter(function(tok){ return tok !== ""; });
       if(!/^\d{1,2}$/.test(tokens[0])) return null;
       var hsnIdx = -1;
       for(var j = 1; j < tokens.length; j++){ if(/^\d{6,8}$/.test(tokens[j])){ hsnIdx = j; break; } }
       if(hsnIdx === -1) return null;
-      var rest = tokens.slice(hsnIdx + 1).filter(function(tok){ return tok !== ""; });
-      var unitIdx = -1, unitVal = "";
-      for(var k = 0; k < rest.length; k++){
-        if(/^(KGS?|PCS|NOS|UNITS?)$/i.test(rest[k])){ unitIdx = k; unitVal = rest[k].toLowerCase(); break; }
+      var rest = tokens.slice(hsnIdx + 1);
+
+      // Primary anchor: the last token shaped like a weight (3 decimals normally; allowing a 4th
+      // tolerates the odd stray digit OCR sometimes appends without confusing it for Rate/Amount,
+      // which are always exactly 2 decimals as currency).
+      var weightIdx = -1;
+      for(var w = rest.length - 1; w >= 0; w--){
+        if(/^\d+\.\d{3,4}$/.test(rest[w])){ weightIdx = w; break; }
       }
-      var beforeUnit = unitIdx === -1 ? rest : rest.slice(0, unitIdx);
-      var numsBeforeUnit = beforeUnit.filter(function(tok){ return /^[\d.]+$/.test(tok); });
-      if(numsBeforeUnit.length < 3) return null; // need at least size, reels, weight to bother
-      var n = numsBeforeUnit.length;
-      var weight = numsBeforeUnit[n - 1];
-      var reels = numsBeforeUnit[n - 2];
-      var size = numsBeforeUnit[n - 3] || "";
-      var gsm = n >= 4 ? numsBeforeUnit[n - 4] : null;
-      var bf = n >= 5 ? numsBeforeUnit[n - 5] : null;
-      var rate = null, amount = null;
-      if(unitIdx !== -1){
-        var afterUnit = rest.slice(unitIdx + 1).filter(function(tok){ return /^[\d.]+$/.test(tok); });
-        if(afterUnit.length >= 1) rate = Number(afterUnit[0]);
-        if(afterUnit.length >= 2) amount = Number(afterUnit[1]);
+      var beforeNums, weight, afterTokens;
+      if(weightIdx !== -1){
+        beforeNums = rest.slice(0, weightIdx).filter(function(tok){ return /^[\d.]+$/.test(tok); });
+        weight = rest[weightIdx];
+        afterTokens = rest.slice(weightIdx + 1);
+      } else {
+        // Fallback anchor: an explicit Unit keyword (possibly glued onto a neighboring number, as
+        // OCR sometimes does) — everything before it is physical columns, in the same backward
+        // order, with Weight simply being whichever of those numbers sits right before the unit.
+        var unitIdx = -1;
+        for(var k = 0; k < rest.length; k++){
+          if(/(KGS?|PCS|NOS|UNITS?)/i.test(rest[k].replace(/[\d.]/g, ""))){ unitIdx = k; break; }
+        }
+        if(unitIdx === -1) return null; // no reliable anchor at all — nothing safe to extract
+        var beforeUnitNums = rest.slice(0, unitIdx).filter(function(tok){ return /^[\d.]+$/.test(tok); });
+        if(beforeUnitNums.length < 1) return null;
+        weight = beforeUnitNums[beforeUnitNums.length - 1];
+        beforeNums = beforeUnitNums.slice(0, -1);
+        afterTokens = rest.slice(unitIdx + 1);
       }
+      if(beforeNums.length < 2) return null; // need at least size and reels to bother with this row
+
+      var n = beforeNums.length;
+      var reels = beforeNums[n - 1];
+      var size = beforeNums[n - 2] || "";
+      var gsm = n >= 3 ? beforeNums[n - 3] : null;
+      var bf = n >= 4 ? beforeNums[n - 4] : null;
+
+      // Unit word, if it's recognizable right after Weight (on its own or glued to a number).
+      var unitVal = "";
+      var afterStart = 0;
+      if(afterTokens.length && /(KGS?|PCS|NOS|UNITS?)/i.test(afterTokens[0].replace(/[\d.]/g, ""))){
+        unitVal = afterTokens[0].replace(/[\d.]/g, "").toLowerCase();
+        afterStart = 1;
+      }
+      // Rate and Amount: simply the numeric tokens after Weight (and past any Unit word) — not
+      // gated on finding a clean Unit keyword, since correctly reading Rate/Amount is the actual
+      // point of this extraction and OCR reliably keeps their digits even when it mangles "KGS".
+      var afterNums = afterTokens.slice(afterStart).filter(function(tok){ return /^[\d.]+$/.test(tok); });
+      var rate = afterNums.length >= 1 ? Number(afterNums[0]) : null;
+      var amount = afterNums.length >= 2 ? Number(afterNums[1]) : null;
+
       // A table's vertical border, misread as a stray "|" or punctuation mark, sometimes lands
       // right next to the row number — stripped here rather than kept as if it were text.
       var descRaw = tokens.slice(1, hsnIdx).join(" ").replace(/^[^A-Za-z]+/, "").replace(/[^A-Za-z0-9]+$/, "").trim();
@@ -6444,6 +6497,7 @@
     setIfEmpty(el.invItemSkuInput, row.sku);
     setIfEmpty(el.invItemUnitInput, row.unit);
     setIfEmpty(el.invItemPriceInput, row.rate);
+    setIfEmpty(el.invItemRateInput, row.rate);
     setIfEmpty(el.invItemHsnInput, row.hsnCode);
     setIfEmpty(el.invItemSizeInput, row.size);
     setIfEmpty(el.invItemSizeUnitInput, row.sizeUnit);
@@ -6451,6 +6505,7 @@
     setIfEmpty(el.invItemBfInput, row.bf);
     setIfEmpty(el.invItemReelsInput, row.reels);
     setIfEmpty(el.invItemWeightInput, row.weight);
+    setIfEmpty(el.invItemLastAmountInput, row.amount);
     if(headerInfo){
       setIfEmpty(el.invItemInvoiceNoInput, headerInfo.invoiceNo);
       setIfEmpty(el.invItemInvoiceDateInput, headerInfo.invoiceDate);
