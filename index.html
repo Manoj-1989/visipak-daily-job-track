@@ -544,6 +544,30 @@
     width:22px;height:22px;line-height:1;cursor:pointer;font-size:13px;flex:none;
   }
   .attachmentRemoveBtn:hover{background:var(--crit-soft);}
+  /* Manage Inventory Items: "Paper / Invoice Specifications" section divider, and the
+     OCR-extraction review table (see runInvoiceExtraction/renderInvExtractTable). */
+  .invItemSectionHead{
+    margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);font-size:11px;
+    color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;
+  }
+  .invExtractSection{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);}
+  .invExtractHeader{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;}
+  .invExtractNote{font-size:12px;color:var(--ink-soft);line-height:1.5;margin:4px 0 10px;}
+  .invExtractTable{min-width:0;width:auto;}
+  .invExtractTable thead th{white-space:nowrap;}
+  .invExtractTable tbody td{padding:6px 8px;vertical-align:middle;}
+  .invExtractTable tbody tr:hover{background:none;cursor:default;}
+  .invExtractTable input, .invExtractTable select{
+    width:100%;min-width:64px;font-size:12.5px;padding:5px 6px;border:1px solid var(--line);
+    border-radius:6px;background:var(--surface);color:var(--ink);font-family:inherit;
+  }
+  .invExtractTable input.invExtractName{min-width:140px;}
+  .invExtractTable input.invExtractSku{min-width:110px;}
+  .invExtractRemoveBtn{
+    border:1px solid var(--line-strong);background:var(--surface);color:var(--crit);border-radius:999px;
+    width:20px;height:20px;line-height:1;cursor:pointer;font-size:12px;flex:none;
+  }
+  .invExtractRemoveBtn:hover{background:var(--crit-soft);}
   /* Manual Pass/Fail switch per spec row: ON (checked) = Pass (green), OFF = Fail (red).
      A plain checkbox is visually hidden and styled via its sibling <span> track + thumb. */
   .passFailCell{white-space:nowrap;}
@@ -1052,11 +1076,59 @@
         <input type="text" id="invItemSupplierInput" placeholder="e.g. Sri Lakshmi Paper Mills">
       </label>
     </div>
+    <!-- Paper/Invoice Specifications — optional fields with no home above, left blank for items
+         that don't have them (e.g. Gas, Ink). Populated by hand or via "Extract items" below. -->
+    <div class="invItemSectionHead" data-i18n="inv_items_specs_heading">Paper / Invoice Specifications (optional)</div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_extract_th_hsn">HSN Code</span>
+        <input type="text" id="invItemHsnInput" class="mono" placeholder="e.g. 48043100">
+      </label>
+      <label><span data-i18n="inv_extract_th_size">Size</span>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="invItemSizeInput" placeholder="e.g. 109.00" style="flex:2;">
+          <input type="text" id="invItemSizeUnitInput" placeholder="CM" style="flex:1;">
+        </div>
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_extract_th_gsm">GSM</span>
+        <input type="number" id="invItemGsmInput" class="mono" min="0" step="1">
+      </label>
+      <label><span data-i18n="inv_extract_th_bf">BF</span>
+        <input type="number" id="invItemBfInput" class="mono" min="0" step="1">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_extract_th_reels">Reels</span>
+        <input type="number" id="invItemReelsInput" class="mono" min="0" step="1">
+      </label>
+      <label><span data-i18n="inv_extract_th_weight">Last Received Weight</span>
+        <input type="number" id="invItemWeightInput" class="mono" min="0" step="0.001">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_extract_invoiceno">Last Invoice No.</span>
+        <input type="text" id="invItemInvoiceNoInput" class="mono">
+      </label>
+      <label><span data-i18n="inv_extract_invoicedate">Last Invoice Date</span>
+        <input type="text" id="invItemInvoiceDateInput" placeholder="e.g. 08/Sep/2026">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_extract_gstin">Supplier GSTIN</span>
+        <input type="text" id="invItemGstinInput" class="mono">
+      </label>
+      <label><span data-i18n="inv_extract_lastamount">Last Invoice Amount</span>
+        <input type="number" id="invItemLastAmountInput" class="mono" min="0" step="0.01">
+      </label>
+    </div>
     <!-- Purchase Invoice attachment — plain Capture/Upload + base64 storage, same
-         makeAttachmentController pattern used for Client Artwork/Specs above. By explicit request
-         this is upload-only: the invoice photo/PDF is kept on file for reference, but every item
-         field above (Name/SKU/Category/Unit/Reorder Point/Price/Supplier) is still always typed in
-         by hand — no auto-read/autofill from the uploaded file. -->
+         makeAttachmentController pattern used for Client Artwork/Specs above, plus a best-effort
+         "Extract items" step: client-side OCR (Tesseract.js, loaded on demand — nothing is ever
+         sent to a server) reads the photo and proposes a draft of the fields above and/or
+         additional catalog items below. Nothing is EVER saved automatically — every extracted
+         value lands in an editable field/row that you review (and can freely correct or discard)
+         before clicking Add item / Import. -->
     <div class="attachmentWidget" id="attachInvoiceWidget">
       <div class="attachmentLabel" data-i18n="attach_purchase_invoice_label">Purchase Invoice</div>
       <div class="attachmentControls">
@@ -1064,9 +1136,50 @@
         <input type="file" accept="image/*,application/pdf" id="attachInvoiceFileInput" hidden>
         <button type="button" class="btn ghost attachBtn" id="attachInvoiceCameraBtn" data-i18n="attach_capture_btn">📷 Capture</button>
         <button type="button" class="btn ghost attachBtn" id="attachInvoiceUploadBtn" data-i18n="attach_upload_btn">📎 Upload</button>
+        <button type="button" class="btn ghost attachBtn" id="invExtractBtn" hidden data-i18n="inv_extract_btn">🔍 Extract items from this invoice</button>
         <span class="attachStatus" id="attachInvoiceStatus"></span>
       </div>
       <div class="attachmentPreview" id="attachInvoicePreview" hidden></div>
+    </div>
+    <!-- Review table for everything OCR found — always editable, nothing writes to Firestore
+         until "Import checked items" is clicked (see runInvoiceExtraction/importExtractedRows). -->
+    <div class="invExtractSection" id="invExtractSection" hidden>
+      <div class="invExtractHeader">
+        <strong data-i18n="inv_extract_title">Detected items from this invoice</strong>
+        <span class="attachStatus" id="invExtractStatus"></span>
+      </div>
+      <p class="invExtractNote" data-i18n="inv_extract_note">
+        Best-effort reading from the photo — please check every row below (fix mistakes, remove
+        rows that aren't real, or add a row by hand) before importing. The first row was also
+        copied into the form above.
+      </p>
+      <div class="tableWrap">
+        <table class="invExtractTable" id="invExtractTable">
+          <thead>
+            <tr>
+              <th></th>
+              <th data-i18n="inv_th_item">Item</th>
+              <th data-i18n="inv_th_sku">SKU</th>
+              <th data-i18n="inv_th_category">Category</th>
+              <th data-i18n="inv_items_unit">Unit</th>
+              <th data-i18n="inv_extract_th_hsn">HSN</th>
+              <th data-i18n="inv_extract_th_gsm">GSM</th>
+              <th data-i18n="inv_extract_th_bf">BF</th>
+              <th data-i18n="inv_extract_th_size">Size</th>
+              <th data-i18n="inv_extract_th_reels">Reels</th>
+              <th data-i18n="inv_extract_th_weight">Weight</th>
+              <th data-i18n="inv_extract_th_rate">Rate</th>
+            </tr>
+          </thead>
+          <tbody id="invExtractTbody"></tbody>
+        </table>
+      </div>
+      <div class="modalActions" style="margin-top:8px;">
+        <button type="button" class="btn ghost small" id="invExtractAddRowBtn" data-i18n="inv_extract_add_row">+ Add row</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn primary small" id="invExtractImportBtn" data-i18n="inv_extract_import_btn">Import checked items</button>
+      </div>
+      <div class="readOnlyNote" id="invExtractError" hidden></div>
     </div>
     <div class="modalActions" style="margin-top:2px;">
       <button type="button" class="btn ghost" id="invItemClearBtn" hidden data-i18n="sup_cancel_edit">Cancel edit</button>
@@ -2103,6 +2216,25 @@
       inv_items_price: "Default Price/Unit",
       inv_items_category_custom_option: "+ Add new category…",
       inv_items_category_custom_placeholder: "Type new category name",
+      inv_items_specs_heading: "Paper / Invoice Specifications (optional)",
+      inv_extract_th_hsn: "HSN Code", inv_extract_th_size: "Size", inv_extract_th_gsm: "GSM",
+      inv_extract_th_bf: "BF", inv_extract_th_reels: "Reels", inv_extract_th_weight: "Weight",
+      inv_extract_th_rate: "Rate",
+      inv_extract_invoiceno: "Last Invoice No.", inv_extract_invoicedate: "Last Invoice Date",
+      inv_extract_gstin: "Supplier GSTIN", inv_extract_lastamount: "Last Invoice Amount",
+      inv_extract_btn: "🔍 Extract items from this invoice",
+      inv_extract_title: "Detected items from this invoice",
+      inv_extract_note: "Best-effort reading from the photo — please check every row below (fix mistakes, remove rows that aren't real, or add a row by hand) before importing. The first row was also copied into the form above.",
+      inv_extract_add_row: "+ Add row", inv_extract_import_btn: "Import checked items",
+      inv_extract_err_noimage: "Attach a photo or PDF of the invoice first.",
+      inv_extract_loading_ocr: "Loading OCR engine…", inv_extract_reading: "Reading invoice… this can take 10–30 seconds.",
+      inv_extract_none_found: "Couldn't confidently detect any item rows — add them by hand below using \"+ Add row\".",
+      inv_extract_found_count: "Detected {count} item row(s) — review before importing.",
+      inv_extract_err_failed: "Couldn't read the invoice.",
+      inv_extract_err_none_checked: "Check at least one row to import.",
+      inv_extract_err_row_incomplete: "Every checked row needs a Name and a SKU.",
+      inv_extract_err_dup_sku: "Two checked rows both use SKU \"{sku}\" — give them different SKUs.",
+      inv_extract_err_import_partial: "{count} row(s) failed to import ({skus}). The rest were saved — try again for the failed ones.",
       inv_items_add: "Add item",
       inv_items_err_required: "Item name and SKU are required.",
       inv_items_err_category_required: "Please type a name for the new category.",
@@ -2340,6 +2472,25 @@
       inv_items_price: "डिफ़ॉल्ट मूल्य/यूनिट",
       inv_items_category_custom_option: "+ नई श्रेणी जोड़ें…",
       inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
+      inv_items_specs_heading: "पेपर / इनवॉइस स्पेसिफिकेशन (वैकल्पिक)",
+      inv_extract_th_hsn: "HSN कोड", inv_extract_th_size: "साइज़", inv_extract_th_gsm: "GSM",
+      inv_extract_th_bf: "BF", inv_extract_th_reels: "रील", inv_extract_th_weight: "वज़न",
+      inv_extract_th_rate: "रेट",
+      inv_extract_invoiceno: "अंतिम इनवॉइस नंबर", inv_extract_invoicedate: "अंतिम इनवॉइस तिथि",
+      inv_extract_gstin: "सप्लायर GSTIN", inv_extract_lastamount: "अंतिम इनवॉइस राशि",
+      inv_extract_btn: "🔍 इस इनवॉइस से आइटम निकालें",
+      inv_extract_title: "इस इनवॉइस से मिले आइटम",
+      inv_extract_note: "फोटो से बेस्ट-एफर्ट रीडिंग — इंपोर्ट करने से पहले हर पंक्ति जांच लें (गलतियां ठीक करें, गलत पंक्तियां हटाएं, या हाथ से पंक्ति जोड़ें)। पहली पंक्ति ऊपर फॉर्म में भी कॉपी कर दी गई है।",
+      inv_extract_add_row: "+ पंक्ति जोड़ें", inv_extract_import_btn: "चुनी गई आइटम इंपोर्ट करें",
+      inv_extract_err_noimage: "पहले इनवॉइस की फोटो या PDF अटैच करें।",
+      inv_extract_loading_ocr: "OCR इंजन लोड हो रहा है…", inv_extract_reading: "इनवॉइस पढ़ी जा रही है… इसमें 10–30 सेकंड लग सकते हैं।",
+      inv_extract_none_found: "कोई आइटम पंक्ति भरोसे से नहीं मिली — नीचे \"+ पंक्ति जोड़ें\" से हाथ से जोड़ें।",
+      inv_extract_found_count: "{count} आइटम पंक्ति(यां) मिलीं — इंपोर्ट करने से पहले जांच लें।",
+      inv_extract_err_failed: "इनवॉइस नहीं पढ़ी जा सकी।",
+      inv_extract_err_none_checked: "इंपोर्ट के लिए कम से कम एक पंक्ति चुनें।",
+      inv_extract_err_row_incomplete: "चुनी गई हर पंक्ति में नाम और SKU ज़रूरी है।",
+      inv_extract_err_dup_sku: "दो चुनी गई पंक्तियां एक ही SKU \"{sku}\" उपयोग कर रही हैं — अलग SKU दें।",
+      inv_extract_err_import_partial: "{count} पंक्ति(यां) इंपोर्ट नहीं हो सकीं ({skus})। बाकी सेव हो गईं — बची हुई के लिए फिर कोशिश करें।",
       inv_items_add: "आइटम जोड़ें",
       inv_items_err_required: "आइटम का नाम और SKU आवश्यक हैं।",
       inv_items_err_category_required: "कृपया नई श्रेणी के लिए एक नाम लिखें।",
@@ -2577,6 +2728,25 @@
       inv_items_price: "డిఫాల్ట్ ధర/యూనిట్",
       inv_items_category_custom_option: "+ కొత్త కేటగిరీ జోడించండి…",
       inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
+      inv_items_specs_heading: "పేపర్ / ఇన్వాయిస్ స్పెసిఫికేషన్లు (ఐచ్ఛికం)",
+      inv_extract_th_hsn: "HSN కోడ్", inv_extract_th_size: "సైజు", inv_extract_th_gsm: "GSM",
+      inv_extract_th_bf: "BF", inv_extract_th_reels: "రీల్స్", inv_extract_th_weight: "బరువు",
+      inv_extract_th_rate: "రేటు",
+      inv_extract_invoiceno: "చివరి ఇన్వాయిస్ నం.", inv_extract_invoicedate: "చివరి ఇన్వాయిస్ తేదీ",
+      inv_extract_gstin: "సప్లయర్ GSTIN", inv_extract_lastamount: "చివరి ఇన్వాయిస్ మొత్తం",
+      inv_extract_btn: "🔍 ఈ ఇన్వాయిస్ నుండి ఐటమ్‌లు తీయండి",
+      inv_extract_title: "ఈ ఇన్వాయిస్ నుండి కనుగొన్న ఐటమ్‌లు",
+      inv_extract_note: "ఫోటో నుండి బెస్ట్-ఎఫర్ట్ రీడింగ్ — దిగుమతి చేయడానికి ముందు ప్రతి వరుసను తనిఖీ చేయండి (తప్పులు సరిచేయండి, తప్పు వరుసలను తీసివేయండి, లేదా చేతితో వరుస జోడించండి). మొదటి వరుస పైన ఫారంలోకి కూడా కాపీ చేయబడింది.",
+      inv_extract_add_row: "+ వరుస జోడించండి", inv_extract_import_btn: "ఎంచుకున్న ఐటమ్‌లను దిగుమతి చేయండి",
+      inv_extract_err_noimage: "ముందు ఇన్వాయిస్ ఫోటో లేదా PDF జోడించండి.",
+      inv_extract_loading_ocr: "OCR ఇంజిన్ లోడ్ అవుతోంది…", inv_extract_reading: "ఇన్వాయిస్ చదువుతోంది… దీనికి 10–30 సెకన్లు పట్టవచ్చు.",
+      inv_extract_none_found: "ఐటమ్ వరుసలు నమ్మకంగా కనుగొనబడలేదు — దిగువన \"+ వరుస జోడించండి\" ద్వారా చేతితో జోడించండి.",
+      inv_extract_found_count: "{count} ఐటమ్ వరుస(లు) కనుగొనబడ్డాయి — దిగుమతి చేయడానికి ముందు తనిఖీ చేయండి.",
+      inv_extract_err_failed: "ఇన్వాయిస్ చదవలేకపోయాము.",
+      inv_extract_err_none_checked: "దిగుమతి చేయడానికి కనీసం ఒక వరుసను ఎంచుకోండి.",
+      inv_extract_err_row_incomplete: "ఎంచుకున్న ప్రతి వరుసకు పేరు మరియు SKU అవసరం.",
+      inv_extract_err_dup_sku: "ఎంచుకున్న రెండు వరుసలు ఒకే SKU \"{sku}\" వాడుతున్నాయి — వేర్వేరు SKUలు ఇవ్వండి.",
+      inv_extract_err_import_partial: "{count} వరుస(లు) దిగుమతి కాలేదు ({skus}). మిగిలినవి సేవ్ అయ్యాయి — విఫలమైన వాటికి మళ్లీ ప్రయత్నించండి.",
       inv_items_add: "ఐటమ్ జోడించండి",
       inv_items_err_required: "ఐటమ్ పేరు మరియు SKU అవసరం.",
       inv_items_err_category_required: "దయచేసి కొత్త కేటగిరీ కోసం ఒక పేరు టైప్ చేయండి.",
@@ -2799,6 +2969,25 @@
     invItemReorderInput: document.getElementById("invItemReorderInput"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
     invItemPriceInput: document.getElementById("invItemPriceInput"),
+    invItemHsnInput: document.getElementById("invItemHsnInput"),
+    invItemSizeInput: document.getElementById("invItemSizeInput"),
+    invItemSizeUnitInput: document.getElementById("invItemSizeUnitInput"),
+    invItemGsmInput: document.getElementById("invItemGsmInput"),
+    invItemBfInput: document.getElementById("invItemBfInput"),
+    invItemReelsInput: document.getElementById("invItemReelsInput"),
+    invItemWeightInput: document.getElementById("invItemWeightInput"),
+    invItemInvoiceNoInput: document.getElementById("invItemInvoiceNoInput"),
+    invItemInvoiceDateInput: document.getElementById("invItemInvoiceDateInput"),
+    invItemGstinInput: document.getElementById("invItemGstinInput"),
+    invItemLastAmountInput: document.getElementById("invItemLastAmountInput"),
+    attachInvoiceStatus: document.getElementById("attachInvoiceStatus"),
+    invExtractBtn: document.getElementById("invExtractBtn"),
+    invExtractSection: document.getElementById("invExtractSection"),
+    invExtractStatus: document.getElementById("invExtractStatus"),
+    invExtractTbody: document.getElementById("invExtractTbody"),
+    invExtractAddRowBtn: document.getElementById("invExtractAddRowBtn"),
+    invExtractImportBtn: document.getElementById("invExtractImportBtn"),
+    invExtractError: document.getElementById("invExtractError"),
     invItemClearBtn: document.getElementById("invItemClearBtn"),
     invItemAddBtn: document.getElementById("invItemAddBtn"),
     invItemsError: document.getElementById("invItemsError"),
@@ -5825,6 +6014,11 @@
 
   // ---------- Manage Inventory Items (Admin-only catalog editor) ----------
   var editingInvSku = null;
+  function invNumOrNull(v){
+    if(v === "" || v == null) return null;
+    var n = Number(v);
+    return isFinite(n) ? n : null;
+  }
   // The Category dropdown always offers the fixed starter list plus every category any product
   // already uses (so a category someone typed in via "+ Add new category" stays selectable for
   // every other item too), and a trailing "+ Add new category" option that reveals a free-text
@@ -5861,7 +6055,19 @@
     el.invItemReorderInput.value = "";
     el.invItemUnitInput.value = "";
     el.invItemPriceInput.value = "";
+    el.invItemHsnInput.value = "";
+    el.invItemSizeInput.value = "";
+    el.invItemSizeUnitInput.value = "";
+    el.invItemGsmInput.value = "";
+    el.invItemBfInput.value = "";
+    el.invItemReelsInput.value = "";
+    el.invItemWeightInput.value = "";
+    el.invItemInvoiceNoInput.value = "";
+    el.invItemInvoiceDateInput.value = "";
+    el.invItemGstinInput.value = "";
+    el.invItemLastAmountInput.value = "";
     invoiceAttachmentCtrl.setValue(null);
+    hideInvExtractSection();
     el.invItemAddBtn.textContent = t("inv_items_add");
     el.invItemClearBtn.hidden = true;
     el.invItemsError.hidden = true;
@@ -5889,11 +6095,23 @@
     el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
     el.invItemUnitInput.value = item.unit || "";
     el.invItemPriceInput.value = item.defaultPrice != null ? item.defaultPrice : "";
+    el.invItemHsnInput.value = item.hsnCode || "";
+    el.invItemSizeInput.value = item.size || "";
+    el.invItemSizeUnitInput.value = item.sizeUnit || "";
+    el.invItemGsmInput.value = item.gsm != null ? item.gsm : "";
+    el.invItemBfInput.value = item.bf != null ? item.bf : "";
+    el.invItemReelsInput.value = item.reels != null ? item.reels : "";
+    el.invItemWeightInput.value = item.lastReceivedWeight != null ? item.lastReceivedWeight : "";
+    el.invItemInvoiceNoInput.value = item.lastInvoiceNo || "";
+    el.invItemInvoiceDateInput.value = item.lastInvoiceDate || "";
+    el.invItemGstinInput.value = item.supplierGstin || "";
+    el.invItemLastAmountInput.value = item.lastInvoiceAmount != null ? item.lastInvoiceAmount : "";
     // Reconstructed from the three flat fields the item is actually saved with (see the save
     // handler below) — same convention as the entry form's own attachment widgets.
     invoiceAttachmentCtrl.setValue(item.purchaseInvoiceAttachmentData ? {
       data: item.purchaseInvoiceAttachmentData, name: item.purchaseInvoiceAttachmentName, type: item.purchaseInvoiceAttachmentType
     } : null);
+    hideInvExtractSection();
     el.invItemAddBtn.textContent = t("sup_save_changes");
     el.invItemClearBtn.hidden = false;
     el.invItemNameInput.focus();
@@ -5985,6 +6203,19 @@
       name: name, category: category,
       supplier: el.invItemSupplierInput.value.trim(), reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
       unit: el.invItemUnitInput.value.trim() || "units", defaultPrice: isFinite(defaultPrice) ? defaultPrice : 0,
+      // Paper/Invoice Specifications — all optional, blank for items that don't have them. Typed
+      // by hand or pre-filled (always still editable here) via "Extract items from this invoice".
+      hsnCode: el.invItemHsnInput.value.trim() || null,
+      size: el.invItemSizeInput.value.trim() || null,
+      sizeUnit: el.invItemSizeUnitInput.value.trim() || null,
+      gsm: invNumOrNull(el.invItemGsmInput.value),
+      bf: invNumOrNull(el.invItemBfInput.value),
+      reels: invNumOrNull(el.invItemReelsInput.value),
+      lastReceivedWeight: invNumOrNull(el.invItemWeightInput.value),
+      lastInvoiceNo: el.invItemInvoiceNoInput.value.trim() || null,
+      lastInvoiceDate: el.invItemInvoiceDateInput.value.trim() || null,
+      supplierGstin: el.invItemGstinInput.value.trim() || null,
+      lastInvoiceAmount: invNumOrNull(el.invItemLastAmountInput.value),
       purchaseInvoiceAttachmentData: invoiceVal ? invoiceVal.data : null,
       purchaseInvoiceAttachmentName: invoiceVal ? invoiceVal.name : null,
       purchaseInvoiceAttachmentType: invoiceVal ? invoiceVal.type : null,
@@ -6003,6 +6234,325 @@
       el.invItemAddBtn.disabled = false;
       el.invItemsError.textContent = t("inv_items_err_save_failed") + " " + (err && err.message ? err.message : "");
       el.invItemsError.hidden = false;
+    });
+  });
+
+  // ---------- Purchase Invoice OCR extraction (best-effort, review-before-save) ----------
+  // The invoice is almost always a phone photo of a paper document, not a text-based PDF, so
+  // reading it needs actual OCR (optical character recognition) rather than the pdf.js text-layer
+  // read used elsewhere. This app has no server and no AI/OCR service of its own, and — being a
+  // public GitHub Pages site — can never safely hold an API key in its source, so the only option
+  // that doesn't leak a secret is a free OCR library that runs entirely in the visitor's own
+  // browser: Tesseract.js, loaded from a CDN on first use rather than bundled in, so everyday page
+  // loads don't pay for it. Accuracy on a tilted, stamped, hand-annotated invoice like the sample
+  // this was built against is inherently inconsistent, so every extracted value only ever lands in
+  // an editable field or an editable review-table row — nothing here ever writes to Firestore by
+  // itself. Two entry points read that review table: the Add/Edit Item form above (non-destructive
+  // autofill — only fills fields that are currently empty, from the first detected row) and the
+  // "Import checked items" button below (an explicit, reviewed bulk create/update of every other
+  // line item on the same invoice).
+  var invExtractRows = []; // [{include, name, sku, category, unit, hsnCode, gsm, bf, size, sizeUnit, reels, weight, rate, amount}]
+  var invExtractHeaderInfo = null; // {invoiceNo, invoiceDate, supplierName, supplierGstin}
+  var tesseractLoadPromise = null;
+  function ensureTesseractLoaded(){
+    if(window.Tesseract) return Promise.resolve();
+    if(tesseractLoadPromise) return tesseractLoadPromise;
+    tesseractLoadPromise = new Promise(function(resolve, reject){
+      var script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+      script.onload = function(){ resolve(); };
+      script.onerror = function(){
+        tesseractLoadPromise = null;
+        reject(new Error("Could not load the OCR library — check your internet connection."));
+      };
+      document.head.appendChild(script);
+    });
+    return tesseractLoadPromise;
+  }
+  // A captured PDF's own value.data is a JSON blob of page images (see parseAttachmentPages), not
+  // a raw image — OCR always runs against a plain image, so a PDF hands over its first page.
+  function invoiceImageForOcr(val){
+    if(!val) return null;
+    if(val.type && val.type.indexOf("image/") === 0) return val.data;
+    var pages = parseAttachmentPages(val.data, val.type);
+    return pages && pages.length ? pages[0] : null;
+  }
+  function titleCaseWords(s){
+    return (s || "").toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  }
+  function suggestInvSku(name, disambiguator){
+    var base = (name || "ITEM").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-+|-+$)/g, "").slice(0, 20) || "ITEM";
+    if(disambiguator != null && disambiguator !== ""){
+      base += "-" + String(disambiguator).replace(/[^A-Za-z0-9]+/g, "");
+    }
+    return base;
+  }
+  // Best-effort text parser — tuned against a common Indian tax-invoice item table (S.No,
+  // Description, HSN Code, BF, GSM, Size, Size Unit, Reels, Weight, Unit, Rate, Amount), with a
+  // looser fallback for OCR text that lost exact column spacing. Never throws on an odd line —
+  // unmatched lines are simply skipped, since every field is hand-reviewed afterwards anyway.
+  function parseInvoiceText(text){
+    var lines = (text || "").split(/\r?\n/).map(function(l){ return l.replace(/\s+/g, " ").trim(); }).filter(Boolean);
+    var joined = lines.join("\n");
+    function grab(re){
+      var m = joined.match(re);
+      return m ? m[1].trim() : "";
+    }
+    var invoiceNo = grab(/Invoice\s*No\.?\s*[:.]?\s*([A-Za-z0-9\/\-]{3,20})/i);
+    var invoiceDate = grab(/\bDate\s*[:.]?\s*(\d{1,2}[\/\-][A-Za-z0-9]{2,9}[\/\-]\d{2,4})/i);
+    var gstinMatches = joined.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b/g) || [];
+    var supplierGstin = gstinMatches.length ? gstinMatches[0] : "";
+    var supplierName = "";
+    for(var i = 0; i < lines.length; i++){
+      if(/PRIVATE LIMITED|PVT\.?\s*LTD|\bLLP\b/i.test(lines[i])){ supplierName = titleCaseWords(lines[i]); break; }
+    }
+    var items = [];
+    var strictRe = /^(\d{1,2})[\s.]+([A-Za-z][A-Za-z \-\/]{2,40}?)\s+(\d{6,8})\s+(\d{1,3})\s+(\d{2,4})\s+([\d.]+)\s*(CM|MM|IN)?\s+(\d{1,4})\s+([\d.]+)\s*(KGS?|PCS|NOS|UNITS?)?\s+([\d.]+)\s+([\d.]+)\s*$/i;
+    lines.forEach(function(line){
+      var m = line.match(strictRe);
+      if(!m) return;
+      items.push({
+        description: titleCaseWords(m[2].trim()), hsnCode: m[3],
+        bf: Number(m[4]), gsm: Number(m[5]), size: m[6], sizeUnit: (m[7] || "").toUpperCase(),
+        reels: Number(m[8]), weight: Number(m[9]), unit: (m[10] || "kg").toLowerCase(),
+        rate: Number(m[11]), amount: Number(m[12])
+      });
+    });
+    if(items.length === 0){
+      // Looser fallback: a line starting with a small row number that also contains a 6-8 digit
+      // HSN-like token, with at least 4 more numeric tokens after it. Assumes the same column
+      // order as above; anything it can't confidently place is left blank rather than guessed.
+      lines.forEach(function(line){
+        var tokens = line.split(" ");
+        if(!/^\d{1,2}$/.test(tokens[0])) return;
+        var hsnIdx = -1;
+        for(var j = 1; j < tokens.length; j++){ if(/^\d{6,8}$/.test(tokens[j])){ hsnIdx = j; break; } }
+        if(hsnIdx === -1) return;
+        var rest = tokens.slice(hsnIdx + 1).filter(function(tok){ return tok !== ""; });
+        var nums = rest.filter(function(tok){ return /^[\d.]+$/.test(tok); });
+        if(nums.length < 4) return;
+        items.push({
+          description: titleCaseWords(tokens.slice(1, hsnIdx).join(" ")), hsnCode: tokens[hsnIdx],
+          bf: Number(nums[0]) || null, gsm: Number(nums[1]) || null, size: nums[2] || "", sizeUnit: "",
+          reels: Number(nums[3]) || null, weight: Number(nums[4]) || null, unit: "kg",
+          rate: Number(nums[nums.length - 2]) || null, amount: Number(nums[nums.length - 1]) || null
+        });
+      });
+    }
+    return { invoiceNo: invoiceNo, invoiceDate: invoiceDate, supplierName: supplierName, supplierGstin: supplierGstin, items: items };
+  }
+  function hideInvExtractSection(){
+    invExtractRows = [];
+    invExtractHeaderInfo = null;
+    el.invExtractSection.hidden = true;
+    el.invExtractTbody.innerHTML = "";
+    el.invExtractStatus.textContent = "";
+    el.invExtractError.hidden = true;
+  }
+  function renderInvExtractTable(){
+    el.invExtractTbody.innerHTML = "";
+    invExtractRows.forEach(function(row, idx){
+      var tr = document.createElement("tr");
+      var catOptions = INV_CATEGORIES.map(function(c){
+        return '<option value="' + esc(c) + '"' + (c === row.category ? " selected" : "") + '>' + esc(c) + '</option>';
+      }).join("");
+      var sizeCombined = (row.size || "") + (row.sizeUnit ? " " + row.sizeUnit : "");
+      tr.innerHTML =
+        '<td><input type="checkbox" data-f="include"' + (row.include ? " checked" : "") + '></td>' +
+        '<td><input type="text" class="invExtractName" data-f="name" value="' + esc(row.name || "") + '"></td>' +
+        '<td><input type="text" class="invExtractSku mono" data-f="sku" value="' + esc(row.sku || "") + '"></td>' +
+        '<td><select data-f="category">' + catOptions + '</select></td>' +
+        '<td><input type="text" data-f="unit" value="' + esc(row.unit || "") + '"></td>' +
+        '<td><input type="text" class="mono" data-f="hsnCode" value="' + esc(row.hsnCode || "") + '"></td>' +
+        '<td><input type="number" class="mono" data-f="gsm" value="' + (row.gsm != null ? row.gsm : "") + '"></td>' +
+        '<td><input type="number" class="mono" data-f="bf" value="' + (row.bf != null ? row.bf : "") + '"></td>' +
+        '<td><input type="text" class="mono" data-f="size" value="' + esc(sizeCombined) + '" placeholder="109 CM"></td>' +
+        '<td><input type="number" class="mono" data-f="reels" value="' + (row.reels != null ? row.reels : "") + '"></td>' +
+        '<td><input type="number" step="0.001" class="mono" data-f="weight" value="' + (row.weight != null ? row.weight : "") + '"></td>' +
+        '<td style="display:flex;align-items:center;gap:4px;">' +
+          '<input type="number" step="0.01" class="mono" data-f="rate" value="' + (row.rate != null ? row.rate : "") + '" style="flex:1;">' +
+          '<button type="button" class="invExtractRemoveBtn" title="Remove row">✕</button>' +
+        '</td>';
+      tr.querySelectorAll("[data-f]").forEach(function(input){
+        var field = input.getAttribute("data-f");
+        var evtName = (input.tagName === "SELECT" || input.type === "checkbox") ? "change" : "input";
+        input.addEventListener(evtName, function(){
+          if(field === "include") row.include = input.checked;
+          else if(field === "size"){
+            var parts = input.value.trim().split(/\s+/);
+            row.size = parts[0] || "";
+            row.sizeUnit = parts.slice(1).join(" ") || "";
+          } else if(field === "gsm" || field === "bf" || field === "reels" || field === "weight" || field === "rate"){
+            row[field] = input.value === "" ? null : Number(input.value);
+          } else {
+            row[field] = input.value;
+          }
+        });
+      });
+      tr.querySelector(".invExtractRemoveBtn").addEventListener("click", function(){
+        invExtractRows.splice(idx, 1);
+        renderInvExtractTable();
+      });
+      el.invExtractTbody.appendChild(tr);
+    });
+  }
+  function setIfEmpty(inputEl, val){
+    if(!inputEl) return;
+    if((inputEl.value == null || inputEl.value === "") && val != null && val !== ""){
+      inputEl.value = val;
+    }
+  }
+  // Convenience only — never overwrites anything already typed into the form (see setIfEmpty).
+  function applyExtractedRowToMainForm(row, headerInfo){
+    setIfEmpty(el.invItemNameInput, row.name);
+    setIfEmpty(el.invItemSkuInput, row.sku);
+    setIfEmpty(el.invItemUnitInput, row.unit);
+    setIfEmpty(el.invItemPriceInput, row.rate);
+    setIfEmpty(el.invItemHsnInput, row.hsnCode);
+    setIfEmpty(el.invItemSizeInput, row.size);
+    setIfEmpty(el.invItemSizeUnitInput, row.sizeUnit);
+    setIfEmpty(el.invItemGsmInput, row.gsm);
+    setIfEmpty(el.invItemBfInput, row.bf);
+    setIfEmpty(el.invItemReelsInput, row.reels);
+    setIfEmpty(el.invItemWeightInput, row.weight);
+    if(headerInfo){
+      setIfEmpty(el.invItemInvoiceNoInput, headerInfo.invoiceNo);
+      setIfEmpty(el.invItemInvoiceDateInput, headerInfo.invoiceDate);
+      setIfEmpty(el.invItemGstinInput, headerInfo.supplierGstin);
+      setIfEmpty(el.invItemSupplierInput, headerInfo.supplierName);
+    }
+  }
+  el.invExtractBtn.addEventListener("click", function(){
+    var val = invoiceAttachmentCtrl.getValue();
+    var imgData = invoiceImageForOcr(val);
+    if(!imgData){
+      el.attachInvoiceStatus.textContent = t("inv_extract_err_noimage");
+      return;
+    }
+    el.invExtractBtn.disabled = true;
+    el.attachInvoiceStatus.textContent = t("inv_extract_loading_ocr");
+    ensureTesseractLoaded().then(function(){
+      el.attachInvoiceStatus.textContent = t("inv_extract_reading");
+      return window.Tesseract.recognize(imgData, "eng");
+    }).then(function(result){
+      var text = (result && result.data && result.data.text) || "";
+      var parsed = parseInvoiceText(text);
+      invExtractHeaderInfo = parsed;
+      var skusUsed = {};
+      invExtractRows = parsed.items.map(function(it, idx){
+        var base = suggestInvSku(it.description, it.gsm || it.size);
+        var sku = base, n = 2;
+        while(skusUsed[sku]){ sku = base + "-" + n; n++; }
+        skusUsed[sku] = true;
+        return {
+          // Row 1 is copied into the form above instead (see below) — unchecked here by default
+          // so clicking "Add item" up there and "Import checked items" down here never both try
+          // to create the very same SKU.
+          include: idx !== 0,
+          name: it.description, sku: sku, category: INV_CATEGORIES[0], unit: it.unit || "kg",
+          hsnCode: it.hsnCode || "", gsm: it.gsm || null, bf: it.bf || null,
+          size: it.size || "", sizeUnit: it.sizeUnit || "", reels: it.reels || null,
+          weight: it.weight || null, rate: it.rate || null, amount: it.amount || null
+        };
+      });
+      renderInvExtractTable();
+      el.invExtractSection.hidden = false;
+      el.attachInvoiceStatus.textContent = "";
+      if(invExtractRows.length === 0){
+        el.invExtractStatus.textContent = t("inv_extract_none_found");
+      } else {
+        el.invExtractStatus.textContent = tf("inv_extract_found_count", { count: invExtractRows.length });
+        applyExtractedRowToMainForm(invExtractRows[0], parsed);
+      }
+    }).catch(function(err){
+      el.attachInvoiceStatus.textContent = t("inv_extract_err_failed") + " " + (err && err.message ? err.message : "");
+      if(window.console) console.error("Invoice OCR failed:", err);
+    }).then(function(){
+      el.invExtractBtn.disabled = false;
+    });
+  });
+  el.invExtractAddRowBtn.addEventListener("click", function(){
+    invExtractRows.push({
+      include: true, name: "", sku: "", category: INV_CATEGORIES[0], unit: "kg", hsnCode: "",
+      gsm: null, bf: null, size: "", sizeUnit: "", reels: null, weight: null, rate: null, amount: null
+    });
+    el.invExtractSection.hidden = false;
+    renderInvExtractTable();
+    var lastRow = el.invExtractTbody.lastElementChild;
+    var nameInput = lastRow && lastRow.querySelector('[data-f="name"]');
+    if(nameInput) nameInput.focus();
+  });
+  el.invExtractImportBtn.addEventListener("click", function(){
+    el.invExtractError.hidden = true;
+    var checked = invExtractRows.filter(function(r){ return r.include; });
+    if(checked.length === 0){
+      el.invExtractError.textContent = t("inv_extract_err_none_checked");
+      el.invExtractError.hidden = false;
+      return;
+    }
+    var seen = {};
+    for(var i = 0; i < checked.length; i++){
+      var rowSku = (checked[i].sku || "").trim().toUpperCase();
+      if(!rowSku || !checked[i].name || !checked[i].name.trim()){
+        el.invExtractError.textContent = t("inv_extract_err_row_incomplete");
+        el.invExtractError.hidden = false;
+        return;
+      }
+      if(seen[rowSku]){
+        el.invExtractError.textContent = tf("inv_extract_err_dup_sku", { sku: rowSku });
+        el.invExtractError.hidden = false;
+        return;
+      }
+      seen[rowSku] = true;
+    }
+    var invoiceVal = invoiceAttachmentCtrl.getValue();
+    var headerInfo = invExtractHeaderInfo || {};
+    el.invExtractImportBtn.disabled = true;
+    var writes = checked.map(function(row){
+      var sku = row.sku.trim().toUpperCase().replace(/\s+/g, "-");
+      var existing = state.invCatalog[sku];
+      var amount = row.amount != null ? row.amount
+        : (row.rate != null && row.weight != null ? Math.round(row.rate * row.weight * 100) / 100 : null);
+      var payload = {
+        name: row.name.trim(), category: row.category || INV_CATEGORIES[0],
+        supplier: headerInfo.supplierName || (existing ? existing.supplier : "") || "",
+        reorderPoint: existing ? (existing.reorderPoint || 0) : 0,
+        unit: (row.unit || "kg").trim() || "kg", defaultPrice: row.rate != null ? row.rate : 0,
+        hsnCode: row.hsnCode || null, size: row.size || null, sizeUnit: row.sizeUnit || null,
+        gsm: row.gsm != null ? row.gsm : null, bf: row.bf != null ? row.bf : null,
+        reels: row.reels != null ? row.reels : null, lastReceivedWeight: row.weight != null ? row.weight : null,
+        lastInvoiceNo: headerInfo.invoiceNo || null, lastInvoiceDate: headerInfo.invoiceDate || null,
+        supplierGstin: headerInfo.supplierGstin || null, lastInvoiceAmount: amount,
+        purchaseInvoiceAttachmentData: invoiceVal ? invoiceVal.data : null,
+        purchaseInvoiceAttachmentName: invoiceVal ? invoiceVal.name : null,
+        purchaseInvoiceAttachmentType: invoiceVal ? invoiceVal.type : null,
+        updatedAt: Date.now()
+      };
+      if(!existing) payload.createdAt = Date.now();
+      var write = existing
+        ? state.db.collection("products").doc(sku).update(payload)
+        : state.db.collection("products").doc(sku).set(payload);
+      return write.then(function(){ return { sku: sku, ok: true }; })
+        .catch(function(err){ return { sku: sku, ok: false, error: err }; });
+    });
+    Promise.all(writes).then(function(results){
+      el.invExtractImportBtn.disabled = false;
+      var failed = results.filter(function(r){ return !r.ok; });
+      if(failed.length){
+        el.invExtractError.textContent = tf("inv_extract_err_import_partial", {
+          count: failed.length, skus: failed.map(function(f){ return f.sku; }).join(", ")
+        });
+        el.invExtractError.hidden = false;
+        var failedSkus = {};
+        failed.forEach(function(f){ failedSkus[f.sku] = true; });
+        invExtractRows = invExtractRows.filter(function(r){
+          return !r.include || failedSkus[(r.sku || "").trim().toUpperCase()];
+        });
+        renderInvExtractTable();
+      } else {
+        hideInvExtractSection();
+      }
+      renderInvItemsList();
     });
   });
 
@@ -7216,6 +7766,10 @@
         current = null;
         renderPreview();
       });
+      // Optional hook — fired after every render (upload, remove, setValue) so a caller can react
+      // to "is there a value now or not" without reaching into this closure. Only Manage Inventory
+      // Items' invoiceAttachmentCtrl uses this today (to show/hide its "Extract items" button).
+      if(cfg.onChange) cfg.onChange();
     }
 
     function upload(file){
@@ -7322,12 +7876,19 @@
     statusElId: "attachVisipakSpecsStatus", previewElId: "attachVisipakSpecsPreview"
   });
   // Manage Inventory Items' own Purchase Invoice attachment — always visible (no stage-based
-  // gating; that modal is Admin-only regardless), upload-only by explicit request (see the HTML
-  // comment above attachInvoiceWidget) — never fed into any autofill.
+  // gating; that modal is Admin-only regardless). The photo/PDF is always kept on file the same
+  // way as any other attachment; on top of that, the "Extract items" button (shown once a file is
+  // attached) runs best-effort client-side OCR to draft fields/rows — see runInvoiceExtraction
+  // below and its own comment for why nothing from it is ever saved automatically.
   var invoiceAttachmentCtrl = makeAttachmentController({
     fileInputId: "attachInvoiceFileInput", cameraInputId: "attachInvoiceCameraInput",
     cameraBtnId: "attachInvoiceCameraBtn", uploadBtnId: "attachInvoiceUploadBtn",
-    statusElId: "attachInvoiceStatus", previewElId: "attachInvoicePreview"
+    statusElId: "attachInvoiceStatus", previewElId: "attachInvoicePreview",
+    onChange: function(){
+      var has = !!invoiceAttachmentCtrl.getValue();
+      el.invExtractBtn.hidden = !has;
+      if(!has) hideInvExtractSection();
+    }
   });
   // Called from updateFormFieldsForStage — see the call there for why this needs to re-run
   // whenever the stage changes on an already-open modal.
