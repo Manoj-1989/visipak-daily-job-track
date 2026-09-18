@@ -886,7 +886,7 @@
       <table>
         <thead>
           <tr>
-            <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
+            <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
             <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
             <th data-i18n="inv_items_unit">Unit</th>
             <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
@@ -909,7 +909,7 @@
         <table>
           <thead>
             <tr>
-              <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th>
+              <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th><th data-i18n="inv_items_shade">Shade</th>
               <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_discount">Disc %</th><th data-i18n="inv_th_gst">GST %</th><th data-i18n="inv_th_amount">Amount</th>
               <th data-i18n="inv_th_supplier">Supplier</th><th data-i18n="inv_th_receivedby">Received By</th><th data-i18n="th_remarks">Note</th><th></th>
             </tr>
@@ -1079,7 +1079,10 @@
       </label>
     </div>
     <div class="supAddRow">
-      <label style="grid-column:1 / -1;"><span data-i18n="inv_items_supplier">Supplier</span>
+      <label><span data-i18n="inv_items_zone">Zone / Storage Location</span>
+        <input type="text" id="invItemZoneInput" placeholder="e.g. ZONE-2">
+      </label>
+      <label><span data-i18n="inv_items_supplier">Supplier</span>
         <input type="text" id="invItemSupplierInput" placeholder="e.g. Sri Lakshmi Paper Mills">
       </label>
     </div>
@@ -1253,6 +1256,16 @@
         <input type="text" id="invMoveTotalWeightInput" class="mono" readonly tabindex="-1">
       </label>
     </div>
+    <!-- Shade varies by vendor/batch even for the same paper spec (e.g. one supplier's "Natural"
+         reel isn't quite the same shade as another's) — so unlike the catalog item's own Shade
+         (a typical/default value, set in Manage Inventory Items), this is per-receipt and freely
+         editable each time, prefilled from that default just as Rate is. Shown only alongside the
+         other paper-specific fields (priced-per-reel items). -->
+    <div class="supAddRow" id="invMoveShadeRow" hidden style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_items_shade">Shade</span>
+        <input type="text" id="invMoveShadeInput" placeholder="e.g. Natural, LG, G, GY">
+      </label>
+    </div>
     <div class="supAddRow">
       <label><span id="invMovePriceLabel" data-i18n="inv_move_price_label">Price/Unit</span>
         <input type="number" id="invMovePriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
@@ -1267,6 +1280,14 @@
       </label>
     </div>
     <p class="invMoveAmountLine" id="invMoveAmountLine"></p>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_move_receiveddate_label">Received Date</span>
+        <span class="dateFieldWrap">
+          <input type="date" id="invMoveReceivedDateInput">
+          <span class="dateFieldLabel" id="invMoveReceivedDateLabel" aria-hidden="true"></span>
+        </span>
+      </label>
+    </div>
     <div class="supAddRow">
       <label><span data-i18n="inv_move_supplier_label">Supplier / Reference</span>
         <input type="text" id="invMoveSupplierInput" placeholder="e.g. Acme Traders, PO-1042" data-i18n-placeholder="inv_move_supplier_placeholder">
@@ -2240,7 +2261,7 @@
       inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_value: "Inventory Value", inv_stat_reorder: "Items to Reorder",
       btn_manage_inventory_items: "Manage Inventory Items",
       inv_search_placeholder: "Search item, SKU, category…",
-      inv_th_item: "Item", inv_th_sku: "SKU", inv_th_category: "Category",
+      inv_th_item: "Item", inv_th_sku: "SKU", inv_th_zone: "Zone", inv_th_category: "Category",
       inv_th_available: "Available", inv_th_inuse: "In Use", inv_th_damaged: "Damaged",
       inv_th_price: "Price/Unit", inv_th_value: "Value", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
@@ -2259,6 +2280,7 @@
       inv_items_empty: "No items found.",
       inv_item_name_placeholder: "e.g. Corrugated Sheet 3-ply",
       inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
+      inv_items_zone: "Zone / Storage Location",
       inv_items_price: "Unit/Price",
       inv_items_category_custom_option: "+ Add new category…",
       inv_items_category_custom_placeholder: "Type new category name",
@@ -2298,6 +2320,7 @@
       inv_move_reelweight_label: "Weight per Reel (kg)", inv_move_totalweight_label: "Total Weight (kg)",
       inv_move_price_label: "Price/Unit", inv_move_price_label_perkg: "Rate (per kg)", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "Amount: {amount}",
+      inv_move_receiveddate_label: "Received Date",
       inv_move_supplier_label: "Supplier / Reference", inv_move_supplier_placeholder: "e.g. Acme Traders, PO-1042",
       inv_move_receivedby_label: "Received By",
       inv_move_note_label: "Note (optional)",
@@ -2505,7 +2528,7 @@
       inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_value: "इन्वेंटरी मूल्य", inv_stat_reorder: "रीऑर्डर करने योग्य आइटम",
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_search_placeholder: "आइटम, SKU, श्रेणी खोजें…",
-      inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_category: "श्रेणी",
+      inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_zone: "ज़ोन", inv_th_category: "श्रेणी",
       inv_th_available: "उपलब्ध", inv_th_inuse: "उपयोग में", inv_th_damaged: "क्षतिग्रस्त",
       inv_th_price: "मूल्य/यूनिट", inv_th_value: "मूल्य", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
@@ -2524,6 +2547,7 @@
       inv_items_empty: "कोई आइटम नहीं मिला।",
       inv_item_name_placeholder: "जैसे, कोरुगेटेड शीट 3-प्लाई",
       inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
+      inv_items_zone: "ज़ोन / भंडारण स्थान",
       inv_items_price: "यूनिट/मूल्य",
       inv_items_category_custom_option: "+ नई श्रेणी जोड़ें…",
       inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
@@ -2563,6 +2587,7 @@
       inv_move_reelweight_label: "प्रति रील वज़न (kg)", inv_move_totalweight_label: "कुल वज़न (kg)",
       inv_move_price_label: "मूल्य/यूनिट", inv_move_price_label_perkg: "दर (प्रति kg)", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "राशि: {amount}",
+      inv_move_receiveddate_label: "प्राप्ति दिनांक",
       inv_move_supplier_label: "सप्लायर / संदर्भ", inv_move_supplier_placeholder: "जैसे, Acme Traders, PO-1042",
       inv_move_receivedby_label: "प्राप्तकर्ता",
       inv_move_note_label: "नोट (वैकल्पिक)",
@@ -2770,7 +2795,7 @@
       inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_value: "ఇన్వెంటరీ విలువ", inv_stat_reorder: "రీఆర్డర్ చేయవలసిన ఐటమ్‌లు",
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_search_placeholder: "ఐటమ్, SKU, కేటగిరీ వెతకండి…",
-      inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_category: "కేటగిరీ",
+      inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_zone: "జోన్", inv_th_category: "కేటగిరీ",
       inv_th_available: "అందుబాటులో", inv_th_inuse: "వాడుకలో", inv_th_damaged: "పాడైనవి",
       inv_th_price: "ధర/యూనిట్", inv_th_value: "విలువ", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
@@ -2789,6 +2814,7 @@
       inv_items_empty: "ఏ ఐటమ్‌లు కనుగొనబడలేదు.",
       inv_item_name_placeholder: "ఉదా. కొరుగేటెడ్ షీట్ 3-ప్లై",
       inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
+      inv_items_zone: "జోన్ / నిల్వ స్థానం",
       inv_items_price: "యూనిట్/ధర",
       inv_items_category_custom_option: "+ కొత్త కేటగిరీ జోడించండి…",
       inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
@@ -2828,6 +2854,7 @@
       inv_move_reelweight_label: "ప్రతి రీల్ బరువు (kg)", inv_move_totalweight_label: "మొత్తం బరువు (kg)",
       inv_move_price_label: "ధర/యూనిట్", inv_move_price_label_perkg: "రేటు (కి.గ్రా.కి)", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "మొత్తం: {amount}",
+      inv_move_receiveddate_label: "స్వీకరించిన తేదీ",
       inv_move_supplier_label: "సప్లయర్ / రిఫరెన్స్", inv_move_supplier_placeholder: "ఉదా. Acme Traders, PO-1042",
       inv_move_receivedby_label: "స్వీకరించినవారు",
       inv_move_note_label: "నోట్ (ఐచ్ఛికం)",
@@ -3039,6 +3066,7 @@
     invItemCategorySelect: document.getElementById("invItemCategorySelect"),
     invItemCategoryCustomInput: document.getElementById("invItemCategoryCustomInput"),
     invItemSupplierInput: document.getElementById("invItemSupplierInput"),
+    invItemZoneInput: document.getElementById("invItemZoneInput"),
     invItemReorderInput: document.getElementById("invItemReorderInput"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
     invItemPriceInput: document.getElementById("invItemPriceInput"),
@@ -3076,11 +3104,15 @@
     invMoveReelFieldsRow: document.getElementById("invMoveReelFieldsRow"),
     invMoveReelWeightInput: document.getElementById("invMoveReelWeightInput"),
     invMoveTotalWeightInput: document.getElementById("invMoveTotalWeightInput"),
+    invMoveShadeRow: document.getElementById("invMoveShadeRow"),
+    invMoveShadeInput: document.getElementById("invMoveShadeInput"),
     invMovePriceLabel: document.getElementById("invMovePriceLabel"),
     invMovePriceInput: document.getElementById("invMovePriceInput"),
     invMoveDiscountInput: document.getElementById("invMoveDiscountInput"),
     invMoveGstInput: document.getElementById("invMoveGstInput"),
     invMoveAmountLine: document.getElementById("invMoveAmountLine"),
+    invMoveReceivedDateInput: document.getElementById("invMoveReceivedDateInput"),
+    invMoveReceivedDateLabel: document.getElementById("invMoveReceivedDateLabel"),
     invMoveSupplierInput: document.getElementById("invMoveSupplierInput"),
     invMoveReceivedByInput: document.getElementById("invMoveReceivedByInput"),
     invMoveNoteInput: document.getElementById("invMoveNoteInput"),
@@ -5933,30 +5965,36 @@
   }
   // Records one receipt and returns the write's promise — the only way a NEW inventory movement
   // gets created. See updateInventoryPurchase for correcting one that's already been logged (e.g.
-  // GST was left off by mistake).
-  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit){
+  // GST was left off by mistake). `extra` is { shade, receivedDate } — both optional: `shade` only
+  // means anything for a priced-per-reel item (the same paper spec can arrive in a different shade
+  // from a different vendor/batch, so it's captured per receipt, not just once on the catalog item);
+  // `receivedDate` defaults to the app's current working date when left blank.
+  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit, extra){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     var core;
     try { core = computePurchaseCoreFields(item, qty, priceFields, reelWeightPerUnit); }
     catch(err){ return Promise.reject(err); }
     var payload = Object.assign({ sku: sku, itemName: item.name }, core, {
+      shade: (extra && extra.shade || "").trim() || null,
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
-      date: state.date, shift: state.shift || "", createdAt: Date.now()
+      date: (extra && extra.receivedDate) || state.date, shift: state.shift || "", createdAt: Date.now()
     });
     return state.db.collection("purchases").add(payload);
   }
   // Corrects an already-logged receipt in place (e.g. GST was left off, or the Rate was wrong) —
   // Purchase History's "Edit" action, Admin-only same as Delete. Recomputes every derived field the
   // same way a fresh receipt would (via computePurchaseCoreFields) so the corrected Amount is never
-  // stale, but leaves sku/itemName/date/shift/createdAt untouched since `.update()` only touches the
-  // fields named here.
-  function updateInventoryPurchase(purchaseId, item, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit){
+  // stale, but leaves sku/itemName/shift/createdAt untouched since `.update()` only touches the
+  // fields named here (date IS included, since Received Date is itself editable here).
+  function updateInventoryPurchase(purchaseId, item, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit, extra){
     var core;
     try { core = computePurchaseCoreFields(item, qty, priceFields, reelWeightPerUnit); }
     catch(err){ return Promise.reject(err); }
     var payload = Object.assign({}, core, {
+      shade: (extra && extra.shade || "").trim() || null,
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
+      date: (extra && extra.receivedDate) || state.date,
       updatedAt: Date.now()
     });
     return state.db.collection("purchases").doc(purchaseId).update(payload);
@@ -6068,6 +6106,7 @@
       tr.innerHTML =
         "<td>" + esc(item.name) + "</td>" +
         '<td class="mono">' + esc(item.sku) + "</td>" +
+        "<td>" + esc(item.zone || "—") + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
         '<td class="mono">' + esc(item.gsm != null ? String(item.gsm) : "—") + "</td>" +
         "<td>" + esc(item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "—") + "</td>" +
@@ -6109,6 +6148,7 @@
       tr.innerHTML =
         "<td>" + esc(p.date || "") + "</td>" +
         "<td>" + esc(p.itemName) + "</td>" +
+        "<td>" + esc(p.shade || "—") + "</td>" +
         '<td class="mono">' + (Number(p.qty) || 0).toLocaleString() +
           (p.weight != null ? ' <span class="invLogWeightNote">(' + Number(p.weight).toLocaleString() + ' kg)</span>' : "") + "</td>" +
         '<td class="mono">' + esc(formatInr(p.pricePerUnit)) + "</td>" +
@@ -6149,13 +6189,13 @@
 
   // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
   function buildInventoryStockCsv(items, statusMap){
-    var header = ["Item", "SKU", "Category", "GSM", "Size", "BF", "Shade", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
+    var header = ["Item", "SKU", "Zone", "Category", "GSM", "Size", "BF", "Shade", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
     var lines = [header.map(csvEscape).join(",")];
     items.forEach(function(item){
       var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       lines.push([
-        item.name, item.sku, item.category || "",
+        item.name, item.sku, item.zone || "", item.category || "",
         item.gsm != null ? item.gsm : "",
         item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "",
         item.bf != null ? item.bf : "", item.shade || "",
@@ -6167,11 +6207,11 @@
     return lines.join("\r\n");
   }
   function buildInventoryPurchasesCsv(rows){
-    var header = ["Date", "Item", "Qty", "Weight (kg)", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
+    var header = ["Date", "Item", "Shade", "Qty", "Weight (kg)", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(p){
       lines.push([
-        p.date || "", p.itemName, Number(p.qty) || 0, p.weight != null ? Number(p.weight) : "",
+        p.date || "", p.itemName, p.shade || "", Number(p.qty) || 0, p.weight != null ? Number(p.weight) : "",
         (Number(p.pricePerUnit) || 0).toFixed(2),
         Number(p.discountPct) || 0, Number(p.gstPct) || 0, (Number(p.lineAmount) || 0).toFixed(2),
         p.supplier || "", p.receivedBy || "", p.note || ""
@@ -6235,6 +6275,7 @@
     el.invItemCategoryCustomInput.hidden = true;
     el.invItemCategoryCustomInput.value = "";
     el.invItemSupplierInput.value = "";
+    el.invItemZoneInput.value = "";
     el.invItemReorderInput.value = "";
     el.invItemUnitInput.value = "";
     el.invItemPriceInput.value = "";
@@ -6279,6 +6320,7 @@
       el.invItemCategoryCustomInput.value = "";
     }
     el.invItemSupplierInput.value = item.supplier || "";
+    el.invItemZoneInput.value = item.zone || "";
     el.invItemReorderInput.value = item.reorderPoint != null ? item.reorderPoint : "";
     el.invItemUnitInput.value = item.unit || "";
     el.invItemPriceInput.value = item.defaultPrice != null ? item.defaultPrice : "";
@@ -6392,7 +6434,12 @@
     var invoiceVal = invoiceAttachmentCtrl.getValue();
     var payload = {
       name: name, category: category,
-      supplier: el.invItemSupplierInput.value.trim(), reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
+      supplier: el.invItemSupplierInput.value.trim(),
+      // Zone / Storage Location — deliberately NOT unique: many different items can share the same
+      // physical zone. SKU (the document id, checked for uniqueness above) still identifies the
+      // item itself; Zone only says where it's kept, same idea as a warehouse bin label.
+      zone: el.invItemZoneInput.value.trim() || null,
+      reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
       unit: el.invItemUnitInput.value.trim() || "units", defaultPrice: isFinite(defaultPrice) ? defaultPrice : 0,
       // Paper/Invoice Specifications — all optional, blank for items that don't have them. Typed
       // by hand or pre-filled (always still editable here) via "Extract items from this invoice".
@@ -6912,6 +6959,9 @@
         // signal for either) — keep whatever the item already has on an update, blank for a new item.
         shade: existing ? (existing.shade || null) : null,
         defaultWeightPerReel: existing ? (existing.defaultWeightPerReel != null ? existing.defaultWeightPerReel : null) : null,
+        // Zone / Storage Location isn't on the invoice either — keep whatever the item already has
+        // on an update, blank for a new item (set later from Manage Inventory Items).
+        zone: existing ? (existing.zone || null) : null,
         purchaseInvoiceAttachmentData: invoiceVal ? invoiceVal.data : null,
         purchaseInvoiceAttachmentName: invoiceVal ? invoiceVal.name : null,
         purchaseInvoiceAttachmentType: invoiceVal ? invoiceVal.type : null,
@@ -6966,6 +7016,7 @@
     var total = computeInventoryLineAmount(qtyForPricing, el.invMovePriceInput.value, el.invMoveDiscountInput.value, el.invMoveGstInput.value);
     el.invMoveAmountLine.textContent = tf("inv_move_amount_line", { amount: formatInr(total) });
   }
+  var syncInvMoveReceivedDateLabel = bindDateDisplay(el.invMoveReceivedDateInput, el.invMoveReceivedDateLabel);
   function openReceiveModal(sku){
     var item = state.invCatalog[sku];
     if(!item) return;
@@ -6982,6 +7033,10 @@
     // since individual reels/shipments vary.
     el.invMoveReelWeightInput.value = (reelUnit && item.defaultWeightPerReel != null) ? item.defaultWeightPerReel : "";
     el.invMoveTotalWeightInput.value = "";
+    // Shade, like Rate, pre-fills from the item's own typical/default shade but is freely editable —
+    // this particular shipment's shade can differ by vendor or batch even for the same paper spec.
+    el.invMoveShadeRow.hidden = !reelUnit;
+    el.invMoveShadeInput.value = reelUnit ? (item.shade || "") : "";
     // For a reel/roll item the Price/Unit field is really a per-kg rate (Amount = Rate x Total
     // Weight, same as the supplier's own invoice) — relabeled here so it doesn't read as per-reel.
     el.invMovePriceLabel.textContent = reelUnit ? t("inv_move_price_label_perkg") : t("inv_move_price_label");
@@ -6991,6 +7046,10 @@
     el.invMoveDiscountInput.value = "";
     el.invMoveGstInput.value = "";
     refreshInvMoveAmount();
+    // Received Date defaults to the app's current working date (Production tab's date filter) but
+    // is freely editable — a delivery is often logged a day or two after it actually arrived.
+    el.invMoveReceivedDateInput.value = state.date || todayStr();
+    syncInvMoveReceivedDateLabel();
     el.invMoveSupplierInput.value = item.supplier || "";
     el.invMoveReceivedByInput.value = deviceSupervisorName || "";
     el.invMoveNoteInput.value = "";
@@ -7015,11 +7074,15 @@
     el.invMoveReelFieldsRow.hidden = !reelUnit;
     el.invMoveReelWeightInput.value = (reelUnit && purchase.weightPerReel != null) ? purchase.weightPerReel : "";
     el.invMoveTotalWeightInput.value = "";
+    el.invMoveShadeRow.hidden = !reelUnit;
+    el.invMoveShadeInput.value = reelUnit ? (purchase.shade || item.shade || "") : "";
     el.invMovePriceLabel.textContent = reelUnit ? t("inv_move_price_label_perkg") : t("inv_move_price_label");
     el.invMovePriceInput.value = purchase.pricePerUnit != null ? purchase.pricePerUnit : "";
     el.invMoveDiscountInput.value = purchase.discountPct || "";
     el.invMoveGstInput.value = purchase.gstPct || "";
     refreshInvMoveAmount();
+    el.invMoveReceivedDateInput.value = purchase.date || state.date || todayStr();
+    syncInvMoveReceivedDateLabel();
     el.invMoveSupplierInput.value = purchase.supplier || "";
     el.invMoveReceivedByInput.value = purchase.receivedBy || "";
     el.invMoveNoteInput.value = purchase.note || "";
@@ -7048,9 +7111,10 @@
     }
     el.invMoveConfirmBtn.disabled = true;
     var priceFields = { pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value };
+    var extraFields = { shade: el.invMoveShadeInput.value, receivedDate: el.invMoveReceivedDateInput.value };
     var action = invMoveContext.editId
-      ? updateInventoryPurchase(invMoveContext.editId, state.invCatalog[invMoveContext.sku], el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value)
-      : addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value);
+      ? updateInventoryPurchase(invMoveContext.editId, state.invCatalog[invMoveContext.sku], el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value, extraFields)
+      : addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value, extraFields);
     action.then(function(){
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveOverlay.hidden = true;
