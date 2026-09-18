@@ -571,6 +571,7 @@
   .invExtractTable input.invExtractUncertain{border-color:var(--warn);background:var(--warn-soft);}
   .invExtractUncertainMark{color:var(--warn);font-size:13px;flex:none;cursor:help;}
   .invLogWeightNote{color:var(--ink-soft);font-size:11px;}
+  #invMoveTotalWeightInput{background:var(--surface-2, var(--line));color:var(--ink-soft);cursor:default;}
   /* Manual Pass/Fail switch per spec row: ON (checked) = Pass (green), OFF = Fail (red).
      A plain checkbox is visually hidden and styled via its sibling <span> track + thumb. */
   .passFailCell{white-space:nowrap;}
@@ -1220,12 +1221,17 @@
       </label>
     </div>
     <!-- Reel/roll items (paper, film, etc.) are priced by weight, not by reel count — each reel's
-         actual weight varies, so the supplier's invoice always totals Rate x Weight, never Rate x
-         reel count. Shown only when the item's own Unit (set in Manage Inventory Items) is reels;
-         hidden and ignored for every other unit, which keeps pricing by Quantity x Price/Unit. -->
-    <div class="supAddRow" style="grid-template-columns:1fr;" id="invMoveWeightRow" hidden>
-      <label><span data-i18n="inv_move_weight_label">Weight Received (kg)</span>
-        <input type="number" id="invMoveWeightInput" class="mono" min="0" step="0.001" placeholder="0.000">
+         actual weight varies, so the supplier's invoice always totals Rate x Total Weight, never
+         Rate x reel count. Shown only when the item's own Unit (set in Manage Inventory Items) is
+         reels; hidden and ignored for every other unit, which keeps pricing by Quantity x Price/Unit.
+         Total Weight is never typed directly — it's always Quantity Received x Weight per Reel,
+         computed live, so it can never drift out of sync with the two numbers that produce it. -->
+    <div class="supAddRow" id="invMoveReelFieldsRow" hidden>
+      <label><span data-i18n="inv_move_reelweight_label">Weight per Reel (kg)</span>
+        <input type="number" id="invMoveReelWeightInput" class="mono" min="0" step="0.001" placeholder="0.000">
+      </label>
+      <label><span data-i18n="inv_move_totalweight_label">Total Weight (kg)</span>
+        <input type="text" id="invMoveTotalWeightInput" class="mono" readonly tabindex="-1">
       </label>
     </div>
     <div class="supAddRow">
@@ -2265,7 +2271,7 @@
       inv_items_err_remove_failed: "Couldn't remove item.",
       inv_move_title: "Receive Stock",
       inv_move_qty_label: "Quantity Received",
-      inv_move_weight_label: "Weight Received (kg)",
+      inv_move_reelweight_label: "Weight per Reel (kg)", inv_move_totalweight_label: "Total Weight (kg)",
       inv_move_price_label: "Price/Unit", inv_move_price_label_perkg: "Rate (per kg)", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "Amount: {amount}",
       inv_move_supplier_label: "Supplier / Reference", inv_move_supplier_placeholder: "e.g. Acme Traders, PO-1042",
@@ -2276,7 +2282,7 @@
       inv_move_current_line: "{name} — on hand: {qty} {unit}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
       inv_err_bad_qty: "Enter a quantity greater than zero.",
-      inv_err_bad_weight: "Enter the weight received (kg) greater than zero — this item is priced by weight.",
+      inv_err_bad_weight: "Enter the weight per reel (kg) greater than zero — this item is priced by weight.",
       inv_status_title: "Update Status",
       inv_status_from_label: "From", inv_status_to_label: "To",
       inv_status_available: "Available", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
@@ -2524,7 +2530,7 @@
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
       inv_move_title: "स्टॉक प्राप्त करें",
       inv_move_qty_label: "प्राप्त मात्रा",
-      inv_move_weight_label: "प्राप्त वज़न (kg)",
+      inv_move_reelweight_label: "प्रति रील वज़न (kg)", inv_move_totalweight_label: "कुल वज़न (kg)",
       inv_move_price_label: "मूल्य/यूनिट", inv_move_price_label_perkg: "दर (प्रति kg)", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "राशि: {amount}",
       inv_move_supplier_label: "सप्लायर / संदर्भ", inv_move_supplier_placeholder: "जैसे, Acme Traders, PO-1042",
@@ -2535,7 +2541,7 @@
       inv_move_current_line: "{name} — उपलब्ध: {qty} {unit}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
       inv_err_bad_qty: "शून्य से अधिक मात्रा दर्ज करें।",
-      inv_err_bad_weight: "प्राप्त वज़न (kg) शून्य से अधिक दर्ज करें — यह आइटम वज़न के हिसाब से कीमत तय होती है।",
+      inv_err_bad_weight: "प्रति रील वज़न (kg) शून्य से अधिक दर्ज करें — यह आइटम वज़न के हिसाब से कीमत तय होती है।",
       inv_status_title: "स्थिति अपडेट करें",
       inv_status_from_label: "से", inv_status_to_label: "तक",
       inv_status_available: "उपलब्ध", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
@@ -2783,7 +2789,7 @@
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
       inv_move_title: "స్టాక్‌ను స్వీకరించండి",
       inv_move_qty_label: "స్వీకరించిన పరిమాణం",
-      inv_move_weight_label: "స్వీకరించిన బరువు (kg)",
+      inv_move_reelweight_label: "ప్రతి రీల్ బరువు (kg)", inv_move_totalweight_label: "మొత్తం బరువు (kg)",
       inv_move_price_label: "ధర/యూనిట్", inv_move_price_label_perkg: "రేటు (కి.గ్రా.కి)", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "మొత్తం: {amount}",
       inv_move_supplier_label: "సప్లయర్ / రిఫరెన్స్", inv_move_supplier_placeholder: "ఉదా. Acme Traders, PO-1042",
@@ -2794,7 +2800,7 @@
       inv_move_current_line: "{name} — అందుబాటులో ఉంది: {qty} {unit}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
       inv_err_bad_qty: "సున్నా కంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
-      inv_err_bad_weight: "అందుకున్న బరువు (kg) సున్నా కంటే ఎక్కువగా నమోదు చేయండి — ఈ ఐటమ్ బరువు ఆధారంగా ధర నిర్ణయించబడుతుంది.",
+      inv_err_bad_weight: "ప్రతి రీల్ బరువు (kg) సున్నా కంటే ఎక్కువగా నమోదు చేయండి — ఈ ఐటమ్ బరువు ఆధారంగా ధర నిర్ణయించబడుతుంది.",
       inv_status_title: "స్థితిని అప్‌డేట్ చేయండి",
       inv_status_from_label: "నుండి", inv_status_to_label: "కు",
       inv_status_available: "అందుబాటులో", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
@@ -3026,8 +3032,9 @@
     invMoveOverlay: document.getElementById("invMoveOverlay"),
     invMoveItemLine: document.getElementById("invMoveItemLine"),
     invMoveQtyInput: document.getElementById("invMoveQtyInput"),
-    invMoveWeightRow: document.getElementById("invMoveWeightRow"),
-    invMoveWeightInput: document.getElementById("invMoveWeightInput"),
+    invMoveReelFieldsRow: document.getElementById("invMoveReelFieldsRow"),
+    invMoveReelWeightInput: document.getElementById("invMoveReelWeightInput"),
+    invMoveTotalWeightInput: document.getElementById("invMoveTotalWeightInput"),
     invMovePriceLabel: document.getElementById("invMovePriceLabel"),
     invMovePriceInput: document.getElementById("invMovePriceInput"),
     invMoveDiscountInput: document.getElementById("invMoveDiscountInput"),
@@ -5822,27 +5829,31 @@
   }
 
   // Records one receipt and returns the write's promise — the only inventory movement there is
-  // now. `priceFields` is { pricePerUnit, discountPct, gstPct }. `weight` (kg) is required for a
-  // reel/roll-unit item — the stock count still tracks `qty` (reel count) as always, but the total
-  // price is computed from weight, since that's how the supplier actually priced the shipment.
-  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, weight){
+  // now. `priceFields` is { pricePerUnit, discountPct, gstPct }. `reelWeightPerUnit` (kg, weight of
+  // ONE reel) is required for a reel/roll-unit item — the stock count still tracks `qty` (reel
+  // count) as always, but Total Weight = qty x reelWeightPerUnit, and the price is computed from
+  // that Total Weight, since that's how the supplier actually priced the shipment.
+  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     qty = Number(qty);
     if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
     var reelUnit = isReelUnit(item.unit);
-    var weightNum = Number(weight);
-    if(reelUnit && (!isFinite(weightNum) || weightNum <= 0)){
+    var reelWeightNum = Number(reelWeightPerUnit);
+    if(reelUnit && (!isFinite(reelWeightNum) || reelWeightNum <= 0)){
       return Promise.reject(new Error(t("inv_err_bad_weight")));
     }
     var pricePerUnit = Number(priceFields && priceFields.pricePerUnit) || 0;
     var discountPct = Number(priceFields && priceFields.discountPct) || 0;
     var gstPct = Number(priceFields && priceFields.gstPct) || 0;
-    // Priced against Weight for reel/roll items (Rate x Weight, matching the supplier's own
-    // invoice), against reel/unit count for everything else.
-    var qtyForPricing = reelUnit ? weightNum : qty;
+    // Total Weight = Quantity Received x Weight per Reel — priced against THAT (Rate x Total
+    // Weight, matching the supplier's own invoice) for reel/roll items, against reel/unit count
+    // for everything else.
+    var totalWeight = reelUnit ? Math.round(qty * reelWeightNum * 1000) / 1000 : null;
+    var qtyForPricing = reelUnit ? totalWeight : qty;
     var payload = {
-      sku: sku, itemName: item.name, qty: qty, weight: reelUnit ? weightNum : null,
+      sku: sku, itemName: item.name, qty: qty,
+      weightPerReel: reelUnit ? reelWeightNum : null, weight: totalWeight,
       pricePerUnit: pricePerUnit, discountPct: discountPct, gstPct: gstPct,
       lineAmount: computeInventoryLineAmount(qtyForPricing, pricePerUnit, discountPct, gstPct),
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
@@ -6801,10 +6812,22 @@
 
   // ---------- Receive Stock modal ----------
   var invMoveContext = null; // { sku, isReelUnit }
+  // Total Weight is always derived, never typed — Quantity Received (reel count) x Weight per
+  // Reel — so it can never disagree with the two numbers that produce it. Recomputed on every
+  // input change alongside the Amount line.
+  function refreshInvMoveTotalWeight(){
+    if(!invMoveContext || !invMoveContext.isReelUnit) return 0;
+    var qty = Number(el.invMoveQtyInput.value) || 0;
+    var perReel = Number(el.invMoveReelWeightInput.value) || 0;
+    var total = qty * perReel;
+    el.invMoveTotalWeightInput.value = total > 0 ? (Math.round(total * 1000) / 1000) : "";
+    return total;
+  }
   function refreshInvMoveAmount(){
-    // Reel/roll items price against Weight Received, not the reel-count Quantity Received — see
-    // isReelUnit(). Everything else keeps the ordinary Quantity x Price/Unit calculation.
-    var qtyForPricing = (invMoveContext && invMoveContext.isReelUnit) ? el.invMoveWeightInput.value : el.invMoveQtyInput.value;
+    // Reel/roll items price against Total Weight (Quantity x Weight per Reel), not the reel-count
+    // Quantity Received itself — see isReelUnit(). Everything else keeps the ordinary
+    // Quantity x Price/Unit calculation.
+    var qtyForPricing = (invMoveContext && invMoveContext.isReelUnit) ? refreshInvMoveTotalWeight() : el.invMoveQtyInput.value;
     var total = computeInventoryLineAmount(qtyForPricing, el.invMovePriceInput.value, el.invMoveDiscountInput.value, el.invMoveGstInput.value);
     el.invMoveAmountLine.textContent = tf("inv_move_amount_line", { amount: formatInr(total) });
   }
@@ -6816,10 +6839,11 @@
     var current = availableFor(sku);
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
     el.invMoveQtyInput.value = "";
-    el.invMoveWeightRow.hidden = !reelUnit;
-    el.invMoveWeightInput.value = "";
-    // For a reel/roll item the Price/Unit field is really a per-kg rate (Amount = Rate x Weight,
-    // same as the supplier's own invoice) — relabeled here so it doesn't read as per-reel.
+    el.invMoveReelFieldsRow.hidden = !reelUnit;
+    el.invMoveReelWeightInput.value = "";
+    el.invMoveTotalWeightInput.value = "";
+    // For a reel/roll item the Price/Unit field is really a per-kg rate (Amount = Rate x Total
+    // Weight, same as the supplier's own invoice) — relabeled here so it doesn't read as per-reel.
     el.invMovePriceLabel.textContent = reelUnit ? t("inv_move_price_label_perkg") : t("inv_move_price_label");
     // Price/Unit pre-fills from the item's catalog default (set in Manage Inventory Items) but
     // stays editable per transaction, since the actual purchase price can vary each time.
@@ -6834,7 +6858,7 @@
     el.invMoveOverlay.hidden = false;
     el.invMoveQtyInput.focus();
   }
-  [el.invMoveQtyInput, el.invMoveWeightInput, el.invMovePriceInput, el.invMoveDiscountInput, el.invMoveGstInput].forEach(function(input){
+  [el.invMoveQtyInput, el.invMoveReelWeightInput, el.invMovePriceInput, el.invMoveDiscountInput, el.invMoveGstInput].forEach(function(input){
     input.addEventListener("input", refreshInvMoveAmount);
   });
   el.invMoveCancelBtn.addEventListener("click", function(){ el.invMoveOverlay.hidden = true; invMoveContext = null; });
@@ -6846,7 +6870,7 @@
     el.invMoveError.hidden = true;
     el.invMoveConfirmBtn.disabled = true;
     var priceFields = { pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value };
-    addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveWeightInput.value)
+    addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value)
       .then(function(){
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveOverlay.hidden = true;
