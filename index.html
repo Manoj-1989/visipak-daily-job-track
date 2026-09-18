@@ -887,7 +887,7 @@
         <thead>
           <tr>
             <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
-            <th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_bf">BF</th>
+            <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
             <th data-i18n="inv_items_unit">Unit</th>
             <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
             <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
@@ -1090,26 +1090,34 @@
       <label><span data-i18n="inv_extract_th_hsn">HSN Code</span>
         <input type="text" id="invItemHsnInput" class="mono" placeholder="e.g. 48043100">
       </label>
+      <label><span data-i18n="inv_extract_th_gsm">GSM</span>
+        <input type="number" id="invItemGsmInput" class="mono" min="0" step="1">
+      </label>
+    </div>
+    <div class="supAddRow">
       <label><span data-i18n="inv_extract_th_size">Size</span>
         <div style="display:flex;gap:6px;">
           <input type="text" id="invItemSizeInput" placeholder="e.g. 109.00" style="flex:2;">
           <input type="text" id="invItemSizeUnitInput" placeholder="CM" style="flex:1;">
         </div>
       </label>
-    </div>
-    <div class="supAddRow">
-      <label><span data-i18n="inv_extract_th_gsm">GSM</span>
-        <input type="number" id="invItemGsmInput" class="mono" min="0" step="1">
-      </label>
       <label><span data-i18n="inv_extract_th_bf">BF</span>
         <input type="number" id="invItemBfInput" class="mono" min="0" step="1">
       </label>
     </div>
     <div class="supAddRow">
-      <label><span data-i18n="inv_extract_th_reels">Reels</span>
+      <label><span data-i18n="inv_items_shade">Shade</span>
+        <input type="text" id="invItemShadeInput" placeholder="e.g. Natural Shade">
+      </label>
+      <label><span data-i18n="inv_items_weightperreel">Weight/Reel</span>
+        <input type="number" id="invItemWeightPerReelInput" class="mono" min="0" step="0.001">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_items_reels_qty">Reels Quantity</span>
         <input type="number" id="invItemReelsInput" class="mono" min="0" step="1">
       </label>
-      <label><span data-i18n="inv_extract_th_weight">Last Received Weight</span>
+      <label><span data-i18n="inv_items_total_weight">Total Weight</span>
         <input type="number" id="invItemWeightInput" class="mono" min="0" step="0.001">
       </label>
     </div>
@@ -2256,6 +2264,8 @@
       inv_items_category_custom_placeholder: "Type new category name",
       inv_items_specs_heading: "Paper / Invoice Specifications (optional)",
       inv_items_priced_per_reel: "Priced per reel — Receive Stock shows Weight per Reel & Total Weight, and Amount = Total Weight × Rate",
+      inv_items_shade: "Shade", inv_items_weightperreel: "Weight/Reel",
+      inv_items_reels_qty: "Reels Quantity", inv_items_total_weight: "Total Weight",
       inv_extract_th_hsn: "HSN Code", inv_extract_th_size: "Size", inv_extract_th_gsm: "GSM",
       inv_extract_th_bf: "BF", inv_extract_th_reels: "Reels", inv_extract_th_weight: "Weight",
       inv_extract_th_rate: "Rate",
@@ -2516,6 +2526,8 @@
       inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
       inv_items_specs_heading: "पेपर / इनवॉइस स्पेसिफिकेशन (वैकल्पिक)",
       inv_items_priced_per_reel: "प्रति रील कीमत — Receive Stock में Weight per Reel और Total Weight दिखेंगे, और Amount = Total Weight × Rate होगा",
+      inv_items_shade: "शेड", inv_items_weightperreel: "वज़न/रील",
+      inv_items_reels_qty: "रील मात्रा", inv_items_total_weight: "कुल वज़न",
       inv_extract_th_hsn: "HSN कोड", inv_extract_th_size: "साइज़", inv_extract_th_gsm: "GSM",
       inv_extract_th_bf: "BF", inv_extract_th_reels: "रील", inv_extract_th_weight: "वज़न",
       inv_extract_th_rate: "रेट",
@@ -2776,6 +2788,8 @@
       inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
       inv_items_specs_heading: "పేపర్ / ఇన్వాయిస్ స్పెసిఫికేషన్లు (ఐచ్ఛికం)",
       inv_items_priced_per_reel: "రీలుకు ధర — Receive Stock లో Weight per Reel మరియు Total Weight కనిపిస్తాయి, Amount = Total Weight × Rate అవుతుంది",
+      inv_items_shade: "షేడ్", inv_items_weightperreel: "బరువు/రీల్",
+      inv_items_reels_qty: "రీళ్ల పరిమాణం", inv_items_total_weight: "మొత్తం బరువు",
       inv_extract_th_hsn: "HSN కోడ్", inv_extract_th_size: "సైజు", inv_extract_th_gsm: "GSM",
       inv_extract_th_bf: "BF", inv_extract_th_reels: "రీల్స్", inv_extract_th_weight: "బరువు",
       inv_extract_th_rate: "రేటు",
@@ -3026,6 +3040,8 @@
     invItemSizeUnitInput: document.getElementById("invItemSizeUnitInput"),
     invItemGsmInput: document.getElementById("invItemGsmInput"),
     invItemBfInput: document.getElementById("invItemBfInput"),
+    invItemShadeInput: document.getElementById("invItemShadeInput"),
+    invItemWeightPerReelInput: document.getElementById("invItemWeightPerReelInput"),
     invItemReelsInput: document.getElementById("invItemReelsInput"),
     invItemWeightInput: document.getElementById("invItemWeightInput"),
     invItemInvoiceNoInput: document.getElementById("invItemInvoiceNoInput"),
@@ -6012,9 +6028,10 @@
         "<td>" + esc(item.name) + "</td>" +
         '<td class="mono">' + esc(item.sku) + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
-        "<td>" + esc(item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "—") + "</td>" +
         '<td class="mono">' + esc(item.gsm != null ? String(item.gsm) : "—") + "</td>" +
+        "<td>" + esc(item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "—") + "</td>" +
         '<td class="mono">' + esc(item.bf != null ? String(item.bf) : "—") + "</td>" +
+        "<td>" + esc(item.shade || "—") + "</td>" +
         "<td>" + esc(item.unit || "—") + "</td>" +
         '<td class="mono">' + b.available.toLocaleString() + "</td>" +
         '<td class="mono">' + b.inUse.toLocaleString() + "</td>" +
@@ -6087,15 +6104,16 @@
 
   // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
   function buildInventoryStockCsv(items, statusMap){
-    var header = ["Item", "SKU", "Category", "Size", "GSM", "BF", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
+    var header = ["Item", "SKU", "Category", "GSM", "Size", "BF", "Shade", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
     var lines = [header.map(csvEscape).join(",")];
     items.forEach(function(item){
       var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       lines.push([
         item.name, item.sku, item.category || "",
+        item.gsm != null ? item.gsm : "",
         item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "",
-        item.gsm != null ? item.gsm : "", item.bf != null ? item.bf : "",
+        item.bf != null ? item.bf : "", item.shade || "",
         item.unit || "", b.available, b.inUse, b.damaged,
         (Number(item.defaultPrice) || 0).toFixed(2), inventoryStockValue(item, b.available).toFixed(2),
         Number(item.reorderPoint) || 0, inventoryStatusLabel(sClass)
@@ -6181,6 +6199,8 @@
     el.invItemSizeUnitInput.value = "";
     el.invItemGsmInput.value = "";
     el.invItemBfInput.value = "";
+    el.invItemShadeInput.value = "";
+    el.invItemWeightPerReelInput.value = "";
     el.invItemReelsInput.value = "";
     el.invItemWeightInput.value = "";
     el.invItemInvoiceNoInput.value = "";
@@ -6223,6 +6243,8 @@
     el.invItemSizeUnitInput.value = item.sizeUnit || "";
     el.invItemGsmInput.value = item.gsm != null ? item.gsm : "";
     el.invItemBfInput.value = item.bf != null ? item.bf : "";
+    el.invItemShadeInput.value = item.shade || "";
+    el.invItemWeightPerReelInput.value = item.defaultWeightPerReel != null ? item.defaultWeightPerReel : "";
     el.invItemReelsInput.value = item.reels != null ? item.reels : "";
     el.invItemWeightInput.value = item.lastReceivedWeight != null ? item.lastReceivedWeight : "";
     el.invItemInvoiceNoInput.value = item.lastInvoiceNo || "";
@@ -6334,6 +6356,8 @@
       sizeUnit: el.invItemSizeUnitInput.value.trim() || null,
       gsm: invNumOrNull(el.invItemGsmInput.value),
       bf: invNumOrNull(el.invItemBfInput.value),
+      shade: el.invItemShadeInput.value.trim() || null,
+      defaultWeightPerReel: invNumOrNull(el.invItemWeightPerReelInput.value),
       reels: invNumOrNull(el.invItemReelsInput.value),
       lastReceivedWeight: invNumOrNull(el.invItemWeightInput.value),
       lastInvoiceNo: el.invItemInvoiceNoInput.value.trim() || null,
@@ -6839,6 +6863,10 @@
         // Receive Stock's Weight per Reel / Total Weight fields work right away without an extra
         // manual step; an existing item keeps whatever the user already set for it.
         pricedPerReel: existing ? !!existing.pricedPerReel : (row.reels != null || row.weight != null),
+        // Shade and the per-reel weight default aren't parsed off the invoice (OCR has no reliable
+        // signal for either) — keep whatever the item already has on an update, blank for a new item.
+        shade: existing ? (existing.shade || null) : null,
+        defaultWeightPerReel: existing ? (existing.defaultWeightPerReel != null ? existing.defaultWeightPerReel : null) : null,
         purchaseInvoiceAttachmentData: invoiceVal ? invoiceVal.data : null,
         purchaseInvoiceAttachmentName: invoiceVal ? invoiceVal.name : null,
         purchaseInvoiceAttachmentType: invoiceVal ? invoiceVal.type : null,
@@ -6902,7 +6930,10 @@
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
     el.invMoveQtyInput.value = "";
     el.invMoveReelFieldsRow.hidden = !reelUnit;
-    el.invMoveReelWeightInput.value = "";
+    // Weight per Reel pre-fills from the item's own typical reel weight (set in Manage Inventory
+    // Items) the same way Price/Unit pre-fills from defaultPrice — still editable per transaction,
+    // since individual reels/shipments vary.
+    el.invMoveReelWeightInput.value = (reelUnit && item.defaultWeightPerReel != null) ? item.defaultWeightPerReel : "";
     el.invMoveTotalWeightInput.value = "";
     // For a reel/roll item the Price/Unit field is really a per-kg rate (Amount = Rate x Total
     // Weight, same as the supplier's own invoice) — relabeled here so it doesn't read as per-reel.
