@@ -1232,7 +1232,7 @@
      History) rather than editing history in place. -->
 <div class="modalOverlay invMoveModal" id="invMoveOverlay" hidden>
   <div class="modal">
-    <h2 data-i18n="inv_move_title">Receive Stock</h2>
+    <h2 id="invMoveTitle" data-i18n="inv_move_title">Receive Stock</h2>
     <p class="invMoveCurrentQty" id="invMoveItemLine"></p>
     <div class="supAddRow" style="grid-template-columns:1fr;">
       <label><span data-i18n="inv_move_qty_label">Quantity Received</span>
@@ -2292,6 +2292,8 @@
       inv_items_err_save_failed: "Couldn't save item.",
       inv_items_err_remove_failed: "Couldn't remove item.",
       inv_move_title: "Receive Stock",
+      inv_move_edit_title: "Edit Receipt",
+      inv_move_confirm_save: "Save Changes",
       inv_move_qty_label: "Quantity Received",
       inv_move_reelweight_label: "Weight per Reel (kg)", inv_move_totalweight_label: "Total Weight (kg)",
       inv_move_price_label: "Price/Unit", inv_move_price_label_perkg: "Rate (per kg)", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
@@ -2316,6 +2318,7 @@
       inv_status_err_same: "From and To must be different statuses.",
       inv_status_err_insufficient: "Only {qty} available in that status.",
       inv_purchase_err_status_committed: "Can't delete: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
+      inv_move_err_qty_committed: "Can't reduce Quantity Received: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
       banner_inventory_sync_failed_prefix: "Inventory sync issue:"
     },
     hi: {
@@ -2554,6 +2557,8 @@
       inv_items_err_save_failed: "आइटम सेव नहीं हो सका।",
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
       inv_move_title: "स्टॉक प्राप्त करें",
+      inv_move_edit_title: "रसीद संपादित करें",
+      inv_move_confirm_save: "बदलाव सेव करें",
       inv_move_qty_label: "प्राप्त मात्रा",
       inv_move_reelweight_label: "प्रति रील वज़न (kg)", inv_move_totalweight_label: "कुल वज़न (kg)",
       inv_move_price_label: "मूल्य/यूनिट", inv_move_price_label_perkg: "दर (प्रति kg)", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
@@ -2578,6 +2583,7 @@
       inv_status_err_same: "से और तक अलग-अलग स्थिति होनी चाहिए।",
       inv_status_err_insufficient: "उस स्थिति में केवल {qty} ही उपलब्ध है।",
       inv_purchase_err_status_committed: "हटाया नहीं जा सकता: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
+      inv_move_err_qty_committed: "प्राप्त मात्रा घटाई नहीं जा सकती: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
       banner_inventory_sync_failed_prefix: "इन्वेंटरी सिंक समस्या:"
     },
     te: {
@@ -2816,6 +2822,8 @@
       inv_items_err_save_failed: "ఐటమ్ సేవ్ కాలేదు.",
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
       inv_move_title: "స్టాక్‌ను స్వీకరించండి",
+      inv_move_edit_title: "రసీదును సవరించండి",
+      inv_move_confirm_save: "మార్పులను సేవ్ చేయండి",
       inv_move_qty_label: "స్వీకరించిన పరిమాణం",
       inv_move_reelweight_label: "ప్రతి రీల్ బరువు (kg)", inv_move_totalweight_label: "మొత్తం బరువు (kg)",
       inv_move_price_label: "ధర/యూనిట్", inv_move_price_label_perkg: "రేటు (కి.గ్రా.కి)", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
@@ -2840,6 +2848,7 @@
       inv_status_err_same: "నుండి మరియు కు వేర్వేరు స్థితులుగా ఉండాలి.",
       inv_status_err_insufficient: "ఆ స్థితిలో {qty} మాత్రమే అందుబాటులో ఉంది.",
       inv_purchase_err_status_committed: "తొలగించడం సాధ్యం కాదు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
+      inv_move_err_qty_committed: "స్వీకరించిన పరిమాణాన్ని తగ్గించలేరు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
       banner_inventory_sync_failed_prefix: "ఇన్వెంటరీ సింక్ సమస్య:"
     }
   };
@@ -3061,6 +3070,7 @@
     invItemsError: document.getElementById("invItemsError"),
     invItemsCloseBtn: document.getElementById("invItemsCloseBtn"),
     invMoveOverlay: document.getElementById("invMoveOverlay"),
+    invMoveTitle: document.getElementById("invMoveTitle"),
     invMoveItemLine: document.getElementById("invMoveItemLine"),
     invMoveQtyInput: document.getElementById("invMoveQtyInput"),
     invMoveReelFieldsRow: document.getElementById("invMoveReelFieldsRow"),
@@ -5816,16 +5826,20 @@
     var b = computeStatusBucketsMap()[sku];
     return b ? b.available : 0;
   }
-  // Deleting a purchase (an admin correction path) reduces that SKU's total purchased qty. If
-  // some of that SKU's stock has already been moved to In Use/Damaged, removing more than what's
-  // still sitting in Available would make those buckets negative — block it instead, same spirit
-  // as addStatusTransfer's own "can't move more than you have" check.
-  function purchaseDeletionWouldBreakStatusBuckets(purchase){
+  // Deleting a purchase, or editing one down to a smaller Quantity Received, both reduce that SKU's
+  // total purchased qty (to 0 for a delete, to whatever the edited value is otherwise). If some of
+  // that SKU's stock has already been moved to In Use/Damaged, reducing the total below what's
+  // still committed there would make those buckets negative — block it instead, same spirit as
+  // addStatusTransfer's own "can't move more than you have" check.
+  function purchaseQtyChangeWouldBreakStatusBuckets(purchase, newQty){
     var sku = purchase.sku;
-    var totalAfterDelete = (computeCurrentStockMap()[sku] || 0) - (Number(purchase.qty) || 0);
+    var totalAfterChange = (computeCurrentStockMap()[sku] || 0) - (Number(purchase.qty) || 0) + (Number(newQty) || 0);
     var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
     var committed = buckets.inUse + buckets.damaged;
-    return totalAfterDelete < committed;
+    return totalAfterChange < committed;
+  }
+  function purchaseDeletionWouldBreakStatusBuckets(purchase){
+    return purchaseQtyChangeWouldBreakStatusBuckets(purchase, 0);
   }
   function inventoryStatus(qty, reorderPoint){
     qty = Number(qty) || 0; reorderPoint = Number(reorderPoint) || 0;
@@ -5887,20 +5901,21 @@
     return !!(item && item.pricedPerReel);
   }
 
-  // Records one receipt and returns the write's promise — the only inventory movement there is
-  // now. `priceFields` is { pricePerUnit, discountPct, gstPct }. `reelWeightPerUnit` (kg, weight of
-  // ONE reel) is required for a reel/roll-unit item — the stock count still tracks `qty` (reel
-  // count) as always, but Total Weight = qty x reelWeightPerUnit, and the price is computed from
-  // that Total Weight, since that's how the supplier actually priced the shipment.
-  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit){
-    var item = state.invCatalog[sku];
-    if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
+  // Shared arithmetic for both recording a NEW receipt and correcting an EXISTING one (see
+  // updateInventoryPurchase) — every purchase field that's derived from Quantity/Weight per
+  // Reel/Rate/Discount/GST goes through this one place so the two paths can never drift apart.
+  // `priceFields` is { pricePerUnit, discountPct, gstPct }. `reelWeightPerUnit` (kg, weight of ONE
+  // reel) is required for a reel/roll-priced item — the stock count still tracks `qty` (reel count)
+  // as always, but Total Weight = qty x reelWeightPerUnit, and the price is computed from that
+  // Total Weight, since that's how the supplier actually priced the shipment. Throws (not rejects)
+  // on invalid input — callers wrap the call in a try/catch.
+  function computePurchaseCoreFields(item, qty, priceFields, reelWeightPerUnit){
     qty = Number(qty);
-    if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    if(!isFinite(qty) || qty <= 0) throw new Error(t("inv_err_bad_qty"));
     var reelUnit = isReelUnit(item);
     var reelWeightNum = Number(reelWeightPerUnit);
     if(reelUnit && (!isFinite(reelWeightNum) || reelWeightNum <= 0)){
-      return Promise.reject(new Error(t("inv_err_bad_weight")));
+      throw new Error(t("inv_err_bad_weight"));
     }
     var pricePerUnit = Number(priceFields && priceFields.pricePerUnit) || 0;
     var discountPct = Number(priceFields && priceFields.discountPct) || 0;
@@ -5910,15 +5925,41 @@
     // for everything else.
     var totalWeight = reelUnit ? Math.round(qty * reelWeightNum * 1000) / 1000 : null;
     var qtyForPricing = reelUnit ? totalWeight : qty;
-    var payload = {
-      sku: sku, itemName: item.name, qty: qty,
-      weightPerReel: reelUnit ? reelWeightNum : null, weight: totalWeight,
+    return {
+      qty: qty, weightPerReel: reelUnit ? reelWeightNum : null, weight: totalWeight,
       pricePerUnit: pricePerUnit, discountPct: discountPct, gstPct: gstPct,
-      lineAmount: computeInventoryLineAmount(qtyForPricing, pricePerUnit, discountPct, gstPct),
+      lineAmount: computeInventoryLineAmount(qtyForPricing, pricePerUnit, discountPct, gstPct)
+    };
+  }
+  // Records one receipt and returns the write's promise — the only way a NEW inventory movement
+  // gets created. See updateInventoryPurchase for correcting one that's already been logged (e.g.
+  // GST was left off by mistake).
+  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit){
+    var item = state.invCatalog[sku];
+    if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
+    var core;
+    try { core = computePurchaseCoreFields(item, qty, priceFields, reelWeightPerUnit); }
+    catch(err){ return Promise.reject(err); }
+    var payload = Object.assign({ sku: sku, itemName: item.name }, core, {
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
       date: state.date, shift: state.shift || "", createdAt: Date.now()
-    };
+    });
     return state.db.collection("purchases").add(payload);
+  }
+  // Corrects an already-logged receipt in place (e.g. GST was left off, or the Rate was wrong) —
+  // Purchase History's "Edit" action, Admin-only same as Delete. Recomputes every derived field the
+  // same way a fresh receipt would (via computePurchaseCoreFields) so the corrected Amount is never
+  // stale, but leaves sku/itemName/date/shift/createdAt untouched since `.update()` only touches the
+  // fields named here.
+  function updateInventoryPurchase(purchaseId, item, qty, priceFields, supplier, receivedBy, note, reelWeightPerUnit){
+    var core;
+    try { core = computePurchaseCoreFields(item, qty, priceFields, reelWeightPerUnit); }
+    catch(err){ return Promise.reject(err); }
+    var payload = Object.assign({}, core, {
+      supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
+      updatedAt: Date.now()
+    });
+    return state.db.collection("purchases").doc(purchaseId).update(payload);
   }
 
   // Moves `qty` units of a SKU from one status bucket to another (Available/In Use/Damaged) and
@@ -6079,6 +6120,10 @@
         "<td>" + esc(p.note || "") + "</td>" +
         '<td class="invRowActions"></td>';
       if(canManage){
+        var editBtn = document.createElement("button");
+        editBtn.type = "button"; editBtn.className = "btn ghost invSmallBtn"; editBtn.textContent = t("sup_edit");
+        editBtn.addEventListener("click", function(){ openEditPurchaseModal(p); });
+        tr.querySelector(".invRowActions").appendChild(editBtn);
         var delBtn = document.createElement("button");
         delBtn.type = "button"; delBtn.className = "btn ghost invSmallBtn"; delBtn.textContent = t("generic_delete");
         delBtn.addEventListener("click", function(){
@@ -6925,7 +6970,9 @@
     var item = state.invCatalog[sku];
     if(!item) return;
     var reelUnit = isReelUnit(item);
-    invMoveContext = { sku: sku, isReelUnit: reelUnit };
+    invMoveContext = { sku: sku, isReelUnit: reelUnit, editId: null, originalPurchase: null };
+    el.invMoveTitle.textContent = t("inv_move_title");
+    el.invMoveConfirmBtn.textContent = t("inv_move_confirm");
     var current = availableFor(sku);
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
     el.invMoveQtyInput.value = "";
@@ -6951,6 +6998,35 @@
     el.invMoveOverlay.hidden = false;
     el.invMoveQtyInput.focus();
   }
+  // Purchase History's "Edit" action (Admin-only) — corrects a receipt that's already been logged,
+  // e.g. GST was left off by mistake. Reuses the same Receive Stock modal, pre-filled from the
+  // existing purchase doc instead of blank/catalog defaults, with the Confirm button re-wired (see
+  // below) to update that doc in place rather than create a new one.
+  function openEditPurchaseModal(purchase){
+    var item = state.invCatalog[purchase.sku];
+    if(!item) return;
+    var reelUnit = isReelUnit(item);
+    invMoveContext = { sku: purchase.sku, isReelUnit: reelUnit, editId: purchase.id, originalPurchase: purchase };
+    el.invMoveTitle.textContent = t("inv_move_edit_title");
+    el.invMoveConfirmBtn.textContent = t("inv_move_confirm_save");
+    var current = availableFor(purchase.sku);
+    el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
+    el.invMoveQtyInput.value = purchase.qty != null ? purchase.qty : "";
+    el.invMoveReelFieldsRow.hidden = !reelUnit;
+    el.invMoveReelWeightInput.value = (reelUnit && purchase.weightPerReel != null) ? purchase.weightPerReel : "";
+    el.invMoveTotalWeightInput.value = "";
+    el.invMovePriceLabel.textContent = reelUnit ? t("inv_move_price_label_perkg") : t("inv_move_price_label");
+    el.invMovePriceInput.value = purchase.pricePerUnit != null ? purchase.pricePerUnit : "";
+    el.invMoveDiscountInput.value = purchase.discountPct || "";
+    el.invMoveGstInput.value = purchase.gstPct || "";
+    refreshInvMoveAmount();
+    el.invMoveSupplierInput.value = purchase.supplier || "";
+    el.invMoveReceivedByInput.value = purchase.receivedBy || "";
+    el.invMoveNoteInput.value = purchase.note || "";
+    el.invMoveError.hidden = true;
+    el.invMoveOverlay.hidden = false;
+    el.invMoveQtyInput.focus();
+  }
   [el.invMoveQtyInput, el.invMoveReelWeightInput, el.invMovePriceInput, el.invMoveDiscountInput, el.invMoveGstInput].forEach(function(input){
     input.addEventListener("input", refreshInvMoveAmount);
   });
@@ -6961,10 +7037,21 @@
   el.invMoveConfirmBtn.addEventListener("click", function(){
     if(!invMoveContext) return;
     el.invMoveError.hidden = true;
+    // Editing a receipt's Quantity Received down is subject to the same "can't go below what's
+    // already committed to In Use/Damaged elsewhere" guard as deleting one outright (see
+    // purchaseQtyChangeWouldBreakStatusBuckets) — checked here, before the write, so the error shows
+    // inline in the modal rather than as a rejected Firestore write.
+    if(invMoveContext.editId && purchaseQtyChangeWouldBreakStatusBuckets(invMoveContext.originalPurchase, el.invMoveQtyInput.value)){
+      el.invMoveError.textContent = t("inv_move_err_qty_committed");
+      el.invMoveError.hidden = false;
+      return;
+    }
     el.invMoveConfirmBtn.disabled = true;
     var priceFields = { pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value };
-    addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value)
-      .then(function(){
+    var action = invMoveContext.editId
+      ? updateInventoryPurchase(invMoveContext.editId, state.invCatalog[invMoveContext.sku], el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value)
+      : addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value);
+    action.then(function(){
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveOverlay.hidden = true;
         invMoveContext = null;
