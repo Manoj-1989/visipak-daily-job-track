@@ -887,6 +887,7 @@
         <thead>
           <tr>
             <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_category">Category</th>
+            <th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_bf">BF</th>
             <th data-i18n="inv_items_unit">Unit</th>
             <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
             <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
@@ -5819,6 +5820,30 @@
   function inventoryStatusLabel(cls){
     return cls === "crit" ? t("inv_status_out") : cls === "warn" ? t("inv_status_low") : t("inv_status_ok");
   }
+  // Rupee value of one unit of on-hand stock, for the "Value" column/stat tile. For an ordinary
+  // item this is just the catalog's reference Price/Unit. A priced-per-reel item's Price/Unit is a
+  // RATE PER KG, though, while Available tracks a reel COUNT — multiplying those two directly (as
+  // Price/Unit x Available) silently produces a meaningless number (this was the reported "Amount
+  // in Receive Stock and Value in the dashboard don't match" bug). Instead, value a reel-priced
+  // item's stock at its own weighted-average cost per reel — literally totalPaid / totalReels
+  // across every past receipt (lineAmount / qty, both already computed correctly by
+  // addInventoryPurchase) — so it lines up exactly with what Receive Stock showed at the time, and
+  // stays right even if the Rate or Weight per Reel varies between receipts.
+  function inventoryAvgCostPerUnit(item){
+    if(!item || !item.pricedPerReel) return Number(item && item.defaultPrice) || 0;
+    var totalQty = 0, totalAmount = 0;
+    state.invPurchases.forEach(function(p){
+      if(p.sku !== item.sku) return;
+      var qty = Number(p.qty) || 0;
+      if(qty <= 0) return;
+      totalQty += qty;
+      totalAmount += Number(p.lineAmount) || 0;
+    });
+    return totalQty > 0 ? (totalAmount / totalQty) : (Number(item.defaultPrice) || 0);
+  }
+  function inventoryStockValue(item, availableQty){
+    return (Number(availableQty) || 0) * inventoryAvgCostPerUnit(item);
+  }
 
   function formatInr(n){
     n = Number(n) || 0;
@@ -5963,7 +5988,7 @@
     items.forEach(function(i){
       var b = statusMap[i.sku] || { available: 0 };
       totalUnits += b.available;
-      totalValue += b.available * (Number(i.defaultPrice) || 0);
+      totalValue += inventoryStockValue(i, b.available);
       if(inventoryStatus(b.available, i.reorderPoint) !== "good") reorderCount++;
     });
     el.invStatSkus.textContent = totalSkus;
@@ -5981,12 +6006,15 @@
     rows.forEach(function(item){
       var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
-      var value = b.available * (Number(item.defaultPrice) || 0);
+      var value = inventoryStockValue(item, b.available);
       var tr = document.createElement("tr");
       tr.innerHTML =
         "<td>" + esc(item.name) + "</td>" +
         '<td class="mono">' + esc(item.sku) + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
+        "<td>" + esc(item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "—") + "</td>" +
+        '<td class="mono">' + esc(item.gsm != null ? String(item.gsm) : "—") + "</td>" +
+        '<td class="mono">' + esc(item.bf != null ? String(item.bf) : "—") + "</td>" +
         "<td>" + esc(item.unit || "—") + "</td>" +
         '<td class="mono">' + b.available.toLocaleString() + "</td>" +
         '<td class="mono">' + b.inUse.toLocaleString() + "</td>" +
@@ -6059,14 +6087,17 @@
 
   // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
   function buildInventoryStockCsv(items, statusMap){
-    var header = ["Item", "SKU", "Category", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
+    var header = ["Item", "SKU", "Category", "Size", "GSM", "BF", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
     var lines = [header.map(csvEscape).join(",")];
     items.forEach(function(item){
       var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       lines.push([
-        item.name, item.sku, item.category || "", item.unit || "", b.available, b.inUse, b.damaged,
-        (Number(item.defaultPrice) || 0).toFixed(2), (b.available * (Number(item.defaultPrice) || 0)).toFixed(2),
+        item.name, item.sku, item.category || "",
+        item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "",
+        item.gsm != null ? item.gsm : "", item.bf != null ? item.bf : "",
+        item.unit || "", b.available, b.inUse, b.damaged,
+        (Number(item.defaultPrice) || 0).toFixed(2), inventoryStockValue(item, b.available).toFixed(2),
         Number(item.reorderPoint) || 0, inventoryStatusLabel(sClass)
       ].map(csvEscape).join(","));
     });
