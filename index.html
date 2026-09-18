@@ -464,6 +464,10 @@
   }
   .modalOverlay[hidden]{display:none;}
   #deleteConfirmOverlay{z-index:30;}
+  /* Purchase History's "Edit" action can be opened from inside the "View reels" modal (see
+     openReelsViewModal) as well as directly from the row itself — give it a higher z-index so it
+     always renders on top of that modal instead of getting stacked underneath by DOM order alone. */
+  #invMoveOverlay{z-index:30;}
   /* Full-size attachment viewer (see openLightbox in the script) — always on top of everything
      else, including the entry modal and the delete-confirm overlay, since it can be opened from
      either. */
@@ -1372,6 +1376,41 @@
       <button type="button" class="btn ghost" id="invReelsCancelBtn" data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="invReelsConfirmBtn" data-i18n="inv_reels_confirm">Log Receipts</button>
+    </div>
+  </div>
+</div>
+
+<!-- View reels — read-mostly companion to Receive Reels: every individual reel on file for one
+     GSM/Size/BF spec, in the same tabular shape it was received in. Rows are the item's own
+     `purchases` docs (state.invPurchases filtered by sku), so Edit/Delete here (Admin-only) are the
+     exact same actions Purchase History offers — this is just a quick, item-scoped way to see them
+     without searching the full Purchase History list. -->
+<div class="modalOverlay" id="invReelsViewOverlay" hidden>
+  <div class="modal wide">
+    <h2 data-i18n="inv_reels_view_title">Reels on File</h2>
+    <p class="invMoveCurrentQty" id="invReelsViewItemLine"></p>
+    <div class="tableWrap">
+      <table class="invExtractTable" id="invReelsViewTable">
+        <thead>
+          <tr>
+            <th data-i18n="inv_reels_th_reelno">Reel No</th>
+            <th data-i18n="inv_items_shade">Shade</th>
+            <th data-i18n="inv_reels_th_weight">Weight/Reel (kg)</th>
+            <th data-i18n="inv_reels_th_rate">Rate (₹/kg)</th>
+            <th data-i18n="inv_th_amount">Amount</th>
+            <th data-i18n="inv_th_supplier">Supplier</th>
+            <th data-i18n="inv_move_receiveddate_label">Received Date</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="invReelsViewTbody"></tbody>
+      </table>
+    </div>
+    <div class="supEmpty" id="invReelsViewEmpty" hidden data-i18n="inv_reels_view_empty">No reels received yet for this item.</div>
+    <p class="invMoveAmountLine" id="invReelsViewSummaryLine" style="margin-top:10px;"></p>
+    <div class="modalActions" style="margin-top:10px;">
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="invReelsViewCloseBtn" data-i18n="generic_done">Done</button>
     </div>
   </div>
 </div>
@@ -2400,6 +2439,9 @@
       inv_reels_summary_line: "{count} reels · Total Weight: {weight} kg · Total Amount: {amount}",
       inv_reels_err_no_rows: "Add at least one reel before logging receipts.",
       inv_reels_err_bad_weight: "Every reel needs a weight greater than zero.",
+      inv_reels_view_action: "View", inv_reels_view_title: "Reels on File",
+      inv_reels_view_empty: "No reels received yet for this item.",
+      inv_reels_view_summary_line: "{count} reels on file · Total Weight: {weight} kg · Total Amount: {amount}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
       inv_err_bad_qty: "Enter a quantity greater than zero.",
       inv_err_bad_weight: "Enter the weight per reel (kg) greater than zero — this item is priced by weight.",
@@ -2674,6 +2716,9 @@
       inv_reels_summary_line: "{count} रील · कुल वज़न: {weight} kg · कुल राशि: {amount}",
       inv_reels_err_no_rows: "रसीदें दर्ज करने से पहले कम से कम एक रील जोड़ें।",
       inv_reels_err_bad_weight: "हर रील का वज़न शून्य से अधिक होना चाहिए।",
+      inv_reels_view_action: "देखें", inv_reels_view_title: "उपलब्ध रीलें",
+      inv_reels_view_empty: "इस आइटम के लिए अभी तक कोई रील प्राप्त नहीं हुई।",
+      inv_reels_view_summary_line: "{count} रीलें उपलब्ध · कुल वज़न: {weight} kg · कुल राशि: {amount}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
       inv_err_bad_qty: "शून्य से अधिक मात्रा दर्ज करें।",
       inv_err_bad_weight: "प्रति रील वज़न (kg) शून्य से अधिक दर्ज करें — यह आइटम वज़न के हिसाब से कीमत तय होती है।",
@@ -2948,6 +2993,9 @@
       inv_reels_summary_line: "{count} రీళ్లు · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
       inv_reels_err_no_rows: "రసీదులను నమోదు చేయడానికి ముందు కనీసం ఒక రీల్ జోడించండి.",
       inv_reels_err_bad_weight: "ప్రతి రీల్‌కు సున్నా కంటే ఎక్కువ బరువు అవసరం.",
+      inv_reels_view_action: "వీక్షించండి", inv_reels_view_title: "అందుబాటులో ఉన్న రీళ్లు",
+      inv_reels_view_empty: "ఈ ఐటమ్ కోసం ఇంకా రీళ్లు స్వీకరించలేదు.",
+      inv_reels_view_summary_line: "{count} రీళ్లు అందుబాటులో ఉన్నాయి · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
       inv_err_bad_qty: "సున్నా కంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
       inv_err_bad_weight: "ప్రతి రీల్ బరువు (kg) సున్నా కంటే ఎక్కువగా నమోదు చేయండి — ఈ ఐటమ్ బరువు ఆధారంగా ధర నిర్ణయించబడుతుంది.",
@@ -3220,6 +3268,12 @@
     invReelsError: document.getElementById("invReelsError"),
     invReelsCancelBtn: document.getElementById("invReelsCancelBtn"),
     invReelsConfirmBtn: document.getElementById("invReelsConfirmBtn"),
+    invReelsViewOverlay: document.getElementById("invReelsViewOverlay"),
+    invReelsViewItemLine: document.getElementById("invReelsViewItemLine"),
+    invReelsViewTbody: document.getElementById("invReelsViewTbody"),
+    invReelsViewEmpty: document.getElementById("invReelsViewEmpty"),
+    invReelsViewSummaryLine: document.getElementById("invReelsViewSummaryLine"),
+    invReelsViewCloseBtn: document.getElementById("invReelsViewCloseBtn"),
     invStatusOverlay: document.getElementById("invStatusOverlay"),
     invStatusItemLine: document.getElementById("invStatusItemLine"),
     invStatusFromSelect: document.getElementById("invStatusFromSelect"),
@@ -6237,11 +6291,26 @@
         statusBtn.type = "button"; statusBtn.className = "btn ghost invSmallBtn"; statusBtn.textContent = t("inv_status_action");
         statusBtn.addEventListener("click", function(){ openStatusModal(item.sku); });
         actionsCell.appendChild(statusBtn);
+        // "View" lists every individual reel on file for this GSM/Size/BF spec in a table — only
+        // meaningful for priced-per-reel items, since every other item type has no per-unit
+        // breakdown to show (see openReelsViewModal).
+        if(isReelUnit(item)){
+          var viewBtn = document.createElement("button");
+          viewBtn.type = "button"; viewBtn.className = "btn ghost invSmallBtn"; viewBtn.textContent = t("inv_reels_view_action");
+          viewBtn.addEventListener("click", function(){ openReelsViewModal(item.sku); });
+          actionsCell.appendChild(viewBtn);
+        }
       }
       el.invStockBody.appendChild(tr);
     });
 
     renderInventoryLog();
+    // Keep an open "View reels" modal live too, the same way Purchase History already refreshes
+    // itself whenever purchases change (edits/deletes made from inside the modal should reflect
+    // immediately, without the user having to close and reopen it).
+    if(invReelsViewSku && el.invReelsViewOverlay && !el.invReelsViewOverlay.hidden){
+      renderReelsViewTable(invReelsViewSku);
+    }
   }
 
   function renderInventoryLog(){
@@ -6267,27 +6336,33 @@
         "<td>" + esc(p.note || "") + "</td>" +
         '<td class="invRowActions"></td>';
       if(canManage){
-        var editBtn = document.createElement("button");
-        editBtn.type = "button"; editBtn.className = "btn ghost invSmallBtn"; editBtn.textContent = t("sup_edit");
-        editBtn.addEventListener("click", function(){ openEditPurchaseModal(p); });
-        tr.querySelector(".invRowActions").appendChild(editBtn);
-        var delBtn = document.createElement("button");
-        delBtn.type = "button"; delBtn.className = "btn ghost invSmallBtn"; delBtn.textContent = t("generic_delete");
-        delBtn.addEventListener("click", function(){
-          if(purchaseDeletionWouldBreakStatusBuckets(p)){
-            showBanner(t("inv_purchase_err_status_committed"));
-            return;
-          }
-          delBtn.disabled = true;
-          state.db.collection("purchases").doc(p.id).delete().catch(function(){
-            delBtn.disabled = false;
-            showBanner(t("inv_items_err_remove_failed"));
-          });
-        });
-        tr.querySelector(".invRowActions").appendChild(delBtn);
+        appendPurchaseRowActions(tr.querySelector(".invRowActions"), p);
       }
       el.invLogBody.appendChild(tr);
     });
+  }
+  // Shared Edit/Delete wiring for a single purchase row — used by both Purchase History and the
+  // per-item "View reels" modal, so a receipt corrected/removed from either place behaves identically
+  // (same guard against deleting stock already committed to In Use/Damaged elsewhere).
+  function appendPurchaseRowActions(actionsCell, p){
+    var editBtn = document.createElement("button");
+    editBtn.type = "button"; editBtn.className = "btn ghost invSmallBtn"; editBtn.textContent = t("sup_edit");
+    editBtn.addEventListener("click", function(){ openEditPurchaseModal(p); });
+    actionsCell.appendChild(editBtn);
+    var delBtn = document.createElement("button");
+    delBtn.type = "button"; delBtn.className = "btn ghost invSmallBtn"; delBtn.textContent = t("generic_delete");
+    delBtn.addEventListener("click", function(){
+      if(purchaseDeletionWouldBreakStatusBuckets(p)){
+        showBanner(t("inv_purchase_err_status_committed"));
+        return;
+      }
+      delBtn.disabled = true;
+      state.db.collection("purchases").doc(p.id).delete().catch(function(){
+        delBtn.disabled = false;
+        showBanner(t("inv_items_err_remove_failed"));
+      });
+    });
+    actionsCell.appendChild(delBtn);
   }
 
   el.invSearch.addEventListener("input", renderInventory);
@@ -7375,6 +7450,58 @@
       el.invReelsError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
       el.invReelsError.hidden = false;
     });
+  });
+
+  // ---------- View reels (read-mostly, one GSM/Size/BF spec's individual reels) ----------
+  var invReelsViewSku = null;
+  function renderReelsViewTable(sku){
+    var canManage = state.isAdminDevice;
+    var rows = state.invPurchases.filter(function(p){ return p.sku === sku; })
+      .sort(function(a, b){
+        // Most recently received first; createdAt breaks ties (same received date) or fills in when
+        // a date is somehow missing, so ordering never looks arbitrary.
+        var ad = a.date || "", bd = b.date || "";
+        if(ad !== bd) return ad < bd ? 1 : -1;
+        return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+      });
+    el.invReelsViewTbody.innerHTML = "";
+    el.invReelsViewEmpty.hidden = rows.length !== 0;
+    var totalWeight = 0, totalAmount = 0;
+    rows.forEach(function(p){
+      totalWeight += Number(p.weight) || 0;
+      totalAmount += Number(p.lineAmount) || 0;
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="mono">' + esc(p.reelNo || "—") + "</td>" +
+        "<td>" + esc(p.shade || "—") + "</td>" +
+        '<td class="mono">' + (p.weightPerReel != null ? Number(p.weightPerReel).toLocaleString(undefined, { maximumFractionDigits: 3 }) : "—") + "</td>" +
+        '<td class="mono">' + esc(formatInr(p.pricePerUnit)) + "</td>" +
+        '<td class="mono">' + esc(formatInr(p.lineAmount)) + "</td>" +
+        "<td>" + esc(p.supplier || "—") + "</td>" +
+        "<td>" + esc(p.date || "—") + "</td>" +
+        '<td class="invRowActions"></td>';
+      if(canManage){
+        appendPurchaseRowActions(tr.querySelector(".invRowActions"), p);
+      }
+      el.invReelsViewTbody.appendChild(tr);
+    });
+    el.invReelsViewSummaryLine.textContent = tf("inv_reels_view_summary_line", {
+      count: rows.length, weight: totalWeight.toLocaleString(undefined, { maximumFractionDigits: 3 }),
+      amount: formatInr(totalAmount)
+    });
+  }
+  function openReelsViewModal(sku){
+    var item = state.invCatalog[sku];
+    if(!item) return;
+    invReelsViewSku = sku;
+    var current = availableFor(sku);
+    el.invReelsViewItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
+    renderReelsViewTable(sku);
+    el.invReelsViewOverlay.hidden = false;
+  }
+  el.invReelsViewCloseBtn.addEventListener("click", function(){ el.invReelsViewOverlay.hidden = true; invReelsViewSku = null; });
+  el.invReelsViewOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.invReelsViewOverlay){ el.invReelsViewOverlay.hidden = true; invReelsViewSku = null; }
   });
 
   // ---------- Update Status modal (Available / In Use / Damaged) ----------
