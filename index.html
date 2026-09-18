@@ -909,7 +909,7 @@
         <table>
           <thead>
             <tr>
-              <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th><th data-i18n="inv_items_shade">Shade</th>
+              <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th><th data-i18n="inv_reels_th_reelno">Reel No</th><th data-i18n="inv_items_shade">Shade</th>
               <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_discount">Disc %</th><th data-i18n="inv_th_gst">GST %</th><th data-i18n="inv_th_amount">Amount</th>
               <th data-i18n="inv_th_supplier">Supplier</th><th data-i18n="inv_th_receivedby">Received By</th><th data-i18n="th_remarks">Note</th><th></th>
             </tr>
@@ -1261,9 +1261,12 @@
          (a typical/default value, set in Manage Inventory Items), this is per-receipt and freely
          editable each time, prefilled from that default just as Rate is. Shown only alongside the
          other paper-specific fields (priced-per-reel items). -->
-    <div class="supAddRow" id="invMoveShadeRow" hidden style="grid-template-columns:1fr;">
+    <div class="supAddRow" id="invMoveShadeRow" hidden>
       <label><span data-i18n="inv_items_shade">Shade</span>
         <input type="text" id="invMoveShadeInput" placeholder="e.g. Natural, LG, G, GY">
+      </label>
+      <label><span data-i18n="inv_reels_th_reelno">Reel No</span>
+        <input type="text" id="invMoveReelNoInput" class="mono" placeholder="e.g. 26B04729">
       </label>
     </div>
     <div class="supAddRow">
@@ -1306,6 +1309,69 @@
       <button type="button" class="btn ghost" id="invMoveCancelBtn" data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="invMoveConfirmBtn" data-i18n="inv_move_confirm">Log Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receive Reels — dedicated batch-entry flow for priced-per-reel items (paper/film/similar),
+     replacing one combined Quantity + Weight-per-Reel receipt with one row per PHYSICAL reel, since
+     each individual reel has its own actual weight, shade, and can come from a different
+     vendor/rate even within the same GSM/Size/BF spec (mirrors the mill's own reel-by-reel invoice
+     layout). Confirm writes one purchase doc per row (qty always 1) through the same
+     addInventoryPurchase() used everywhere else in Inventory, so every reel ends up individually
+     editable/deletable/status-trackable later in Purchase History, exactly like any other receipt. -->
+<div class="modalOverlay" id="invReelsBatchOverlay" hidden>
+  <div class="modal wide">
+    <h2 data-i18n="inv_reels_title">Receive Reels</h2>
+    <p class="invMoveCurrentQty" id="invReelsItemLine"></p>
+    <div class="tableWrap">
+      <table class="invExtractTable" id="invReelsTable">
+        <thead>
+          <tr>
+            <th data-i18n="inv_reels_th_reelno">Reel No</th>
+            <th data-i18n="inv_items_shade">Shade</th>
+            <th data-i18n="inv_reels_th_weight">Weight/Reel (kg)</th>
+            <th data-i18n="inv_reels_th_rate">Rate (₹/kg)</th>
+            <th data-i18n="inv_th_supplier">Supplier</th>
+            <th data-i18n="inv_move_receiveddate_label">Received Date</th>
+            <th data-i18n="inv_th_amount">Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="invReelsTbody"></tbody>
+      </table>
+    </div>
+    <div class="modalActions" style="margin-top:8px;">
+      <button type="button" class="btn ghost small" id="invReelsAddRowBtn" data-i18n="inv_reels_add_row">+ Add Reel</button>
+      <div class="spacer"></div>
+      <p class="invMoveAmountLine" id="invReelsSummaryLine" style="margin:0;"></p>
+    </div>
+    <div class="supAddRow" style="margin-top:14px;">
+      <label><span data-i18n="inv_move_discount_label">Discount %</span>
+        <input type="number" id="invReelsDiscountInput" class="mono" min="0" max="100" step="0.01" placeholder="0">
+      </label>
+      <label><span data-i18n="inv_move_gst_label">GST %</span>
+        <input type="number" id="invReelsGstInput" class="mono" min="0" step="0.01" placeholder="0">
+      </label>
+    </div>
+    <div class="supAddRow">
+      <label><span data-i18n="inv_reels_default_supplier_label">Default Supplier (for new rows)</span>
+        <input type="text" id="invReelsDefaultSupplierInput" placeholder="e.g. Vijay Anand Kraft Papers" data-i18n-placeholder="inv_move_supplier_placeholder">
+      </label>
+      <label><span data-i18n="inv_move_receivedby_label">Received By</span>
+        <input type="text" id="invReelsReceivedByInput" placeholder="Your name">
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_move_note_label">Note (optional)</span>
+        <input type="text" id="invReelsNoteInput" placeholder="Anything worth noting about this delivery…" data-i18n-placeholder="inv_move_note_placeholder">
+      </label>
+    </div>
+    <div class="readOnlyNote" id="invReelsError" hidden style="margin-top:4px;"></div>
+    <div class="modalActions" style="margin-top:10px;">
+      <button type="button" class="btn ghost" id="invReelsCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="invReelsConfirmBtn" data-i18n="inv_reels_confirm">Log Receipts</button>
     </div>
   </div>
 </div>
@@ -2327,6 +2393,13 @@
       inv_move_note_placeholder: "Anything worth noting about this delivery…",
       inv_move_confirm: "Log Receipt",
       inv_move_current_line: "{name} — on hand: {qty} {unit}",
+      inv_reels_title: "Receive Reels",
+      inv_reels_th_reelno: "Reel No", inv_reels_th_weight: "Weight/Reel (kg)", inv_reels_th_rate: "Rate (₹/kg)",
+      inv_reels_add_row: "+ Add Reel", inv_reels_confirm: "Log Receipts",
+      inv_reels_default_supplier_label: "Default Supplier (for new rows)",
+      inv_reels_summary_line: "{count} reels · Total Weight: {weight} kg · Total Amount: {amount}",
+      inv_reels_err_no_rows: "Add at least one reel before logging receipts.",
+      inv_reels_err_bad_weight: "Every reel needs a weight greater than zero.",
       inv_err_unknown_item: "That item couldn't be found — try again.",
       inv_err_bad_qty: "Enter a quantity greater than zero.",
       inv_err_bad_weight: "Enter the weight per reel (kg) greater than zero — this item is priced by weight.",
@@ -2594,6 +2667,13 @@
       inv_move_note_placeholder: "इस डिलीवरी के बारे में कोई भी उल्लेखनीय बात…",
       inv_move_confirm: "रसीद दर्ज करें",
       inv_move_current_line: "{name} — उपलब्ध: {qty} {unit}",
+      inv_reels_title: "रील प्राप्त करें",
+      inv_reels_th_reelno: "रील नंबर", inv_reels_th_weight: "प्रति रील वज़न (kg)", inv_reels_th_rate: "दर (₹/kg)",
+      inv_reels_add_row: "+ रील जोड़ें", inv_reels_confirm: "रसीदें दर्ज करें",
+      inv_reels_default_supplier_label: "डिफ़ॉल्ट सप्लायर (नई पंक्तियों के लिए)",
+      inv_reels_summary_line: "{count} रील · कुल वज़न: {weight} kg · कुल राशि: {amount}",
+      inv_reels_err_no_rows: "रसीदें दर्ज करने से पहले कम से कम एक रील जोड़ें।",
+      inv_reels_err_bad_weight: "हर रील का वज़न शून्य से अधिक होना चाहिए।",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
       inv_err_bad_qty: "शून्य से अधिक मात्रा दर्ज करें।",
       inv_err_bad_weight: "प्रति रील वज़न (kg) शून्य से अधिक दर्ज करें — यह आइटम वज़न के हिसाब से कीमत तय होती है।",
@@ -2861,6 +2941,13 @@
       inv_move_note_placeholder: "ఈ డెలివరీ గురించి గమనించదగినది ఏదైనా…",
       inv_move_confirm: "రసీదు నమోదు చేయండి",
       inv_move_current_line: "{name} — అందుబాటులో ఉంది: {qty} {unit}",
+      inv_reels_title: "రీళ్లను స్వీకరించండి",
+      inv_reels_th_reelno: "రీల్ నంబర్", inv_reels_th_weight: "ప్రతి రీల్ బరువు (kg)", inv_reels_th_rate: "రేటు (₹/kg)",
+      inv_reels_add_row: "+ రీల్ జోడించండి", inv_reels_confirm: "రసీదులను నమోదు చేయండి",
+      inv_reels_default_supplier_label: "డిఫాల్ట్ సప్లయర్ (కొత్త వరుసల కోసం)",
+      inv_reels_summary_line: "{count} రీళ్లు · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
+      inv_reels_err_no_rows: "రసీదులను నమోదు చేయడానికి ముందు కనీసం ఒక రీల్ జోడించండి.",
+      inv_reels_err_bad_weight: "ప్రతి రీల్‌కు సున్నా కంటే ఎక్కువ బరువు అవసరం.",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
       inv_err_bad_qty: "సున్నా కంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
       inv_err_bad_weight: "ప్రతి రీల్ బరువు (kg) సున్నా కంటే ఎక్కువగా నమోదు చేయండి — ఈ ఐటమ్ బరువు ఆధారంగా ధర నిర్ణయించబడుతుంది.",
@@ -3106,6 +3193,7 @@
     invMoveTotalWeightInput: document.getElementById("invMoveTotalWeightInput"),
     invMoveShadeRow: document.getElementById("invMoveShadeRow"),
     invMoveShadeInput: document.getElementById("invMoveShadeInput"),
+    invMoveReelNoInput: document.getElementById("invMoveReelNoInput"),
     invMovePriceLabel: document.getElementById("invMovePriceLabel"),
     invMovePriceInput: document.getElementById("invMovePriceInput"),
     invMoveDiscountInput: document.getElementById("invMoveDiscountInput"),
@@ -3119,6 +3207,19 @@
     invMoveError: document.getElementById("invMoveError"),
     invMoveCancelBtn: document.getElementById("invMoveCancelBtn"),
     invMoveConfirmBtn: document.getElementById("invMoveConfirmBtn"),
+    invReelsBatchOverlay: document.getElementById("invReelsBatchOverlay"),
+    invReelsItemLine: document.getElementById("invReelsItemLine"),
+    invReelsTbody: document.getElementById("invReelsTbody"),
+    invReelsAddRowBtn: document.getElementById("invReelsAddRowBtn"),
+    invReelsSummaryLine: document.getElementById("invReelsSummaryLine"),
+    invReelsDiscountInput: document.getElementById("invReelsDiscountInput"),
+    invReelsGstInput: document.getElementById("invReelsGstInput"),
+    invReelsDefaultSupplierInput: document.getElementById("invReelsDefaultSupplierInput"),
+    invReelsReceivedByInput: document.getElementById("invReelsReceivedByInput"),
+    invReelsNoteInput: document.getElementById("invReelsNoteInput"),
+    invReelsError: document.getElementById("invReelsError"),
+    invReelsCancelBtn: document.getElementById("invReelsCancelBtn"),
+    invReelsConfirmBtn: document.getElementById("invReelsConfirmBtn"),
     invStatusOverlay: document.getElementById("invStatusOverlay"),
     invStatusItemLine: document.getElementById("invStatusItemLine"),
     invStatusFromSelect: document.getElementById("invStatusFromSelect"),
@@ -5977,6 +6078,10 @@
     catch(err){ return Promise.reject(err); }
     var payload = Object.assign({ sku: sku, itemName: item.name }, core, {
       shade: (extra && extra.shade || "").trim() || null,
+      // Reel No identifies the physical reel this receipt is for (e.g. off the mill's own invoice) —
+      // only meaningful for priced-per-reel items received one reel at a time (see
+      // openReceiveReelsModal); left null for everything else.
+      reelNo: (extra && extra.reelNo || "").trim() || null,
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
       date: (extra && extra.receivedDate) || state.date, shift: state.shift || "", createdAt: Date.now()
     });
@@ -5993,6 +6098,7 @@
     catch(err){ return Promise.reject(err); }
     var payload = Object.assign({}, core, {
       shade: (extra && extra.shade || "").trim() || null,
+      reelNo: (extra && extra.reelNo || "").trim() || null,
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
       date: (extra && extra.receivedDate) || state.date,
       updatedAt: Date.now()
@@ -6148,6 +6254,7 @@
       tr.innerHTML =
         "<td>" + esc(p.date || "") + "</td>" +
         "<td>" + esc(p.itemName) + "</td>" +
+        '<td class="mono">' + esc(p.reelNo || "—") + "</td>" +
         "<td>" + esc(p.shade || "—") + "</td>" +
         '<td class="mono">' + (Number(p.qty) || 0).toLocaleString() +
           (p.weight != null ? ' <span class="invLogWeightNote">(' + Number(p.weight).toLocaleString() + ' kg)</span>' : "") + "</td>" +
@@ -6207,11 +6314,11 @@
     return lines.join("\r\n");
   }
   function buildInventoryPurchasesCsv(rows){
-    var header = ["Date", "Item", "Shade", "Qty", "Weight (kg)", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
+    var header = ["Date", "Item", "Reel No", "Shade", "Qty", "Weight (kg)", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(p){
       lines.push([
-        p.date || "", p.itemName, p.shade || "", Number(p.qty) || 0, p.weight != null ? Number(p.weight) : "",
+        p.date || "", p.itemName, p.reelNo || "", p.shade || "", Number(p.qty) || 0, p.weight != null ? Number(p.weight) : "",
         (Number(p.pricePerUnit) || 0).toFixed(2),
         Number(p.discountPct) || 0, Number(p.gstPct) || 0, (Number(p.lineAmount) || 0).toFixed(2),
         p.supplier || "", p.receivedBy || "", p.note || ""
@@ -7020,6 +7127,10 @@
   function openReceiveModal(sku){
     var item = state.invCatalog[sku];
     if(!item) return;
+    // Priced-per-reel items (paper/film/similar) are received one physical reel at a time, each with
+    // its own actual weight/shade/rate/vendor — see openReceiveReelsModal for that dedicated,
+    // table-based flow. Everything else keeps this single-receipt form exactly as before.
+    if(isReelUnit(item)){ openReceiveReelsModal(sku); return; }
     var reelUnit = isReelUnit(item);
     invMoveContext = { sku: sku, isReelUnit: reelUnit, editId: null, originalPurchase: null };
     el.invMoveTitle.textContent = t("inv_move_title");
@@ -7076,6 +7187,7 @@
     el.invMoveTotalWeightInput.value = "";
     el.invMoveShadeRow.hidden = !reelUnit;
     el.invMoveShadeInput.value = reelUnit ? (purchase.shade || item.shade || "") : "";
+    el.invMoveReelNoInput.value = reelUnit ? (purchase.reelNo || "") : "";
     el.invMovePriceLabel.textContent = reelUnit ? t("inv_move_price_label_perkg") : t("inv_move_price_label");
     el.invMovePriceInput.value = purchase.pricePerUnit != null ? purchase.pricePerUnit : "";
     el.invMoveDiscountInput.value = purchase.discountPct || "";
@@ -7111,7 +7223,7 @@
     }
     el.invMoveConfirmBtn.disabled = true;
     var priceFields = { pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value };
-    var extraFields = { shade: el.invMoveShadeInput.value, receivedDate: el.invMoveReceivedDateInput.value };
+    var extraFields = { shade: el.invMoveShadeInput.value, reelNo: el.invMoveReelNoInput.value, receivedDate: el.invMoveReceivedDateInput.value };
     var action = invMoveContext.editId
       ? updateInventoryPurchase(invMoveContext.editId, state.invCatalog[invMoveContext.sku], el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value, extraFields)
       : addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveReelWeightInput.value, extraFields);
@@ -7124,6 +7236,145 @@
         el.invMoveError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
         el.invMoveError.hidden = false;
       });
+  });
+
+  // ---------- Receive Reels (batch, one row per physical reel) ----------
+  // Rows: [{ reelNo, shade, weight, rate, supplier, date }]. Each row becomes its own purchase doc
+  // (qty always 1, that row's own weight/rate/shade/supplier/date) via the same addInventoryPurchase
+  // used everywhere else — see openReceiveModal's routing for reel items into this modal instead.
+  var invReelsContext = null; // { sku }
+  var invReelsRows = [];
+  function invReelsSharedFields(){
+    return {
+      discountPct: el.invReelsDiscountInput.value,
+      gstPct: el.invReelsGstInput.value,
+      receivedBy: el.invReelsReceivedByInput.value,
+      note: el.invReelsNoteInput.value
+    };
+  }
+  function invReelsRowAmount(row){
+    var shared = invReelsSharedFields();
+    return computeInventoryLineAmount(row.weight, row.rate, shared.discountPct, shared.gstPct);
+  }
+  function refreshInvReelsSummary(){
+    var totalWeight = 0, totalAmount = 0;
+    invReelsRows.forEach(function(row){
+      totalWeight += Number(row.weight) || 0;
+      totalAmount += invReelsRowAmount(row);
+    });
+    el.invReelsSummaryLine.textContent = tf("inv_reels_summary_line", {
+      count: invReelsRows.length, weight: totalWeight.toLocaleString(undefined, { maximumFractionDigits: 3 }),
+      amount: formatInr(totalAmount)
+    });
+  }
+  function renderInvReelsTable(){
+    el.invReelsTbody.innerHTML = "";
+    invReelsRows.forEach(function(row, idx){
+      var tr = document.createElement("tr");
+      var amount = invReelsRowAmount(row);
+      tr.innerHTML =
+        '<td><input type="text" class="mono" data-f="reelNo" value="' + esc(row.reelNo || "") + '" style="min-width:90px;"></td>' +
+        '<td><input type="text" data-f="shade" value="' + esc(row.shade || "") + '" style="min-width:70px;"></td>' +
+        '<td><input type="number" class="mono" min="0" step="0.001" data-f="weight" value="' + (row.weight != null ? row.weight : "") + '" style="min-width:90px;"></td>' +
+        '<td><input type="number" class="mono" min="0" step="0.01" data-f="rate" value="' + (row.rate != null ? row.rate : "") + '" style="min-width:80px;"></td>' +
+        '<td><input type="text" data-f="supplier" value="' + esc(row.supplier || "") + '" style="min-width:120px;"></td>' +
+        '<td><input type="date" data-f="date" value="' + esc(row.date || "") + '" style="min-width:130px;"></td>' +
+        '<td class="mono invReelsRowAmount">' + esc(formatInr(amount)) + '</td>' +
+        '<td><button type="button" class="invExtractRemoveBtn" title="Remove row">✕</button></td>';
+      tr.querySelectorAll("[data-f]").forEach(function(input){
+        var field = input.getAttribute("data-f");
+        input.addEventListener("input", function(){
+          row[field] = (field === "weight" || field === "rate") ? (input.value === "" ? null : Number(input.value)) : input.value;
+          tr.querySelector(".invReelsRowAmount").textContent = formatInr(invReelsRowAmount(row));
+          refreshInvReelsSummary();
+        });
+      });
+      tr.querySelector(".invExtractRemoveBtn").addEventListener("click", function(){
+        invReelsRows.splice(idx, 1);
+        renderInvReelsTable();
+        refreshInvReelsSummary();
+      });
+      el.invReelsTbody.appendChild(tr);
+    });
+  }
+  function addInvReelsRow(seed){
+    var prev = invReelsRows[invReelsRows.length - 1];
+    invReelsRows.push({
+      reelNo: "",
+      shade: (seed && seed.shade) || (prev && prev.shade) || "",
+      weight: (seed && seed.weight != null) ? seed.weight : null,
+      rate: (seed && seed.rate != null) ? seed.rate : (prev ? prev.rate : null),
+      // New rows default to whatever was typed last (own row, then the Default Supplier field) —
+      // consecutive reels are usually from the same delivery, so this keeps repeat entry fast while
+      // every row stays independently editable (the Excel this mirrors mixes vendors freely).
+      supplier: (seed && seed.supplier) || (prev && prev.supplier) || el.invReelsDefaultSupplierInput.value || "",
+      date: (seed && seed.date) || (prev && prev.date) || state.date || todayStr()
+    });
+    renderInvReelsTable();
+    refreshInvReelsSummary();
+  }
+  function openReceiveReelsModal(sku){
+    var item = state.invCatalog[sku];
+    if(!item) return;
+    invReelsContext = { sku: sku };
+    var current = availableFor(sku);
+    el.invReelsItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
+    invReelsRows = [];
+    el.invReelsDiscountInput.value = "";
+    el.invReelsGstInput.value = "";
+    el.invReelsDefaultSupplierInput.value = item.supplier || "";
+    el.invReelsReceivedByInput.value = deviceSupervisorName || "";
+    el.invReelsNoteInput.value = "";
+    el.invReelsError.hidden = true;
+    // Start with one row already in place (pre-filled from the item's own defaults, same convenience
+    // Receive Stock's single-entry form already gives) so the modal never opens to an empty table.
+    addInvReelsRow({
+      shade: item.shade || "", weight: item.defaultWeightPerReel != null ? item.defaultWeightPerReel : null,
+      rate: item.defaultPrice != null ? item.defaultPrice : null, supplier: item.supplier || "", date: state.date || todayStr()
+    });
+    el.invReelsBatchOverlay.hidden = false;
+  }
+  el.invReelsAddRowBtn.addEventListener("click", function(){ addInvReelsRow(); });
+  [el.invReelsDiscountInput, el.invReelsGstInput].forEach(function(input){
+    input.addEventListener("input", function(){ renderInvReelsTable(); refreshInvReelsSummary(); });
+  });
+  el.invReelsCancelBtn.addEventListener("click", function(){ el.invReelsBatchOverlay.hidden = true; invReelsContext = null; invReelsRows = []; });
+  el.invReelsBatchOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.invReelsBatchOverlay){ el.invReelsBatchOverlay.hidden = true; invReelsContext = null; invReelsRows = []; }
+  });
+  el.invReelsConfirmBtn.addEventListener("click", function(){
+    if(!invReelsContext) return;
+    el.invReelsError.hidden = true;
+    if(invReelsRows.length === 0){
+      el.invReelsError.textContent = t("inv_reels_err_no_rows");
+      el.invReelsError.hidden = false;
+      return;
+    }
+    var badRow = invReelsRows.find(function(row){ return !(Number(row.weight) > 0); });
+    if(badRow){
+      el.invReelsError.textContent = t("inv_reels_err_bad_weight");
+      el.invReelsError.hidden = false;
+      return;
+    }
+    var shared = invReelsSharedFields();
+    var sku = invReelsContext.sku;
+    el.invReelsConfirmBtn.disabled = true;
+    var writes = invReelsRows.map(function(row){
+      var priceFields = { pricePerUnit: row.rate, discountPct: shared.discountPct, gstPct: shared.gstPct };
+      return addInventoryPurchase(sku, 1, priceFields, row.supplier, shared.receivedBy, shared.note, row.weight, {
+        shade: row.shade, reelNo: row.reelNo, receivedDate: row.date
+      });
+    });
+    Promise.all(writes).then(function(){
+      el.invReelsConfirmBtn.disabled = false;
+      el.invReelsBatchOverlay.hidden = true;
+      invReelsContext = null;
+      invReelsRows = [];
+    }).catch(function(err){
+      el.invReelsConfirmBtn.disabled = false;
+      el.invReelsError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
+      el.invReelsError.hidden = false;
+    });
   });
 
   // ---------- Update Status modal (Available / In Use / Damaged) ----------
