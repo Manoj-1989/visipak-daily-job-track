@@ -550,6 +550,8 @@
     margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);font-size:11px;
     color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;
   }
+  .invItemCheckboxRow{display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:12.5px;color:var(--ink-soft);line-height:1.4;cursor:pointer;}
+  .invItemCheckboxRow input{margin-top:3px;flex:none;}
   .invExtractSection{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);}
   .invExtractHeader{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;}
   .invExtractNote{font-size:12px;color:var(--ink-soft);line-height:1.5;margin:4px 0 10px;}
@@ -1110,6 +1112,14 @@
         <input type="number" id="invItemWeightInput" class="mono" min="0" step="0.001">
       </label>
     </div>
+    <!-- Explicit, per-item control for Receive Stock's pricing formula — deliberately NOT inferred
+         from the Unit text (a real paper item's Unit is often "Kg", not "reels", since that's the
+         unit its on-hand stock is tracked in), which is why this needs its own checkbox rather than
+         guessing from a string that varies per item. -->
+    <label class="invItemCheckboxRow">
+      <input type="checkbox" id="invItemPricedPerReelInput">
+      <span data-i18n="inv_items_priced_per_reel">Priced per reel — Receive Stock shows Weight per Reel &amp; Total Weight, and Amount = Total Weight × Rate</span>
+    </label>
     <div class="supAddRow">
       <!-- Mirrors Unit/Price above (same underlying value, kept in sync both ways — see
            syncInvItemRateFields in the script) so the invoice's own Rate sits right alongside
@@ -2244,6 +2254,7 @@
       inv_items_category_custom_option: "+ Add new category…",
       inv_items_category_custom_placeholder: "Type new category name",
       inv_items_specs_heading: "Paper / Invoice Specifications (optional)",
+      inv_items_priced_per_reel: "Priced per reel — Receive Stock shows Weight per Reel & Total Weight, and Amount = Total Weight × Rate",
       inv_extract_th_hsn: "HSN Code", inv_extract_th_size: "Size", inv_extract_th_gsm: "GSM",
       inv_extract_th_bf: "BF", inv_extract_th_reels: "Reels", inv_extract_th_weight: "Weight",
       inv_extract_th_rate: "Rate",
@@ -2503,6 +2514,7 @@
       inv_items_category_custom_option: "+ नई श्रेणी जोड़ें…",
       inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
       inv_items_specs_heading: "पेपर / इनवॉइस स्पेसिफिकेशन (वैकल्पिक)",
+      inv_items_priced_per_reel: "प्रति रील कीमत — Receive Stock में Weight per Reel और Total Weight दिखेंगे, और Amount = Total Weight × Rate होगा",
       inv_extract_th_hsn: "HSN कोड", inv_extract_th_size: "साइज़", inv_extract_th_gsm: "GSM",
       inv_extract_th_bf: "BF", inv_extract_th_reels: "रील", inv_extract_th_weight: "वज़न",
       inv_extract_th_rate: "रेट",
@@ -2762,6 +2774,7 @@
       inv_items_category_custom_option: "+ కొత్త కేటగిరీ జోడించండి…",
       inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
       inv_items_specs_heading: "పేపర్ / ఇన్వాయిస్ స్పెసిఫికేషన్లు (ఐచ్ఛికం)",
+      inv_items_priced_per_reel: "రీలుకు ధర — Receive Stock లో Weight per Reel మరియు Total Weight కనిపిస్తాయి, Amount = Total Weight × Rate అవుతుంది",
       inv_extract_th_hsn: "HSN కోడ్", inv_extract_th_size: "సైజు", inv_extract_th_gsm: "GSM",
       inv_extract_th_bf: "BF", inv_extract_th_reels: "రీల్స్", inv_extract_th_weight: "బరువు",
       inv_extract_th_rate: "రేటు",
@@ -3006,6 +3019,7 @@
     invItemUnitInput: document.getElementById("invItemUnitInput"),
     invItemPriceInput: document.getElementById("invItemPriceInput"),
     invItemRateInput: document.getElementById("invItemRateInput"),
+    invItemPricedPerReelInput: document.getElementById("invItemPricedPerReelInput"),
     invItemHsnInput: document.getElementById("invItemHsnInput"),
     invItemSizeInput: document.getElementById("invItemSizeInput"),
     invItemSizeUnitInput: document.getElementById("invItemSizeUnitInput"),
@@ -5823,9 +5837,13 @@
   }
   // Reel/roll items (paper, film, and similar) are priced by weight on the supplier's invoice —
   // Amount = Rate x Weight, never Rate x reel count, because individual reels don't weigh exactly
-  // the same. Everything else keeps the ordinary Quantity x Price/Unit calculation.
-  function isReelUnit(unit){
-    return /reel/i.test(unit || "");
+  // the same. Everything else keeps the ordinary Quantity x Price/Unit calculation. This is now an
+  // explicit per-item flag (`item.pricedPerReel`, set via a checkbox in Manage Inventory Items)
+  // rather than inferred from the item's Unit text — a real paper item's Unit is often "Kg" (that's
+  // what its on-hand stock is tracked in), not "reels", so guessing from the Unit string silently
+  // never matched real inventory items.
+  function isReelUnit(item){
+    return !!(item && item.pricedPerReel);
   }
 
   // Records one receipt and returns the write's promise — the only inventory movement there is
@@ -5838,7 +5856,7 @@
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     qty = Number(qty);
     if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
-    var reelUnit = isReelUnit(item.unit);
+    var reelUnit = isReelUnit(item);
     var reelWeightNum = Number(reelWeightPerUnit);
     if(reelUnit && (!isFinite(reelWeightNum) || reelWeightNum <= 0)){
       return Promise.reject(new Error(t("inv_err_bad_weight")));
@@ -6138,6 +6156,7 @@
     el.invItemInvoiceDateInput.value = "";
     el.invItemGstinInput.value = "";
     el.invItemLastAmountInput.value = "";
+    el.invItemPricedPerReelInput.checked = false;
     invoiceAttachmentCtrl.setValue(null);
     hideInvExtractSection();
     el.invItemAddBtn.textContent = t("inv_items_add");
@@ -6179,6 +6198,7 @@
     el.invItemInvoiceDateInput.value = item.lastInvoiceDate || "";
     el.invItemGstinInput.value = item.supplierGstin || "";
     el.invItemLastAmountInput.value = item.lastInvoiceAmount != null ? item.lastInvoiceAmount : "";
+    el.invItemPricedPerReelInput.checked = !!item.pricedPerReel;
     // Reconstructed from the three flat fields the item is actually saved with (see the save
     // handler below) — same convention as the entry form's own attachment widgets.
     invoiceAttachmentCtrl.setValue(item.purchaseInvoiceAttachmentData ? {
@@ -6289,6 +6309,9 @@
       lastInvoiceDate: el.invItemInvoiceDateInput.value.trim() || null,
       supplierGstin: el.invItemGstinInput.value.trim() || null,
       lastInvoiceAmount: invNumOrNull(el.invItemLastAmountInput.value),
+      // Explicit control for Receive Stock's pricing formula (Weight per Reel / Total Weight
+      // fields, Amount = Total Weight x Rate) — see isReelUnit().
+      pricedPerReel: !!el.invItemPricedPerReelInput.checked,
       purchaseInvoiceAttachmentData: invoiceVal ? invoiceVal.data : null,
       purchaseInvoiceAttachmentName: invoiceVal ? invoiceVal.name : null,
       purchaseInvoiceAttachmentType: invoiceVal ? invoiceVal.type : null,
@@ -6665,6 +6688,9 @@
     setIfEmpty(el.invItemReelsInput, row.reels);
     setIfEmpty(el.invItemWeightInput, row.weight);
     setIfEmpty(el.invItemLastAmountInput, row.amount);
+    if((row.reels != null || row.weight != null) && !el.invItemPricedPerReelInput.checked){
+      el.invItemPricedPerReelInput.checked = true;
+    }
     if(headerInfo){
       setIfEmpty(el.invItemInvoiceNoInput, headerInfo.invoiceNo);
       setIfEmpty(el.invItemInvoiceDateInput, headerInfo.invoiceDate);
@@ -6777,6 +6803,11 @@
         reels: row.reels != null ? row.reels : null, lastReceivedWeight: row.weight != null ? row.weight : null,
         lastInvoiceNo: headerInfo.invoiceNo || null, lastInvoiceDate: headerInfo.invoiceDate || null,
         supplierGstin: headerInfo.supplierGstin || null, lastInvoiceAmount: amount,
+        // Invoice rows with a reel count and/or weight are, by definition, priced-by-weight
+        // reel/roll items (paper, film, and similar) — default the checkbox on for a NEW item so
+        // Receive Stock's Weight per Reel / Total Weight fields work right away without an extra
+        // manual step; an existing item keeps whatever the user already set for it.
+        pricedPerReel: existing ? !!existing.pricedPerReel : (row.reels != null || row.weight != null),
         purchaseInvoiceAttachmentData: invoiceVal ? invoiceVal.data : null,
         purchaseInvoiceAttachmentName: invoiceVal ? invoiceVal.name : null,
         purchaseInvoiceAttachmentType: invoiceVal ? invoiceVal.type : null,
@@ -6834,7 +6865,7 @@
   function openReceiveModal(sku){
     var item = state.invCatalog[sku];
     if(!item) return;
-    var reelUnit = isReelUnit(item.unit);
+    var reelUnit = isReelUnit(item);
     invMoveContext = { sku: sku, isReelUnit: reelUnit };
     var current = availableFor(sku);
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
