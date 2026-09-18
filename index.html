@@ -1159,9 +1159,10 @@
         <span class="attachStatus" id="invExtractStatus"></span>
       </div>
       <p class="invExtractNote" data-i18n="inv_extract_note">
-        Best-effort reading from the photo — please check every row below (fix mistakes, remove
+        Best-effort reading from the photo. Every row is checked by default so "Import checked
+        items" adds all of them — please review each one first (fix mistakes, uncheck or remove
         rows that aren't real, or add a row by hand) before importing. The first row was also
-        copied into the form above.
+        copied into the form above for a quick look.
       </p>
       <div class="tableWrap">
         <table class="invExtractTable" id="invExtractTable">
@@ -2234,7 +2235,7 @@
       inv_extract_gstin: "Supplier GSTIN", inv_extract_lastamount: "Last Invoice Amount",
       inv_extract_btn: "🔍 Extract items from this invoice",
       inv_extract_title: "Detected items from this invoice",
-      inv_extract_note: "Best-effort reading from the photo — please check every row below (fix mistakes, remove rows that aren't real, or add a row by hand) before importing. The first row was also copied into the form above.",
+      inv_extract_note: "Best-effort reading from the photo. Every row is checked by default so \"Import checked items\" adds all of them — please review each one first (fix mistakes, uncheck or remove rows that aren't real, or add a row by hand) before importing. The first row was also copied into the form above for a quick look.",
       inv_extract_add_row: "+ Add row", inv_extract_import_btn: "Import checked items",
       inv_extract_err_noimage: "Attach a photo or PDF of the invoice first.",
       inv_extract_loading_ocr: "Loading OCR engine…", inv_extract_reading: "Reading invoice… this can take 10–30 seconds.",
@@ -2491,7 +2492,7 @@
       inv_extract_gstin: "सप्लायर GSTIN", inv_extract_lastamount: "अंतिम इनवॉइस राशि",
       inv_extract_btn: "🔍 इस इनवॉइस से आइटम निकालें",
       inv_extract_title: "इस इनवॉइस से मिले आइटम",
-      inv_extract_note: "फोटो से बेस्ट-एफर्ट रीडिंग — इंपोर्ट करने से पहले हर पंक्ति जांच लें (गलतियां ठीक करें, गलत पंक्तियां हटाएं, या हाथ से पंक्ति जोड़ें)। पहली पंक्ति ऊपर फॉर्म में भी कॉपी कर दी गई है।",
+      inv_extract_note: "फोटो से बेस्ट-एफर्ट रीडिंग। हर पंक्ति डिफ़ॉल्ट रूप से चेक की गई है ताकि \"इंपोर्ट checked items\" सभी को जोड़ दे — इंपोर्ट करने से पहले हर पंक्ति जांच लें (गलतियां ठीक करें, गलत पंक्तियां अनचेक करें या हटाएं, या हाथ से पंक्ति जोड़ें)। पहली पंक्ति ऊपर फॉर्म में भी एक नज़र के लिए कॉपी कर दी गई है।",
       inv_extract_add_row: "+ पंक्ति जोड़ें", inv_extract_import_btn: "चुनी गई आइटम इंपोर्ट करें",
       inv_extract_err_noimage: "पहले इनवॉइस की फोटो या PDF अटैच करें।",
       inv_extract_loading_ocr: "OCR इंजन लोड हो रहा है…", inv_extract_reading: "इनवॉइस पढ़ी जा रही है… इसमें 10–30 सेकंड लग सकते हैं।",
@@ -2748,7 +2749,7 @@
       inv_extract_gstin: "సప్లయర్ GSTIN", inv_extract_lastamount: "చివరి ఇన్వాయిస్ మొత్తం",
       inv_extract_btn: "🔍 ఈ ఇన్వాయిస్ నుండి ఐటమ్‌లు తీయండి",
       inv_extract_title: "ఈ ఇన్వాయిస్ నుండి కనుగొన్న ఐటమ్‌లు",
-      inv_extract_note: "ఫోటో నుండి బెస్ట్-ఎఫర్ట్ రీడింగ్ — దిగుమతి చేయడానికి ముందు ప్రతి వరుసను తనిఖీ చేయండి (తప్పులు సరిచేయండి, తప్పు వరుసలను తీసివేయండి, లేదా చేతితో వరుస జోడించండి). మొదటి వరుస పైన ఫారంలోకి కూడా కాపీ చేయబడింది.",
+      inv_extract_note: "ఫోటో నుండి బెస్ట్-ఎఫర్ట్ రీడింగ్. ప్రతి వరుస డిఫాల్ట్‌గా చెక్ చేయబడింది కాబట్టి \"Import checked items\" అన్నింటినీ జోడిస్తుంది — దిగుమతి చేయడానికి ముందు ప్రతి వరుసను తనిఖీ చేయండి (తప్పులు సరిచేయండి, తప్పు వరుసలను అన్‌చెక్ చేయండి లేదా తీసివేయండి, లేదా చేతితో వరుస జోడించండి). మొదటి వరుస పైన ఫారంలోకి కూడా ఒక చూపు కోసం కాపీ చేయబడింది.",
       inv_extract_add_row: "+ వరుస జోడించండి", inv_extract_import_btn: "ఎంచుకున్న ఐటమ్‌లను దిగుమతి చేయండి",
       inv_extract_err_noimage: "ముందు ఇన్వాయిస్ ఫోటో లేదా PDF జోడించండి.",
       inv_extract_loading_ocr: "OCR ఇంజిన్ లోడ్ అవుతోంది…", inv_extract_reading: "ఇన్వాయిస్ చదువుతోంది… దీనికి 10–30 సెకన్లు పట్టవచ్చు.",
@@ -6347,12 +6348,36 @@
     // silently wrong number.
     return { rate: a, amount: b, uncertain: true };
   }
+  // Pulls the numeric value out of a token that OCR fused with stray punctuation, a misread
+  // letter, or a table-border artifact — e.g. a photographed invoice's faint checkmark/rule
+  // lines routinely turn "109.00" into "109.00)" or "4311.000" into "4311.000-(xKes". Matching
+  // the embedded digit run (rather than requiring the WHOLE token to be a clean number, as
+  // earlier versions of this parser did) is what lets real, noisy phone-photo OCR text populate
+  // fields at all instead of silently losing the column the moment one character gets mangled.
+  // Returns the matched substring (as a string, preserving "109.00"'s trailing zeros for display)
+  // or null when nothing number-shaped is present.
+  function extractNumToken(tok){
+    var m = String(tok).match(/\d+(?:\.\d+)?/);
+    return m ? m[0] : null;
+  }
   // Best-effort text parser — tuned against a common Indian tax-invoice item table (S.No,
   // Description, HSN Code, BF, GSM, Size, Size Unit, Reels, Weight, Unit, Rate, Amount), with a
   // looser fallback for OCR text that lost exact column spacing. Never throws on an odd line —
   // unmatched lines are simply skipped, since every field is hand-reviewed afterwards anyway.
   function parseInvoiceText(text){
-    var lines = (text || "").split(/\r?\n/).map(function(l){ return l.replace(/\s+/g, " ").trim(); }).filter(Boolean);
+    // A printed item table's vertical rule lines are very commonly misread by OCR as literal "|"
+    // characters glued directly onto the row number or the next column ("1|NATURAL SHADE..."),
+    // and long horizontal rules/underlines in a name cell often come through as runs of "_" or
+    // "~" — all normalized to plain spaces here so they can never fuse two real columns into one
+    // token that the column parser below can't make sense of.
+    var lines = (text || "").split(/\r?\n/).map(function(l){
+      return l.replace(/[|~]+/g, " ").replace(/_{2,}/g, " ")
+        // A decimal point between two digits is sometimes misread as a comma (e.g. "2226,000"
+        // instead of "2226.000") — this invoice format never uses a comma as a thousands
+        // separator, so it's safe to always read a digit-comma-digit as a decimal point.
+        .replace(/(\d),(\d)/g, "$1.$2")
+        .replace(/\s+/g, " ").trim();
+    }).filter(Boolean);
     var joined = lines.join("\n");
     function grab(re){
       var m = joined.match(re);
@@ -6374,6 +6399,9 @@
     if(supplierMatch) supplierName = titleCaseWords(supplierMatch[1].trim());
     var items = [];
     var strictRe = /^(\d{1,2})[\s.]+([A-Za-z][A-Za-z \-\/]{2,40}?)\s+(\d{6,8})\s+(\d{1,3})\s+(\d{2,4})\s+([\d.]+)\s*(CM|MM|IN)?\s+(\d{1,4})\s+([\d.]+)\s*(KGS?|PCS|NOS|UNITS?)?\s+([\d.]+)\s+([\d.]+)\s*$/i;
+    // A unit word like "KGS" is small printed text, easy for OCR to drop letters from on a phone
+    // photo — CS/GS cover the common case where only the tail of "KGS" survived.
+    var UNIT_WORD_RE = /(KGS?|PCS|NOS|UNITS?|CS|GS)/i;
     // Looser fallback for a line the strict pattern above didn't match — tried per line (not only
     // when the whole document had zero strict matches), since one invoice can OCR cleanly on some
     // rows and messily on others.
@@ -6391,24 +6419,40 @@
     // strictly from tokens AFTER the located weight token — never from weight's own token or
     // anything before it — makes that specific mistake structurally impossible here.
     function looseParseLine(line){
-      var tokens = line.split(" ").filter(function(tok){ return tok !== ""; });
-      if(!/^\d{1,2}$/.test(tokens[0])) return null;
+      // Tokens that are pure leftover punctuation (an isolated ")" or "," from a border/rule
+      // artifact that survived the line-level normalization above) carry no information and only
+      // throw off column counting — dropped here rather than tokenized as if they were data.
+      var tokens = line.split(" ").filter(function(tok){
+        return tok !== "" && !/^[-_,.():;]+$/.test(tok);
+      });
+      if(!tokens.length) return null;
+      // Row number: normally its own clean token, but tolerate trailing punctuation a misread
+      // border sometimes glues onto it ("1." / "1)").
+      if(!/^\d{1,2}[.)]?$/.test(tokens[0])) return null;
+      // HSN Code: match on the digit RUN inside the token rather than requiring the whole token
+      // to be clean digits — a scanned invoice's HSN column often picks up one stray misread
+      // character (a letter for a digit, a border fragment) without losing the surrounding digits.
       var hsnIdx = -1;
-      for(var j = 1; j < tokens.length; j++){ if(/^\d{6,8}$/.test(tokens[j])){ hsnIdx = j; break; } }
+      for(var j = 1; j < tokens.length; j++){
+        var hsnDigits = tokens[j].replace(/\D/g, "");
+        if(hsnDigits.length >= 6 && hsnDigits.length <= 8){ hsnIdx = j; break; }
+      }
       if(hsnIdx === -1) return null;
       var rest = tokens.slice(hsnIdx + 1);
 
-      // Primary anchor: the last token shaped like a weight (3 decimals normally; allowing a 4th
-      // tolerates the odd stray digit OCR sometimes appends without confusing it for Rate/Amount,
-      // which are always exactly 2 decimals as currency).
-      var weightIdx = -1;
+      // Primary anchor: the last token CONTAINING a weight-shaped decimal (3-4 places) — Weight is
+      // consistently the one column OCR keeps 3+ decimal digits on, even when a stray checkmark or
+      // rule-line artifact ends up glued onto the same token (e.g. "4311.000-(xKes"). Matching the
+      // embedded number instead of requiring the whole token to be clean is what lets Weight (and
+      // everything anchored off it) survive that kind of real-world glued-on noise.
+      var weightIdx = -1, weight = null;
       for(var w = rest.length - 1; w >= 0; w--){
-        if(/^\d+\.\d{3,4}$/.test(rest[w])){ weightIdx = w; break; }
+        var wm = rest[w].match(/(\d+\.\d{3,4})/);
+        if(wm){ weightIdx = w; weight = wm[1]; break; }
       }
-      var beforeNums, weight, afterTokens;
+      var beforeNums, afterTokens;
       if(weightIdx !== -1){
-        beforeNums = rest.slice(0, weightIdx).filter(function(tok){ return /^[\d.]+$/.test(tok); });
-        weight = rest[weightIdx];
+        beforeNums = rest.slice(0, weightIdx).map(extractNumToken).filter(function(v){ return v != null; });
         afterTokens = rest.slice(weightIdx + 1);
       } else {
         // Fallback anchor: an explicit Unit keyword (possibly glued onto a neighboring number, as
@@ -6416,10 +6460,10 @@
         // order, with Weight simply being whichever of those numbers sits right before the unit.
         var unitIdx = -1;
         for(var k = 0; k < rest.length; k++){
-          if(/(KGS?|PCS|NOS|UNITS?)/i.test(rest[k].replace(/[\d.]/g, ""))){ unitIdx = k; break; }
+          if(UNIT_WORD_RE.test(rest[k].replace(/[\d.]/g, ""))){ unitIdx = k; break; }
         }
         if(unitIdx === -1) return null; // no reliable anchor at all — nothing safe to extract
-        var beforeUnitNums = rest.slice(0, unitIdx).filter(function(tok){ return /^[\d.]+$/.test(tok); });
+        var beforeUnitNums = rest.slice(0, unitIdx).map(extractNumToken).filter(function(v){ return v != null; });
         if(beforeUnitNums.length < 1) return null;
         weight = beforeUnitNums[beforeUnitNums.length - 1];
         beforeNums = beforeUnitNums.slice(0, -1);
@@ -6433,10 +6477,12 @@
       var gsm = n >= 3 ? beforeNums[n - 3] : null;
       var bf = n >= 4 ? beforeNums[n - 4] : null;
 
-      // Unit word, if it's recognizable right after Weight (on its own or glued to a number).
+      // Unit word, if it's recognizable right after Weight (on its own or glued to a number). If
+      // Weight's own token already absorbed the unit text (the "4311.000-(xKes" case above), there
+      // is nothing further to strip here and unitVal simply falls back to "kg" below.
       var unitVal = "";
       var afterStart = 0;
-      if(afterTokens.length && /(KGS?|PCS|NOS|UNITS?)/i.test(afterTokens[0].replace(/[\d.]/g, ""))){
+      if(afterTokens.length && UNIT_WORD_RE.test(afterTokens[0].replace(/[\d.]/g, ""))){
         unitVal = afterTokens[0].replace(/[\d.]/g, "").toLowerCase();
         afterStart = 1;
       }
@@ -6446,7 +6492,7 @@
       // token is which (and whether either is even trustworthy) is cross-checked against the
       // invoice's own arithmetic via resolveRateAmount() rather than assumed from raw reading
       // order — see that function for the failure modes this catches.
-      var afterNums = afterTokens.slice(afterStart).filter(function(tok){ return /^[\d.]+$/.test(tok); }).map(Number);
+      var afterNums = afterTokens.slice(afterStart).map(extractNumToken).filter(function(v){ return v != null; }).map(Number);
       var weightNum = Number(weight);
       var resolved = resolveRateAmount(afterNums[0] != null ? afterNums[0] : null, afterNums[1] != null ? afterNums[1] : null, weightNum);
       var rate = resolved.rate, amount = resolved.amount, rateUncertain = resolved.uncertain;
@@ -6455,7 +6501,7 @@
       // right next to the row number — stripped here rather than kept as if it were text.
       var descRaw = tokens.slice(1, hsnIdx).join(" ").replace(/^[^A-Za-z]+/, "").replace(/[^A-Za-z0-9]+$/, "").trim();
       return {
-        description: titleCaseWords(descRaw), hsnCode: tokens[hsnIdx],
+        description: titleCaseWords(descRaw), hsnCode: tokens[hsnIdx].replace(/\D/g, ""),
         bf: bf != null ? Number(bf) : null, gsm: gsm != null ? Number(gsm) : null,
         size: size, sizeUnit: "",
         reels: reels != null ? Number(reels) : null, weight: weight != null ? Number(weight) : null,
@@ -6598,10 +6644,12 @@
         while(skusUsed[sku]){ sku = base + "-" + n; n++; }
         skusUsed[sku] = true;
         return {
-          // Row 1 is copied into the form above instead (see below) — unchecked here by default
-          // so clicking "Add item" up there and "Import checked items" down here never both try
-          // to create the very same SKU.
-          include: idx !== 0,
+          // Every detected row is checked by default so "Import checked items" adds every item
+          // found on the invoice in one click — the user shouldn't have to remember to tick each
+          // row just to get everything in. Row 1 is ALSO copied into the form above for a quick
+          // look, but that's just a convenience preview: both write to the same product doc (keyed
+          // by SKU, create-or-update), so having row 1 checked here too never creates a duplicate.
+          include: true,
           name: it.description, sku: sku, category: INV_CATEGORIES[0], unit: it.unit || "kg",
           hsnCode: it.hsnCode || "", gsm: it.gsm || null, bf: it.bf || null,
           size: it.size || "", sizeUnit: it.sizeUnit || "", reels: it.reels || null,
