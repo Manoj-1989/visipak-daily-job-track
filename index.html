@@ -570,6 +570,7 @@
   .invExtractRemoveBtn:hover{background:var(--crit-soft);}
   .invExtractTable input.invExtractUncertain{border-color:var(--warn);background:var(--warn-soft);}
   .invExtractUncertainMark{color:var(--warn);font-size:13px;flex:none;cursor:help;}
+  .invLogWeightNote{color:var(--ink-soft);font-size:11px;}
   /* Manual Pass/Fail switch per spec row: ON (checked) = Pass (green), OFF = Fail (red).
      A plain checkbox is visually hidden and styled via its sibling <span> track + thumb. */
   .passFailCell{white-space:nowrap;}
@@ -1218,8 +1219,17 @@
         <input type="number" id="invMoveQtyInput" min="0" step="1">
       </label>
     </div>
+    <!-- Reel/roll items (paper, film, etc.) are priced by weight, not by reel count — each reel's
+         actual weight varies, so the supplier's invoice always totals Rate x Weight, never Rate x
+         reel count. Shown only when the item's own Unit (set in Manage Inventory Items) is reels;
+         hidden and ignored for every other unit, which keeps pricing by Quantity x Price/Unit. -->
+    <div class="supAddRow" style="grid-template-columns:1fr;" id="invMoveWeightRow" hidden>
+      <label><span data-i18n="inv_move_weight_label">Weight Received (kg)</span>
+        <input type="number" id="invMoveWeightInput" class="mono" min="0" step="0.001" placeholder="0.000">
+      </label>
+    </div>
     <div class="supAddRow">
-      <label><span data-i18n="inv_move_price_label">Price/Unit</span>
+      <label><span id="invMovePriceLabel" data-i18n="inv_move_price_label">Price/Unit</span>
         <input type="number" id="invMovePriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
       </label>
       <label><span data-i18n="inv_move_discount_label">Discount %</span>
@@ -2255,7 +2265,8 @@
       inv_items_err_remove_failed: "Couldn't remove item.",
       inv_move_title: "Receive Stock",
       inv_move_qty_label: "Quantity Received",
-      inv_move_price_label: "Price/Unit", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
+      inv_move_weight_label: "Weight Received (kg)",
+      inv_move_price_label: "Price/Unit", inv_move_price_label_perkg: "Rate (per kg)", inv_move_discount_label: "Discount %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "Amount: {amount}",
       inv_move_supplier_label: "Supplier / Reference", inv_move_supplier_placeholder: "e.g. Acme Traders, PO-1042",
       inv_move_receivedby_label: "Received By",
@@ -2265,6 +2276,7 @@
       inv_move_current_line: "{name} — on hand: {qty} {unit}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
       inv_err_bad_qty: "Enter a quantity greater than zero.",
+      inv_err_bad_weight: "Enter the weight received (kg) greater than zero — this item is priced by weight.",
       inv_status_title: "Update Status",
       inv_status_from_label: "From", inv_status_to_label: "To",
       inv_status_available: "Available", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
@@ -2512,7 +2524,8 @@
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
       inv_move_title: "स्टॉक प्राप्त करें",
       inv_move_qty_label: "प्राप्त मात्रा",
-      inv_move_price_label: "मूल्य/यूनिट", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
+      inv_move_weight_label: "प्राप्त वज़न (kg)",
+      inv_move_price_label: "मूल्य/यूनिट", inv_move_price_label_perkg: "दर (प्रति kg)", inv_move_discount_label: "छूट %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "राशि: {amount}",
       inv_move_supplier_label: "सप्लायर / संदर्भ", inv_move_supplier_placeholder: "जैसे, Acme Traders, PO-1042",
       inv_move_receivedby_label: "प्राप्तकर्ता",
@@ -2522,6 +2535,7 @@
       inv_move_current_line: "{name} — उपलब्ध: {qty} {unit}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
       inv_err_bad_qty: "शून्य से अधिक मात्रा दर्ज करें।",
+      inv_err_bad_weight: "प्राप्त वज़न (kg) शून्य से अधिक दर्ज करें — यह आइटम वज़न के हिसाब से कीमत तय होती है।",
       inv_status_title: "स्थिति अपडेट करें",
       inv_status_from_label: "से", inv_status_to_label: "तक",
       inv_status_available: "उपलब्ध", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
@@ -2769,7 +2783,8 @@
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
       inv_move_title: "స్టాక్‌ను స్వీకరించండి",
       inv_move_qty_label: "స్వీకరించిన పరిమాణం",
-      inv_move_price_label: "ధర/యూనిట్", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
+      inv_move_weight_label: "స్వీకరించిన బరువు (kg)",
+      inv_move_price_label: "ధర/యూనిట్", inv_move_price_label_perkg: "రేటు (కి.గ్రా.కి)", inv_move_discount_label: "డిస్కౌంట్ %", inv_move_gst_label: "GST %",
       inv_move_amount_line: "మొత్తం: {amount}",
       inv_move_supplier_label: "సప్లయర్ / రిఫరెన్స్", inv_move_supplier_placeholder: "ఉదా. Acme Traders, PO-1042",
       inv_move_receivedby_label: "స్వీకరించినవారు",
@@ -2779,6 +2794,7 @@
       inv_move_current_line: "{name} — అందుబాటులో ఉంది: {qty} {unit}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
       inv_err_bad_qty: "సున్నా కంటే ఎక్కువ పరిమాణాన్ని నమోదు చేయండి.",
+      inv_err_bad_weight: "అందుకున్న బరువు (kg) సున్నా కంటే ఎక్కువగా నమోదు చేయండి — ఈ ఐటమ్ బరువు ఆధారంగా ధర నిర్ణయించబడుతుంది.",
       inv_status_title: "స్థితిని అప్‌డేట్ చేయండి",
       inv_status_from_label: "నుండి", inv_status_to_label: "కు",
       inv_status_available: "అందుబాటులో", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
@@ -3010,6 +3026,9 @@
     invMoveOverlay: document.getElementById("invMoveOverlay"),
     invMoveItemLine: document.getElementById("invMoveItemLine"),
     invMoveQtyInput: document.getElementById("invMoveQtyInput"),
+    invMoveWeightRow: document.getElementById("invMoveWeightRow"),
+    invMoveWeightInput: document.getElementById("invMoveWeightInput"),
+    invMovePriceLabel: document.getElementById("invMovePriceLabel"),
     invMovePriceInput: document.getElementById("invMovePriceInput"),
     invMoveDiscountInput: document.getElementById("invMoveDiscountInput"),
     invMoveGstInput: document.getElementById("invMoveGstInput"),
@@ -5786,27 +5805,46 @@
   }
   // Computes the invoice-style total for one purchase's price fields, same order of operations as
   // any GST purchase invoice: qty*price = subtotal, minus a % discount, then GST % applied on top
-  // of the discounted (taxable) amount.
+  // of the discounted (taxable) amount. `qty` here is whatever quantity the price is actually
+  // quoted against — reel count for most items, but Weight (kg) for reel/roll items (see
+  // isReelUnit) — the caller picks the right one before calling this.
   function computeInventoryLineAmount(qty, pricePerUnit, discountPct, gstPct){
     var subtotal = (Number(qty) || 0) * (Number(pricePerUnit) || 0);
     var afterDiscount = subtotal - subtotal * ((Number(discountPct) || 0) / 100);
     var total = afterDiscount + afterDiscount * ((Number(gstPct) || 0) / 100);
     return total;
   }
+  // Reel/roll items (paper, film, and similar) are priced by weight on the supplier's invoice —
+  // Amount = Rate x Weight, never Rate x reel count, because individual reels don't weigh exactly
+  // the same. Everything else keeps the ordinary Quantity x Price/Unit calculation.
+  function isReelUnit(unit){
+    return /reel/i.test(unit || "");
+  }
 
   // Records one receipt and returns the write's promise — the only inventory movement there is
-  // now. `priceFields` is { pricePerUnit, discountPct, gstPct }.
-  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note){
+  // now. `priceFields` is { pricePerUnit, discountPct, gstPct }. `weight` (kg) is required for a
+  // reel/roll-unit item — the stock count still tracks `qty` (reel count) as always, but the total
+  // price is computed from weight, since that's how the supplier actually priced the shipment.
+  function addInventoryPurchase(sku, qty, priceFields, supplier, receivedBy, note, weight){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     qty = Number(qty);
     if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    var reelUnit = isReelUnit(item.unit);
+    var weightNum = Number(weight);
+    if(reelUnit && (!isFinite(weightNum) || weightNum <= 0)){
+      return Promise.reject(new Error(t("inv_err_bad_weight")));
+    }
     var pricePerUnit = Number(priceFields && priceFields.pricePerUnit) || 0;
     var discountPct = Number(priceFields && priceFields.discountPct) || 0;
     var gstPct = Number(priceFields && priceFields.gstPct) || 0;
+    // Priced against Weight for reel/roll items (Rate x Weight, matching the supplier's own
+    // invoice), against reel/unit count for everything else.
+    var qtyForPricing = reelUnit ? weightNum : qty;
     var payload = {
-      sku: sku, itemName: item.name, qty: qty, pricePerUnit: pricePerUnit, discountPct: discountPct, gstPct: gstPct,
-      lineAmount: computeInventoryLineAmount(qty, pricePerUnit, discountPct, gstPct),
+      sku: sku, itemName: item.name, qty: qty, weight: reelUnit ? weightNum : null,
+      pricePerUnit: pricePerUnit, discountPct: discountPct, gstPct: gstPct,
+      lineAmount: computeInventoryLineAmount(qtyForPricing, pricePerUnit, discountPct, gstPct),
       supplier: (supplier || "").trim(), receivedBy: (receivedBy || "").trim(), note: (note || "").trim(),
       date: state.date, shift: state.shift || "", createdAt: Date.now()
     };
@@ -5956,7 +5994,8 @@
       tr.innerHTML =
         "<td>" + esc(p.date || "") + "</td>" +
         "<td>" + esc(p.itemName) + "</td>" +
-        '<td class="mono">' + (Number(p.qty) || 0).toLocaleString() + "</td>" +
+        '<td class="mono">' + (Number(p.qty) || 0).toLocaleString() +
+          (p.weight != null ? ' <span class="invLogWeightNote">(' + Number(p.weight).toLocaleString() + ' kg)</span>' : "") + "</td>" +
         '<td class="mono">' + esc(formatInr(p.pricePerUnit)) + "</td>" +
         '<td class="mono">' + (Number(p.discountPct) || 0) + "</td>" +
         '<td class="mono">' + (Number(p.gstPct) || 0) + "</td>" +
@@ -6005,11 +6044,12 @@
     return lines.join("\r\n");
   }
   function buildInventoryPurchasesCsv(rows){
-    var header = ["Date", "Item", "Qty", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
+    var header = ["Date", "Item", "Qty", "Weight (kg)", "Price/Unit", "Discount %", "GST %", "Amount", "Supplier", "Received By", "Note"];
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(p){
       lines.push([
-        p.date || "", p.itemName, Number(p.qty) || 0, (Number(p.pricePerUnit) || 0).toFixed(2),
+        p.date || "", p.itemName, Number(p.qty) || 0, p.weight != null ? Number(p.weight) : "",
+        (Number(p.pricePerUnit) || 0).toFixed(2),
         Number(p.discountPct) || 0, Number(p.gstPct) || 0, (Number(p.lineAmount) || 0).toFixed(2),
         p.supplier || "", p.receivedBy || "", p.note || ""
       ].map(csvEscape).join(","));
@@ -6760,18 +6800,27 @@
   });
 
   // ---------- Receive Stock modal ----------
-  var invMoveContext = null; // { sku }
+  var invMoveContext = null; // { sku, isReelUnit }
   function refreshInvMoveAmount(){
-    var total = computeInventoryLineAmount(el.invMoveQtyInput.value, el.invMovePriceInput.value, el.invMoveDiscountInput.value, el.invMoveGstInput.value);
+    // Reel/roll items price against Weight Received, not the reel-count Quantity Received — see
+    // isReelUnit(). Everything else keeps the ordinary Quantity x Price/Unit calculation.
+    var qtyForPricing = (invMoveContext && invMoveContext.isReelUnit) ? el.invMoveWeightInput.value : el.invMoveQtyInput.value;
+    var total = computeInventoryLineAmount(qtyForPricing, el.invMovePriceInput.value, el.invMoveDiscountInput.value, el.invMoveGstInput.value);
     el.invMoveAmountLine.textContent = tf("inv_move_amount_line", { amount: formatInr(total) });
   }
   function openReceiveModal(sku){
     var item = state.invCatalog[sku];
     if(!item) return;
-    invMoveContext = { sku: sku };
+    var reelUnit = isReelUnit(item.unit);
+    invMoveContext = { sku: sku, isReelUnit: reelUnit };
     var current = availableFor(sku);
     el.invMoveItemLine.textContent = tf("inv_move_current_line", { name: item.name, qty: current.toLocaleString(), unit: item.unit || "" });
     el.invMoveQtyInput.value = "";
+    el.invMoveWeightRow.hidden = !reelUnit;
+    el.invMoveWeightInput.value = "";
+    // For a reel/roll item the Price/Unit field is really a per-kg rate (Amount = Rate x Weight,
+    // same as the supplier's own invoice) — relabeled here so it doesn't read as per-reel.
+    el.invMovePriceLabel.textContent = reelUnit ? t("inv_move_price_label_perkg") : t("inv_move_price_label");
     // Price/Unit pre-fills from the item's catalog default (set in Manage Inventory Items) but
     // stays editable per transaction, since the actual purchase price can vary each time.
     el.invMovePriceInput.value = item.defaultPrice || "";
@@ -6785,7 +6834,7 @@
     el.invMoveOverlay.hidden = false;
     el.invMoveQtyInput.focus();
   }
-  [el.invMoveQtyInput, el.invMovePriceInput, el.invMoveDiscountInput, el.invMoveGstInput].forEach(function(input){
+  [el.invMoveQtyInput, el.invMoveWeightInput, el.invMovePriceInput, el.invMoveDiscountInput, el.invMoveGstInput].forEach(function(input){
     input.addEventListener("input", refreshInvMoveAmount);
   });
   el.invMoveCancelBtn.addEventListener("click", function(){ el.invMoveOverlay.hidden = true; invMoveContext = null; });
@@ -6797,7 +6846,7 @@
     el.invMoveError.hidden = true;
     el.invMoveConfirmBtn.disabled = true;
     var priceFields = { pricePerUnit: el.invMovePriceInput.value, discountPct: el.invMoveDiscountInput.value, gstPct: el.invMoveGstInput.value };
-    addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value)
+    addInventoryPurchase(invMoveContext.sku, el.invMoveQtyInput.value, priceFields, el.invMoveSupplierInput.value, el.invMoveReceivedByInput.value, el.invMoveNoteInput.value, el.invMoveWeightInput.value)
       .then(function(){
         el.invMoveConfirmBtn.disabled = false;
         el.invMoveOverlay.hidden = true;
