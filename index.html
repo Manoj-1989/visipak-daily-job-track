@@ -627,6 +627,12 @@
   .modalActions{display:flex;align-items:center;gap:8px;margin-top:18px;}
   .spacer{flex:1;}
   .modal.wide{max-width:720px;}
+  /* Recycle Bin's table only has 6 columns and needs less room than the app's generic 920px
+     table min-width (tuned for the much busier Inventory/Purchase History tables) — without this
+     it forces a horizontal scrollbar inside the modal for no reason. */
+  .trashTable{min-width:0;width:100%;}
+  .trashTable th, .trashTable td{white-space:nowrap;}
+  .trashTable td:nth-child(2){white-space:normal;}
   /* Device login card restyle — see deviceSetupOverlay's own HTML comment for why. Purely visual:
      rounded phone-icon field, full-width pill primary button, an "or" divider, and a pill-shaped
      secondary action, in place of the plain stacked form the rest of the app's modals use. */
@@ -880,6 +886,11 @@
         <div class="statTile"><span class="statLabel" data-i18n="inv_stat_reorder">Items to Reorder</span><span class="statValue" id="invStatReorder">0</span></div>
       </div>
       <button class="btn ghost" id="manageInventoryItemsBtn" type="button" hidden data-i18n="btn_manage_inventory_items">Manage Inventory Items</button>
+      <!-- Recycle Bin covers every delete button in the app (Inventory Items, Purchases, Job Cards,
+           Tasks, Users) — one shared "trash" collection, not just Inventory's own deletes — but it's
+           parked here next to Manage Inventory Items since this is the Admin-only screen most people
+           already come to for cleanup/management tasks. See softDeleteDoc()/subscribeTrash() below. -->
+      <button class="btn ghost" id="recycleBinBtn" type="button" hidden data-i18n="btn_recycle_bin">🗑 Recycle Bin</button>
     </div>
 
     <!-- Stock vs Purchase History are peer sub-tabs within Inventory (same pattern as the
@@ -1297,6 +1308,54 @@
     <div class="modalActions">
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="invItemsCloseBtn" data-i18n="generic_done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recycle Bin: every "Delete"/"Remove" button in the app (Inventory Items, Purchases, Job Cards,
+     Tasks, Users) soft-deletes into the shared `trash` collection instead of hard-deleting, so
+     anything removed by mistake can be restored here within 15 days — see softDeleteDoc() /
+     restoreTrashItem() / subscribeTrash() in the script below. Admin-only, same as Manage Inventory
+     Items and Manage Users. -->
+<div class="modalOverlay" id="recycleBinOverlay" hidden>
+  <div class="modal wide" style="max-width:860px;">
+    <h2 data-i18n="trash_title">Recycle Bin</h2>
+    <p data-i18n="trash_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      Anything deleted anywhere in the app — Inventory Items, Purchases, Job Cards, Tasks, or Users — lands
+      here first. Restore it any time within 15 days of deletion; after that (or if you delete it forever
+      yourself) it's gone for good.
+    </p>
+    <div class="logControls">
+      <input type="text" id="trashSearchInput" placeholder="Search deleted items…" data-i18n-placeholder="trash_search_placeholder">
+      <select id="trashTypeFilter">
+        <option value="" data-i18n="filter_all">All</option>
+        <option value="products" data-i18n="trash_type_products">Inventory Item</option>
+        <option value="purchases" data-i18n="trash_type_purchases">Purchase</option>
+        <option value="entries" data-i18n="trash_type_entries">Job Card</option>
+        <option value="tasks" data-i18n="trash_type_tasks">Task</option>
+        <option value="supervisors" data-i18n="trash_type_supervisors">User</option>
+      </select>
+    </div>
+    <div class="tableWrap">
+      <table class="trashTable">
+        <thead>
+          <tr>
+            <th data-i18n="trash_th_type">Type</th>
+            <th data-i18n="trash_th_item">Item</th>
+            <th data-i18n="trash_th_deletedby">Deleted By</th>
+            <th data-i18n="trash_th_deletedat">Deleted On</th>
+            <th data-i18n="trash_th_expires">Expires In</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="trashBody"></tbody>
+      </table>
+      <div class="logEmpty" id="trashEmpty" hidden data-i18n="trash_empty">Recycle Bin is empty.</div>
+    </div>
+    <div class="readOnlyNote" id="trashError" hidden style="margin-top:12px;"></div>
+    <div class="modalActions">
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="trashCloseBtn" data-i18n="generic_done">Done</button>
     </div>
   </div>
 </div>
@@ -2517,6 +2576,19 @@
       filter_all_zones: "All Zones", filter_all_gsm: "All GSM", filter_all_sizes: "All Sizes",
       filter_all_bf: "All BF", filter_all_shades: "All Shades", filter_all_units: "All Units",
       filter_all_status: "All Status", inv_totals_label: "Total ({count} items)",
+      btn_recycle_bin: "🗑 Recycle Bin", trash_title: "Recycle Bin",
+      trash_desc: "Anything deleted anywhere in the app — Inventory Items, Purchases, Job Cards, Tasks, or Users — lands here first. Restore it any time within 15 days of deletion; after that (or if you delete it forever yourself) it's gone for good.",
+      trash_search_placeholder: "Search deleted items…",
+      trash_type_products: "Inventory Item", trash_type_purchases: "Purchase", trash_type_entries: "Job Card",
+      trash_type_tasks: "Task", trash_type_supervisors: "User",
+      trash_th_type: "Type", trash_th_item: "Item", trash_th_deletedby: "Deleted By",
+      trash_th_deletedat: "Deleted On", trash_th_expires: "Expires In",
+      trash_empty: "Recycle Bin is empty.", trash_restore_action: "Restore", trash_delete_forever_action: "Delete Forever",
+      trash_days_left: "{days}d left", trash_expiring_soon: "Expiring soon",
+      trash_err_not_found: "That item is no longer in the Recycle Bin.",
+      trash_err_conflict: "Can't restore — an item with this ID already exists. Remove or rename it first.",
+      trash_err_restore_failed: "Restore failed. Please try again.",
+      trash_err_purge_failed: "Couldn't delete this permanently. Please try again.",
       inv_reels_view_empty: "No reels received yet for this item.",
       inv_reels_view_summary_line: "{count} reels on file · Total Weight: {weight} kg · Total Amount: {amount}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
@@ -2803,6 +2875,19 @@
       filter_all_zones: "सभी ज़ोन", filter_all_gsm: "सभी GSM", filter_all_sizes: "सभी साइज़",
       filter_all_bf: "सभी BF", filter_all_shades: "सभी शेड", filter_all_units: "सभी यूनिट",
       filter_all_status: "सभी स्थिति", inv_totals_label: "कुल ({count} आइटम)",
+      btn_recycle_bin: "🗑 रीसायकल बिन", trash_title: "रीसायकल बिन",
+      trash_desc: "ऐप में कहीं भी हटाई गई कोई भी चीज़ — इन्वेंटरी आइटम, खरीद, जॉब कार्ड, कार्य, या उपयोगकर्ता — यहां पहले आती है। हटाने के 15 दिनों के भीतर कभी भी इसे पुनर्स्थापित करें; उसके बाद (या यदि आप इसे स्वयं हमेशा के लिए हटा देते हैं) यह हमेशा के लिए चला जाता है।",
+      trash_search_placeholder: "हटाए गए आइटम खोजें…",
+      trash_type_products: "इन्वेंटरी आइटम", trash_type_purchases: "खरीद", trash_type_entries: "जॉब कार्ड",
+      trash_type_tasks: "कार्य", trash_type_supervisors: "उपयोगकर्ता",
+      trash_th_type: "प्रकार", trash_th_item: "आइटम", trash_th_deletedby: "हटाया गया",
+      trash_th_deletedat: "हटाने की तारीख", trash_th_expires: "समाप्ति",
+      trash_empty: "रीसायकल बिन खाली है।", trash_restore_action: "पुनर्स्थापित करें", trash_delete_forever_action: "स्थायी रूप से हटाएं",
+      trash_days_left: "{days} दिन शेष", trash_expiring_soon: "जल्द ही समाप्त",
+      trash_err_not_found: "वह आइटम अब रीसायकल बिन में नहीं है।",
+      trash_err_conflict: "पुनर्स्थापित नहीं कर सकते — इस ID वाला आइटम पहले से मौजूद है। पहले उसे हटाएं या नाम बदलें।",
+      trash_err_restore_failed: "पुनर्स्थापना विफल रही। कृपया पुनः प्रयास करें।",
+      trash_err_purge_failed: "इसे स्थायी रूप से नहीं हटाया जा सका। कृपया पुनः प्रयास करें।",
       inv_reels_view_empty: "इस आइटम के लिए अभी तक कोई रील प्राप्त नहीं हुई।",
       inv_reels_view_summary_line: "{count} रीलें उपलब्ध · कुल वज़न: {weight} kg · कुल राशि: {amount}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
@@ -3089,6 +3174,19 @@
       filter_all_zones: "అన్ని జోన్‌లు", filter_all_gsm: "అన్ని GSM", filter_all_sizes: "అన్ని సైజులు",
       filter_all_bf: "అన్ని BF", filter_all_shades: "అన్ని షేడ్‌లు", filter_all_units: "అన్ని యూనిట్లు",
       filter_all_status: "అన్ని స్థితులు", inv_totals_label: "మొత్తం ({count} ఐటమ్‌లు)",
+      btn_recycle_bin: "🗑 రీసైకిల్ బిన్", trash_title: "రీసైకిల్ బిన్",
+      trash_desc: "యాప్‌లో ఎక్కడైనా తొలగించినది — ఇన్వెంటరీ ఐటమ్‌లు, కొనుగోళ్లు, జాబ్ కార్డులు, టాస్క్‌లు లేదా యూజర్లు — ఇక్కడ ముందుగా వస్తుంది. తొలగించిన 15 రోజుల్లోపు ఎప్పుడైనా దీన్ని పునరుద్ధరించండి; ఆ తర్వాత (లేదా మీరే శాశ్వతంగా తొలగిస్తే) అది శాశ్వతంగా పోతుంది.",
+      trash_search_placeholder: "తొలగించిన ఐటమ్‌లను వెతకండి…",
+      trash_type_products: "ఇన్వెంటరీ ఐటమ్", trash_type_purchases: "కొనుగోలు", trash_type_entries: "జాబ్ కార్డు",
+      trash_type_tasks: "టాస్క్", trash_type_supervisors: "యూజర్",
+      trash_th_type: "రకం", trash_th_item: "ఐటమ్", trash_th_deletedby: "తొలగించినవారు",
+      trash_th_deletedat: "తొలగించిన తేదీ", trash_th_expires: "గడువు",
+      trash_empty: "రీసైకిల్ బిన్ ఖాళీగా ఉంది.", trash_restore_action: "పునరుద్ధరించు", trash_delete_forever_action: "శాశ్వతంగా తొలగించు",
+      trash_days_left: "{days} రోజులు మిగిలి ఉన్నాయి", trash_expiring_soon: "త్వరలో గడువు ముగుస్తుంది",
+      trash_err_not_found: "ఆ ఐటమ్ ఇక రీసైకిల్ బిన్‌లో లేదు.",
+      trash_err_conflict: "పునరుద్ధరించలేరు — ఈ ID తో ఐటమ్ ఇప్పటికే ఉంది. ముందుగా దాన్ని తీసివేయండి లేదా పేరు మార్చండి.",
+      trash_err_restore_failed: "పునరుద్ధరణ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      trash_err_purge_failed: "దీన్ని శాశ్వతంగా తొలగించలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి.",
       inv_reels_view_empty: "ఈ ఐటమ్ కోసం ఇంకా రీళ్లు స్వీకరించలేదు.",
       inv_reels_view_summary_line: "{count} రీళ్లు అందుబాటులో ఉన్నాయి · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
@@ -3184,6 +3282,167 @@
     hh = hh % 12; if(hh === 0) hh = 12;
     return d.getDate()+"-"+MONTHS[d.getMonth()]+"-"+d.getFullYear()+", "+hh+":"+mm+" "+ampm;
   }
+  // ---------- Recycle Bin (soft delete / restore, app-wide) ----------
+  // Every "Delete"/"Remove" button in the app — Manage Inventory Items, Purchase History, Job Card
+  // delete, Task delete, Manage Users remove — routes through softDeleteDoc() below instead of
+  // calling .delete() directly: it snapshots the full document into a shared `trash` collection
+  // first, THEN deletes the live document, so nothing is ever lost even if the calling code has a
+  // bug. There's no server/Cloud Function in this static-hosted app to run a scheduled cleanup, so
+  // "kept for 15 days, then removed permanently" is enforced lazily on the client instead — see
+  // subscribeTrash()'s purge pass — which means the actual purge happens the next time ANY admin
+  // device is online and syncs past the 15-day mark, not at the exact second it elapses. That's an
+  // acceptable trade-off for a client-only app with no backend, and 15 days of slack either way
+  // doesn't matter for what this is protecting against (an accidental delete).
+  var TRASH_RETENTION_DAYS = 15;
+  // Several in-memory lists (purchases/entries/tasks/products) merge a client-side key — "id" for
+  // the first three, "sku" for products — onto the actual Firestore fields when they're first read
+  // (see each one's onSnapshot mapping), purely so the rest of the app has something to key off of;
+  // it was never really part of the stored document. Stripped out here so the trash copy (and
+  // anything restored from it) matches the live document byte-for-byte instead of picking up that
+  // synthetic field.
+  function omitKeys(obj, keys){
+    if(!obj) return obj;
+    var copy = Object.assign({}, obj);
+    keys.forEach(function(k){ delete copy[k]; });
+    return copy;
+  }
+  // Writes the trash copy FIRST and only deletes the live doc once that write succeeds — if saving
+  // the trash copy fails for any reason, the original is left alone rather than being deleted with
+  // nothing to restore from.
+  function softDeleteDoc(collectionName, docId, docData){
+    var trashPayload = {
+      collection: collectionName,
+      docId: docId,
+      data: docData || {},
+      deletedAt: Date.now(),
+      deletedBy: (typeof deviceSupervisorName !== "undefined" && deviceSupervisorName) || "",
+      expiresAt: Date.now() + TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    };
+    return state.db.collection("trash").add(trashPayload).then(function(){
+      return state.db.collection(collectionName).doc(docId).delete();
+    });
+  }
+  function subscribeTrash(){
+    if(state.unsubTrash) state.unsubTrash();
+    state.unsubTrash = state.db.collection("trash").onSnapshot(function(snap){
+      var map = {};
+      var now = Date.now();
+      var expiredIds = [];
+      snap.forEach(function(doc){
+        var d = doc.data();
+        map[doc.id] = Object.assign({ id: doc.id }, d);
+        if((d.expiresAt || 0) <= now) expiredIds.push(doc.id);
+      });
+      state.trashItems = map;
+      // Lazy purge — see the big comment above. Fire-and-forget: if one of these fails (offline,
+      // permissions), it's simply retried the next time this same client re-syncs the trash list.
+      expiredIds.forEach(function(id){
+        state.db.collection("trash").doc(id).delete().catch(function(err){
+          if(window.console) console.error("Trash purge failed for", id, err);
+        });
+      });
+      if(el.recycleBinOverlay && !el.recycleBinOverlay.hidden) renderTrashList();
+    }, function(err){
+      if(window.console) console.error("Trash sync failed:", err);
+    });
+  }
+  function trashTypeLabel(collection){
+    return t("trash_type_" + collection) || collection;
+  }
+  // A short human-readable summary of what was deleted — each collection's data shape is different,
+  // so this pulls whatever field actually identifies a row of that type (matches the labels already
+  // used elsewhere for each: Manage Inventory Items, Purchase History, the job card modal, Tasks).
+  function trashItemLabel(item){
+    var d = item.data || {};
+    switch(item.collection){
+      case "products":
+        return (d.name || item.docId) + " (SKU " + item.docId + ")";
+      case "purchases":
+        return (d.itemName || trashTypeLabel("purchases")) +
+          (d.reelNo ? " · Reel " + d.reelNo : "") + (d.date ? " · " + d.date : "");
+      case "entries":
+        return (d.jobCardNo ? "JC " + d.jobCardNo : trashTypeLabel("entries")) +
+          (d.productName ? " · " + d.productName : "") + (d.stage ? " · " + d.stage : "");
+      case "tasks":
+        return d.title || d.productName || trashTypeLabel("tasks");
+      case "supervisors":
+        return (d.name || item.docId) + (d.role ? " · " + d.role : "");
+      default:
+        return item.docId;
+    }
+  }
+  function trashDaysLeftLabel(expiresAt){
+    var days = Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+    if(days <= 0) return t("trash_expiring_soon");
+    return tf("trash_days_left", { days: days });
+  }
+  function getFilteredTrashItems(){
+    var items = Object.keys(state.trashItems).map(function(id){ return state.trashItems[id]; })
+      .sort(function(a, b){ return (b.deletedAt || 0) - (a.deletedAt || 0); });
+    var q = (el.trashSearchInput.value || "").trim().toLowerCase();
+    var typeFilter = el.trashTypeFilter.value;
+    return items.filter(function(item){
+      if(typeFilter && item.collection !== typeFilter) return false;
+      if(q && (trashItemLabel(item) + " " + (item.deletedBy || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+  // Restoring re-creates the live document at its ORIGINAL id. If something already occupies that
+  // id (a new item was added reusing the same SKU/phone/etc. after the delete), restoring would
+  // silently clobber it — so this checks first and refuses with a clear error instead, rather than
+  // guessing which version the person actually wants to keep.
+  function restoreTrashItem(trashId){
+    var item = state.trashItems[trashId];
+    if(!item) return Promise.reject(new Error(t("trash_err_not_found")));
+    return state.db.collection(item.collection).doc(item.docId).get().then(function(snap){
+      if(snap.exists) throw new Error(t("trash_err_conflict"));
+      return state.db.collection(item.collection).doc(item.docId).set(item.data);
+    }).then(function(){
+      return state.db.collection("trash").doc(trashId).delete();
+    });
+  }
+  function renderTrashList(){
+    var items = getFilteredTrashItems();
+    el.trashEmpty.hidden = items.length !== 0;
+    el.trashBody.innerHTML = "";
+    items.forEach(function(item){
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + esc(trashTypeLabel(item.collection)) + "</td>" +
+        "<td>" + esc(trashItemLabel(item)) + "</td>" +
+        "<td>" + esc(item.deletedBy || "—") + "</td>" +
+        "<td>" + esc(fmtDateTime(item.deletedAt)) + "</td>" +
+        "<td>" + esc(trashDaysLeftLabel(item.expiresAt)) + "</td>" +
+        '<td class="invRowActions"></td>';
+      var actionsCell = tr.querySelector(".invRowActions");
+      var restoreBtn = document.createElement("button");
+      restoreBtn.type = "button"; restoreBtn.className = "btn ghost invSmallBtn"; restoreBtn.textContent = t("trash_restore_action");
+      restoreBtn.addEventListener("click", function(){
+        el.trashError.hidden = true;
+        restoreBtn.disabled = true;
+        restoreTrashItem(item.id).catch(function(err){
+          restoreBtn.disabled = false;
+          el.trashError.textContent = (err && err.message) ? err.message : t("trash_err_restore_failed");
+          el.trashError.hidden = false;
+        });
+      });
+      actionsCell.appendChild(restoreBtn);
+      var purgeBtn = document.createElement("button");
+      purgeBtn.type = "button"; purgeBtn.className = "btn danger invSmallBtn"; purgeBtn.textContent = t("trash_delete_forever_action");
+      purgeBtn.addEventListener("click", function(){
+        el.trashError.hidden = true;
+        purgeBtn.disabled = true;
+        state.db.collection("trash").doc(item.id).delete().catch(function(){
+          purgeBtn.disabled = false;
+          el.trashError.textContent = t("trash_err_purge_failed");
+          el.trashError.hidden = false;
+        });
+      });
+      actionsCell.appendChild(purgeBtn);
+      el.trashBody.appendChild(tr);
+    });
+  }
+
   function fmtTime12(hhmm){
     if(!hhmm) return "";
     var parts = hhmm.split(":");
@@ -3216,6 +3475,8 @@
     unsubInvCatalog: null,
     unsubInvPurchases: null,
     unsubInvStatusTransfers: null,
+    trashItems: {},          // `trash` docs keyed by their own doc id — see subscribeTrash/softDeleteDoc
+    unsubTrash: null,
     date: todayStr(),
     shift: "",
     boardStage: "",
@@ -3341,6 +3602,14 @@
     invItemAddBtn: document.getElementById("invItemAddBtn"),
     invItemsError: document.getElementById("invItemsError"),
     invItemsCloseBtn: document.getElementById("invItemsCloseBtn"),
+    recycleBinBtn: document.getElementById("recycleBinBtn"),
+    recycleBinOverlay: document.getElementById("recycleBinOverlay"),
+    trashSearchInput: document.getElementById("trashSearchInput"),
+    trashTypeFilter: document.getElementById("trashTypeFilter"),
+    trashBody: document.getElementById("trashBody"),
+    trashEmpty: document.getElementById("trashEmpty"),
+    trashError: document.getElementById("trashError"),
+    trashCloseBtn: document.getElementById("trashCloseBtn"),
     invMoveOverlay: document.getElementById("invMoveOverlay"),
     invMoveTitle: document.getElementById("invMoveTitle"),
     invMoveItemLine: document.getElementById("invMoveItemLine"),
@@ -5569,6 +5838,7 @@
     var canSeeInventory = state.isAdminDevice || deviceCanViewStage("Inventory Management");
     el.navInventoryLink.hidden = !canSeeInventory;
     el.manageInventoryItemsBtn.hidden = !state.isAdminDevice;
+    el.recycleBinBtn.hidden = !state.isAdminDevice;
     if(!canSeeInventory && state.appView === "inventory"){
       // Access was just revoked (a different, non-inventory device logged in on this browser) —
       // fall back to Production rather than leaving an inaccessible screen showing.
@@ -5930,8 +6200,9 @@
     el.supervisorsBody.querySelectorAll("button[data-phone]").forEach(function(btn){
       btn.addEventListener("click", function(){
         var phone = btn.getAttribute("data-phone");
+        var supData = supervisorsCache.filter(function(x){ return x.phone === phone; })[0];
         btn.disabled = true;
-        state.db.collection("supervisors").doc(phone).delete().then(function(){
+        softDeleteDoc("supervisors", phone, supData).then(function(){
           if(editingSupervisorPhone === phone) resetSupervisorForm();
           loadSupervisors();
         }).catch(function(){
@@ -6601,7 +6872,7 @@
         return;
       }
       delBtn.disabled = true;
-      state.db.collection("purchases").doc(p.id).delete().catch(function(){
+      softDeleteDoc("purchases", p.id, omitKeys(p, ["id"])).catch(function(){
         delBtn.disabled = false;
         showBanner(t("inv_items_err_remove_failed"));
       });
@@ -6843,11 +7114,12 @@
     el.invItemsList.querySelectorAll("[data-del-sku]").forEach(function(btn){
       btn.addEventListener("click", function(){
         var sku = btn.getAttribute("data-del-sku");
+        var itemData = state.invCatalog[sku];
         btn.disabled = true;
         // Deleting the catalog entry does not touch its purchase history — purchases keep
         // itemName/sku by value, same as Stock Summary keeps a Customer+Product's entries even
         // after that catalog pairing changes — so the Purchase History trail survives.
-        state.db.collection("products").doc(sku).delete().then(function(){
+        softDeleteDoc("products", sku, omitKeys(itemData, ["sku"])).then(function(){
           if(editingInvSku === sku) resetInvItemForm();
         }).catch(function(){
           btn.disabled = false;
@@ -6868,6 +7140,20 @@
   el.invItemsOverlay.addEventListener("click", function(ev){
     if(ev.target === el.invItemsOverlay) el.invItemsOverlay.hidden = true;
   });
+
+  el.recycleBinBtn.addEventListener("click", function(){
+    el.trashSearchInput.value = "";
+    el.trashTypeFilter.value = "";
+    el.trashError.hidden = true;
+    renderTrashList();
+    el.recycleBinOverlay.hidden = false;
+  });
+  el.trashCloseBtn.addEventListener("click", function(){ el.recycleBinOverlay.hidden = true; });
+  el.recycleBinOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.recycleBinOverlay) el.recycleBinOverlay.hidden = true;
+  });
+  el.trashSearchInput.addEventListener("input", renderTrashList);
+  el.trashTypeFilter.addEventListener("change", renderTrashList);
   el.invItemClearBtn.addEventListener("click", resetInvItemForm);
   el.invItemAddBtn.addEventListener("click", function(){
     var sku = editingInvSku || el.invItemSkuInput.value.trim().toUpperCase().replace(/\s+/g, "-");
@@ -9775,7 +10061,7 @@
       return;
     }
     el.deleteConfirmYesBtn.disabled = true;
-    state.db.doc("entries/" + pendingDeleteEntry.id).delete().then(function(){
+    softDeleteDoc("entries", pendingDeleteEntry.id, omitKeys(pendingDeleteEntry, ["id"])).then(function(){
       logActivity("delete", pendingDeleteEntry, actorName);
       el.deleteConfirmYesBtn.disabled = false;
       closeDeleteConfirm();
@@ -10265,7 +10551,7 @@
   el.taskDeleteConfirmYesBtn.addEventListener("click", function(){
     if(!pendingDeleteTask) return;
     el.taskDeleteConfirmYesBtn.disabled = true;
-    state.db.doc("tasks/" + pendingDeleteTask.id).delete().then(function(){
+    softDeleteDoc("tasks", pendingDeleteTask.id, omitKeys(pendingDeleteTask, ["id"])).then(function(){
       el.taskDeleteConfirmYesBtn.disabled = false;
       closeTaskDeleteConfirm();
       closeTaskModal();
@@ -10357,6 +10643,7 @@
   subscribeMasterSheet();
   subscribeTasks();
   subscribeInventory();
+  subscribeTrash();
   fixMaraneTypoInEntries();
 })();
 </script>
