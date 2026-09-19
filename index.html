@@ -450,6 +450,10 @@
   td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;}
   td.mono{font-family:var(--font-mono);}
   .logEmpty{padding:32px;text-align:center;color:var(--ink-faint);font-size:13px;}
+  /* Totals row under Reel Items / Other Items — sums Available/In Use/Damaged for whatever rows
+     are currently on screen (post-filter), so it always matches what's visible above it. */
+  tfoot td{padding:9px 12px;font-size:13px;font-weight:600;background:var(--surface-2);border-top:2px solid var(--line-strong);}
+  tfoot td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
   /* Archived per-stage history rows (see the stageHistorySnapshot comment in the submit handler) —
      a permanent record of a stage this job has already left, not a live document, so they read as
      distinctly non-interactive: no hover highlight/pointer, and a faint italic to set them apart
@@ -893,6 +897,21 @@
       <div class="logControls">
         <input type="text" id="invSearch" placeholder="Search item, SKU, category…" data-i18n-placeholder="inv_search_placeholder">
         <select id="invCategoryFilter"><option value="" data-i18n="filter_all">All</option></select>
+        <!-- Per-column filters, one per dashboard field — each dropdown's own options are filled in
+             from whatever distinct values actually exist in the catalog right now (see
+             renderInventoryFilterOptions()), the same way Category's always has. -->
+        <select id="invZoneFilter"><option value="" data-i18n="filter_all_zones">All Zones</option></select>
+        <select id="invGsmFilter"><option value="" data-i18n="filter_all_gsm">All GSM</option></select>
+        <select id="invSizeFilter"><option value="" data-i18n="filter_all_sizes">All Sizes</option></select>
+        <select id="invBfFilter"><option value="" data-i18n="filter_all_bf">All BF</option></select>
+        <select id="invShadeFilter"><option value="" data-i18n="filter_all_shades">All Shades</option></select>
+        <select id="invUnitFilter"><option value="" data-i18n="filter_all_units">All Units</option></select>
+        <select id="invStatusFilter">
+          <option value="" data-i18n="filter_all_status">All Status</option>
+          <option value="good" data-i18n="inv_status_ok">In Stock</option>
+          <option value="warn" data-i18n="inv_status_low">Low Stock</option>
+          <option value="crit" data-i18n="inv_status_out">Out of Stock</option>
+        </select>
         <button class="btn ghost" id="invStockExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
       </div>
 
@@ -918,6 +937,7 @@
               </tr>
             </thead>
             <tbody id="invReelsStockBody"></tbody>
+            <tfoot id="invReelsStockFoot" hidden></tfoot>
           </table>
           <div class="logEmpty" id="invReelsStockEmpty" hidden data-i18n="inv_reels_stock_empty">No reel items yet.</div>
         </div>
@@ -938,6 +958,7 @@
               </tr>
             </thead>
             <tbody id="invStockBody"></tbody>
+            <tfoot id="invStockFoot" hidden></tfoot>
           </table>
           <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No products yet. Use "Manage Inventory Items" to add your first one.</div>
         </div>
@@ -2489,6 +2510,9 @@
       inv_reels_err_bad_weight: "Every reel needs a weight greater than zero.",
       inv_reels_view_action: "View", inv_reels_view_title: "Reels on File",
       inv_reels_export_action: "Export",
+      filter_all_zones: "All Zones", filter_all_gsm: "All GSM", filter_all_sizes: "All Sizes",
+      filter_all_bf: "All BF", filter_all_shades: "All Shades", filter_all_units: "All Units",
+      filter_all_status: "All Status", inv_totals_label: "Total ({count} items)",
       inv_reels_view_empty: "No reels received yet for this item.",
       inv_reels_view_summary_line: "{count} reels on file · Total Weight: {weight} kg · Total Amount: {amount}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
@@ -2772,6 +2796,9 @@
       inv_reels_err_bad_weight: "हर रील का वज़न शून्य से अधिक होना चाहिए।",
       inv_reels_view_action: "देखें", inv_reels_view_title: "उपलब्ध रीलें",
       inv_reels_export_action: "एक्सपोर्ट",
+      filter_all_zones: "सभी ज़ोन", filter_all_gsm: "सभी GSM", filter_all_sizes: "सभी साइज़",
+      filter_all_bf: "सभी BF", filter_all_shades: "सभी शेड", filter_all_units: "सभी यूनिट",
+      filter_all_status: "सभी स्थिति", inv_totals_label: "कुल ({count} आइटम)",
       inv_reels_view_empty: "इस आइटम के लिए अभी तक कोई रील प्राप्त नहीं हुई।",
       inv_reels_view_summary_line: "{count} रीलें उपलब्ध · कुल वज़न: {weight} kg · कुल राशि: {amount}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
@@ -3055,6 +3082,9 @@
       inv_reels_err_bad_weight: "ప్రతి రీల్‌కు సున్నా కంటే ఎక్కువ బరువు అవసరం.",
       inv_reels_view_action: "వీక్షించండి", inv_reels_view_title: "అందుబాటులో ఉన్న రీళ్లు",
       inv_reels_export_action: "ఎగుమతి",
+      filter_all_zones: "అన్ని జోన్‌లు", filter_all_gsm: "అన్ని GSM", filter_all_sizes: "అన్ని సైజులు",
+      filter_all_bf: "అన్ని BF", filter_all_shades: "అన్ని షేడ్‌లు", filter_all_units: "అన్ని యూనిట్లు",
+      filter_all_status: "అన్ని స్థితులు", inv_totals_label: "మొత్తం ({count} ఐటమ్‌లు)",
       inv_reels_view_empty: "ఈ ఐటమ్ కోసం ఇంకా రీళ్లు స్వీకరించలేదు.",
       inv_reels_view_summary_line: "{count} రీళ్లు అందుబాటులో ఉన్నాయి · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
@@ -3249,6 +3279,15 @@
     invReorderEmpty: document.getElementById("invReorderEmpty"),
     invSearch: document.getElementById("invSearch"),
     invCategoryFilter: document.getElementById("invCategoryFilter"),
+    invZoneFilter: document.getElementById("invZoneFilter"),
+    invGsmFilter: document.getElementById("invGsmFilter"),
+    invSizeFilter: document.getElementById("invSizeFilter"),
+    invBfFilter: document.getElementById("invBfFilter"),
+    invShadeFilter: document.getElementById("invShadeFilter"),
+    invUnitFilter: document.getElementById("invUnitFilter"),
+    invStatusFilter: document.getElementById("invStatusFilter"),
+    invReelsStockFoot: document.getElementById("invReelsStockFoot"),
+    invStockFoot: document.getElementById("invStockFoot"),
     invStockExportBtn: document.getElementById("invStockExportBtn"),
     invStockBody: document.getElementById("invStockBody"),
     invStockEmpty: document.getElementById("invStockEmpty"),
@@ -6272,6 +6311,36 @@
     el.invCategoryFilter.innerHTML = '<option value="" data-i18n="filter_all">' + esc(t("filter_all")) + "</option>" +
       Object.keys(cats).sort().map(function(c){ return '<option value="' + esc(c) + '">' + esc(c) + "</option>"; }).join("");
     el.invCategoryFilter.value = cats[prev] ? prev : "";
+    renderInventoryFieldFilterOptions();
+  }
+  // Per-column filters (Zone/GSM/Size/BF/Shade/Unit) — same "All " + whatever distinct values exist
+  // right now" pattern as Category above, kept as one generic helper since all six work identically:
+  // read a field off every catalog item, dedupe, sort, rebuild that select's options, and keep
+  // whatever was already picked selected if it's still a valid choice (so refreshing the list after
+  // adding/editing an item never silently resets a filter someone is actively using).
+  function refreshInvFieldFilterSelect(selectEl, fieldName, allLabelKey, allLabelDefault){
+    var seen = {};
+    Object.keys(state.invCatalog).forEach(function(sku){
+      var v = state.invCatalog[sku][fieldName];
+      if(v != null && String(v).trim() !== "") seen[String(v)] = true;
+    });
+    var prev = selectEl.value;
+    var values = Object.keys(seen).sort(function(a, b){
+      var na = Number(a), nb = Number(b);
+      if(isFinite(na) && isFinite(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+    selectEl.innerHTML = '<option value="" data-i18n="' + allLabelKey + '">' + esc(t(allLabelKey) || allLabelDefault) + "</option>" +
+      values.map(function(v){ return '<option value="' + esc(v) + '">' + esc(v) + "</option>"; }).join("");
+    selectEl.value = seen[prev] ? prev : "";
+  }
+  function renderInventoryFieldFilterOptions(){
+    refreshInvFieldFilterSelect(el.invZoneFilter, "zone", "filter_all_zones", "All Zones");
+    refreshInvFieldFilterSelect(el.invGsmFilter, "gsm", "filter_all_gsm", "All GSM");
+    refreshInvFieldFilterSelect(el.invSizeFilter, "size", "filter_all_sizes", "All Sizes");
+    refreshInvFieldFilterSelect(el.invBfFilter, "bf", "filter_all_bf", "All BF");
+    refreshInvFieldFilterSelect(el.invShadeFilter, "shade", "filter_all_shades", "All Shades");
+    refreshInvFieldFilterSelect(el.invUnitFilter, "unit", "filter_all_units", "All Units");
   }
 
   // Items at or below their reorder point (by Available quantity — stock sitting In Use or
@@ -6300,8 +6369,29 @@
       .sort(function(a, b){ return (a.name || "").localeCompare(b.name || ""); });
     var q = (el.invSearch.value || "").trim().toLowerCase();
     var catFilter = el.invCategoryFilter.value;
+    var zoneFilter = el.invZoneFilter.value;
+    var gsmFilter = el.invGsmFilter.value;
+    var sizeFilter = el.invSizeFilter.value;
+    var bfFilter = el.invBfFilter.value;
+    var shadeFilter = el.invShadeFilter.value;
+    var unitFilter = el.invUnitFilter.value;
+    var statusFilter = el.invStatusFilter.value;
+    // Status isn't a stored field — it's derived from current Available qty vs Reorder Point (see
+    // inventoryStatus()) — so filtering by it needs the same live stock buckets the dashboard and
+    // CSV export already compute, rather than anything cached on the catalog item itself.
+    var statusMap = statusFilter ? computeStatusBucketsMap() : null;
     return items.filter(function(i){
       if(catFilter && i.category !== catFilter) return false;
+      if(zoneFilter && (i.zone || "") !== zoneFilter) return false;
+      if(gsmFilter && String(i.gsm != null ? i.gsm : "") !== gsmFilter) return false;
+      if(sizeFilter && String(i.size || "") !== sizeFilter) return false;
+      if(bfFilter && String(i.bf != null ? i.bf : "") !== bfFilter) return false;
+      if(shadeFilter && (i.shade || "") !== shadeFilter) return false;
+      if(unitFilter && (i.unit || "") !== unitFilter) return false;
+      if(statusFilter){
+        var b = statusMap[i.sku] || { available: 0 };
+        if(inventoryStatus(b.available, i.reorderPoint) !== statusFilter) return false;
+      }
       if(q && ((i.name || "") + " " + (i.sku || "") + " " + (i.category || "")).toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
@@ -6412,13 +6502,39 @@
       return tr;
     }
 
+    // Totals row: Available / In Use / Damaged summed across whatever rows are actually showing in
+    // that table right now — i.e. AFTER search + every column filter above has been applied — so it
+    // always answers "how much of what I'm looking at" rather than a fixed grand total that stops
+    // matching the screen the moment someone filters it down.
+    function buildTotalsRow(rows){
+      var totals = { available: 0, inUse: 0, damaged: 0 };
+      rows.forEach(function(item){
+        var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
+        totals.available += b.available; totals.inUse += b.inUse; totals.damaged += b.damaged;
+      });
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td colspan="8">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
+        '<td class="num">' + totals.available.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.inUse.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.damaged.toLocaleString() + "</td>" +
+        '<td colspan="5"></td>';
+      return tr;
+    }
+
     el.invReelsStockBody.innerHTML = "";
     el.invReelsStockEmpty.hidden = reelRows.length !== 0;
     reelRows.forEach(function(item){ el.invReelsStockBody.appendChild(buildStockRow(item)); });
+    el.invReelsStockFoot.innerHTML = "";
+    el.invReelsStockFoot.hidden = reelRows.length === 0;
+    if(reelRows.length) el.invReelsStockFoot.appendChild(buildTotalsRow(reelRows));
 
     el.invStockBody.innerHTML = "";
     el.invStockEmpty.hidden = otherRows.length !== 0;
     otherRows.forEach(function(item){ el.invStockBody.appendChild(buildStockRow(item)); });
+    el.invStockFoot.innerHTML = "";
+    el.invStockFoot.hidden = otherRows.length === 0;
+    if(otherRows.length) el.invStockFoot.appendChild(buildTotalsRow(otherRows));
 
     renderInventoryLog();
     // Keep an open "View reels" modal live too, the same way Purchase History already refreshes
@@ -6483,6 +6599,8 @@
 
   el.invSearch.addEventListener("input", renderInventory);
   el.invCategoryFilter.addEventListener("change", renderInventory);
+  [el.invZoneFilter, el.invGsmFilter, el.invSizeFilter, el.invBfFilter, el.invShadeFilter, el.invUnitFilter, el.invStatusFilter]
+    .forEach(function(sel){ sel.addEventListener("change", renderInventory); });
   el.invLogSearch.addEventListener("input", renderInventoryLog);
 
   // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
