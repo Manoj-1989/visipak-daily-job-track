@@ -6804,10 +6804,19 @@
     items.forEach(function(item){
       var row = document.createElement("div");
       row.className = "invItemRow";
+      // Many reel/roll items share the same generic name (e.g. every paper reel is just called
+      // "Reel") and only differ by GSM/Size/BF — without those specs shown here, this list (and
+      // the Edit/Remove buttons on it) is otherwise impossible to tell apart at a glance, so the
+      // spec that actually distinguishes one row from another is surfaced right in the meta line.
+      var specParts = [];
+      if(item.gsm != null && item.gsm !== "") specParts.push("GSM " + item.gsm);
+      if(item.size) specParts.push("Size " + item.size + (item.sizeUnit ? " " + item.sizeUnit : ""));
+      if(item.bf != null && item.bf !== "") specParts.push("BF " + item.bf);
+      var specsSuffix = specParts.length ? " · " + esc(specParts.join(" / ")) : "";
       row.innerHTML =
         '<div><div class="invItemName">' + esc(item.name) +
           (item.purchaseInvoiceAttachmentData ? ' <span title="' + esc(t("attach_purchase_invoice_label")) + '">📎</span>' : "") + '</div>' +
-        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") +
+        '<div class="invItemMeta mono">' + esc(item.sku) + " · " + esc(item.category || "—") + specsSuffix +
           (item.defaultPrice ? " · " + esc(formatInr(item.defaultPrice)) : "") + "</div></div>" +
         '<button type="button" class="btn ghost small" data-edit-sku="' + esc(item.sku) + '">' + esc(t("sup_edit")) + "</button> " +
         '<button type="button" class="btn danger small" data-del-sku="' + esc(item.sku) + '">' + esc(t("sup_remove")) + "</button>";
