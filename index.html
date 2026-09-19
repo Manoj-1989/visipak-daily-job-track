@@ -6481,17 +6481,22 @@
   // Shade, Weight/Reel, Rate, Amount, Supplier, Received Date) — newest received first, same as
   // renderReelsViewTable(). This is what the reel row's "Export" button downloads.
   function buildInventoryReelsCsv(sku){
+    // GSM/Size/BF live on the catalog item, not the individual purchase (they don't vary reel to
+    // reel) — repeated on every row here to match the mill's own reference spreadsheet layout,
+    // where each physical reel gets its own line but the spec columns are filled in throughout.
+    var item = state.invCatalog[sku] || {};
     var rows = state.invPurchases.filter(function(p){ return p.sku === sku; })
       .sort(function(a, b){
         var ad = a.date || "", bd = b.date || "";
         if(ad !== bd) return ad < bd ? 1 : -1;
         return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
       });
-    var header = ["Reel No", "Shade", "Weight/Reel (kg)", "Rate", "Amount", "Supplier", "Received Date"];
+    var header = ["Reel No", "GSM", "Size", "BF", "Shade", "Weight/Reel (kg)", "Rate", "Amount", "Supplier", "Received Date"];
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(p){
       lines.push([
-        p.reelNo || "", p.shade || "", p.weightPerReel != null ? Number(p.weightPerReel) : "",
+        p.reelNo || "", item.gsm != null ? item.gsm : "", item.size || "", item.bf != null ? item.bf : "",
+        p.shade || "", p.weightPerReel != null ? Number(p.weightPerReel) : "",
         (Number(p.pricePerUnit) || 0).toFixed(2), (Number(p.lineAmount) || 0).toFixed(2),
         p.supplier || "", p.date || ""
       ].map(csvEscape).join(","));
