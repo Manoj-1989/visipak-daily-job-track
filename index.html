@@ -946,7 +946,7 @@
                 <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
                 <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
                 <th data-i18n="inv_items_unit">Unit</th>
-                <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+                <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_reserved">Reserved</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
                 <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
                 <th data-i18n="inv_th_status">Status</th><th></th>
               </tr>
@@ -967,7 +967,7 @@
                 <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
                 <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
                 <th data-i18n="inv_items_unit">Unit</th>
-                <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+                <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_reserved">Reserved</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
                 <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
                 <th data-i18n="inv_th_status">Status</th><th></th>
               </tr>
@@ -1554,6 +1554,7 @@
       <label><span data-i18n="inv_status_from_label">From</span>
         <select id="invStatusFromSelect">
           <option value="available" data-i18n="inv_status_available">Available</option>
+          <option value="reserved" data-i18n="inv_status_reserved">Reserved</option>
           <option value="in_use" data-i18n="inv_status_inuse">In Use</option>
           <option value="damaged" data-i18n="inv_status_damaged">Damaged</option>
         </select>
@@ -1561,6 +1562,7 @@
       <label><span data-i18n="inv_status_to_label">To</span>
         <select id="invStatusToSelect">
           <option value="available" data-i18n="inv_status_available">Available</option>
+          <option value="reserved" data-i18n="inv_status_reserved">Reserved</option>
           <option value="in_use" data-i18n="inv_status_inuse">In Use</option>
           <option value="damaged" data-i18n="inv_status_damaged">Damaged</option>
         </select>
@@ -1569,6 +1571,16 @@
     <div class="supAddRow" style="grid-template-columns:1fr;">
       <label><span data-i18n="inv_status_qty_label">Quantity</span>
         <input type="number" id="invStatusQtyInput" min="0" step="1">
+      </label>
+    </div>
+    <!-- Only meaningful (and only shown) when moving stock TO Reserved — ties the held reel(s) to
+         the specific future Job Card they're being set aside for, so Plant's own Layers picker can
+         later auto-detect and consume this exact reservation instead of dipping into plain
+         Available stock for that job (see reservedQtyForJobCard/reconcileLayerReelStatusTransfers
+         below). -->
+    <div class="supAddRow" style="grid-template-columns:1fr;" id="invStatusJobCardRow" hidden>
+      <label><span data-i18n="inv_status_jobcard_label">Job Card No</span>
+        <input type="text" id="invStatusJobCardInput" placeholder="e.g. JC-1042" data-i18n-placeholder="inv_status_jobcard_placeholder">
       </label>
     </div>
     <div class="supAddRow" style="grid-template-columns:1fr;">
@@ -1735,18 +1747,25 @@
            unhidden — simpler and more robust than rebuilding rows on every PLY change. -->
       <div class="span2 qcSpecsBlock" id="fld_layers">
         <div class="qcSpecsHead" data-i18n="layers_heading">Layers</div>
+        <!-- Reel Item ties this layer to a real Inventory SKU (reel/roll-priced items only — see
+             isReelUnit) so saving the entry can automatically move one reel of that SKU from
+             Available to In Use (see renderLayerSkuOptions/reconcileLayerReelStatusTransfers in the
+             script below). Picking an item auto-fills Size/GSM/BF from the catalog spec (still
+             editable after — the odd receipt can run a hair off nominal); Reel Weight is always
+             typed by hand since it's the actual weight of the physical reel used, which varies
+             reel to reel even for the same SKU. -->
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_size">Size</th><th data-i18n="layers_th_gsm">GSM</th><th data-i18n="layers_th_bf">BF</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_size">Size</th><th data-i18n="layers_th_gsm">GSM</th><th data-i18n="layers_th_bf">BF</th></tr>
           </thead>
           <tbody id="layersBody">
-            <tr id="layerRow1"><td id="layerLabel1"></td><td><input type="text" id="f_layer1_reelweight"></td><td><input type="text" id="f_layer1_size"></td><td><input type="text" id="f_layer1_gsm"></td><td><input type="text" id="f_layer1_bf"></td></tr>
-            <tr id="layerRow2"><td id="layerLabel2"></td><td><input type="text" id="f_layer2_reelweight"></td><td><input type="text" id="f_layer2_size"></td><td><input type="text" id="f_layer2_gsm"></td><td><input type="text" id="f_layer2_bf"></td></tr>
-            <tr id="layerRow3"><td id="layerLabel3"></td><td><input type="text" id="f_layer3_reelweight"></td><td><input type="text" id="f_layer3_size"></td><td><input type="text" id="f_layer3_gsm"></td><td><input type="text" id="f_layer3_bf"></td></tr>
-            <tr id="layerRow4"><td id="layerLabel4"></td><td><input type="text" id="f_layer4_reelweight"></td><td><input type="text" id="f_layer4_size"></td><td><input type="text" id="f_layer4_gsm"></td><td><input type="text" id="f_layer4_bf"></td></tr>
-            <tr id="layerRow5"><td id="layerLabel5"></td><td><input type="text" id="f_layer5_reelweight"></td><td><input type="text" id="f_layer5_size"></td><td><input type="text" id="f_layer5_gsm"></td><td><input type="text" id="f_layer5_bf"></td></tr>
-            <tr id="layerRow6"><td id="layerLabel6"></td><td><input type="text" id="f_layer6_reelweight"></td><td><input type="text" id="f_layer6_size"></td><td><input type="text" id="f_layer6_gsm"></td><td><input type="text" id="f_layer6_bf"></td></tr>
-            <tr id="layerRow7"><td id="layerLabel7"></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_size"></td><td><input type="text" id="f_layer7_gsm"></td><td><input type="text" id="f_layer7_bf"></td></tr>
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td><input type="text" id="f_layer1_reelweight"></td><td><input type="text" id="f_layer1_size"></td><td><input type="text" id="f_layer1_gsm"></td><td><input type="text" id="f_layer1_bf"></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td><input type="text" id="f_layer2_reelweight"></td><td><input type="text" id="f_layer2_size"></td><td><input type="text" id="f_layer2_gsm"></td><td><input type="text" id="f_layer2_bf"></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td><input type="text" id="f_layer3_reelweight"></td><td><input type="text" id="f_layer3_size"></td><td><input type="text" id="f_layer3_gsm"></td><td><input type="text" id="f_layer3_bf"></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td><input type="text" id="f_layer4_reelweight"></td><td><input type="text" id="f_layer4_size"></td><td><input type="text" id="f_layer4_gsm"></td><td><input type="text" id="f_layer4_bf"></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td><input type="text" id="f_layer5_reelweight"></td><td><input type="text" id="f_layer5_size"></td><td><input type="text" id="f_layer5_gsm"></td><td><input type="text" id="f_layer5_bf"></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td><input type="text" id="f_layer6_reelweight"></td><td><input type="text" id="f_layer6_size"></td><td><input type="text" id="f_layer6_gsm"></td><td><input type="text" id="f_layer6_bf"></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_size"></td><td><input type="text" id="f_layer7_gsm"></td><td><input type="text" id="f_layer7_bf"></td></tr>
           </tbody>
         </table>
       </div>
@@ -2384,8 +2403,9 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
-      layers_heading: "Layers", layers_th_reelweight: "Reel Weight", layers_th_size: "Size", layers_th_gsm: "GSM", layers_th_bf: "BF",
-      layers_row_label_n: "Layer {n}",
+      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_reelweight: "Reel Weight", layers_th_size: "Size", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_row_label_n: "Layer {n}", layers_item_select: "— select reel —",
+      layers_err_stock_move_failed: "Saved, but couldn't update Inventory stock for a Layer's reel — check Inventory > Update Status.",
       form_artworkno_label: "Artwork No", form_artworkno_placeholder: "e.g. AW-2031",
       form_type_label: "Type", form_type_select: "— select —",
       type_boxes: "Boxes", type_partition: "Partition", type_pads: "Pads",
@@ -2494,7 +2514,7 @@
       btn_manage_inventory_items: "Manage Inventory Items",
       inv_search_placeholder: "Search item, SKU, category…",
       inv_th_item: "Item", inv_th_sku: "SKU", inv_th_zone: "Zone", inv_th_category: "Category",
-      inv_th_available: "Available", inv_th_inuse: "In Use", inv_th_damaged: "Damaged",
+      inv_th_available: "Available", inv_th_reserved: "Reserved", inv_th_inuse: "In Use", inv_th_damaged: "Damaged",
       inv_th_price: "Price/Unit", inv_th_value: "Value", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
       inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
@@ -2508,7 +2528,7 @@
       inv_log_heading: "Purchase History",
       inv_log_search_placeholder: "Search item, supplier, received by…",
       inv_log_empty: "No purchases logged yet.",
-      inv_action_receive: "Receive", inv_status_action: "Update Status",
+      inv_action_receive: "Receive", inv_status_action: "Update Status", inv_action_reserve: "Reserve",
       inv_status_ok: "In Stock", inv_status_low: "Low Stock", inv_status_out: "Out of Stock",
       inv_items_title: "Manage Inventory Items",
       inv_items_desc: "Add each product your warehouse stocks — its SKU, category, unit, supplier, and reorder point. Anyone with access to the Inventory screen can then receive stock against it; only Admin can add, edit, or remove items here.",
@@ -2596,14 +2616,16 @@
       inv_err_bad_weight: "Enter the weight per reel (kg) greater than zero — this item is priced by weight.",
       inv_status_title: "Update Status",
       inv_status_from_label: "From", inv_status_to_label: "To",
-      inv_status_available: "Available", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
+      inv_status_available: "Available", inv_status_reserved: "Reserved", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
       inv_status_qty_label: "Quantity",
+      inv_status_jobcard_label: "Job Card No", inv_status_jobcard_placeholder: "e.g. JC-1042",
       inv_status_note_label: "Note (optional)",
       inv_status_note_placeholder: "e.g. checked out for Job Card #.., dropped and cracked…",
       inv_status_confirm: "Save",
-      inv_status_current_line: "{name} — Available: {available} {unit} · In Use: {inUse} · Damaged: {damaged}",
+      inv_status_current_line: "{name} — Available: {available} {unit} · Reserved: {reserved} · In Use: {inUse} · Damaged: {damaged}",
       inv_status_err_same: "From and To must be different statuses.",
       inv_status_err_insufficient: "Only {qty} available in that status.",
+      inv_status_err_jobcard_required: "Enter the Job Card No this reservation is being held for.",
       inv_purchase_err_status_committed: "Can't delete: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
       inv_move_err_qty_committed: "Can't reduce Quantity Received: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
       banner_inventory_sync_failed_prefix: "Inventory sync issue:"
@@ -2683,8 +2705,9 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
-      layers_heading: "लेयर", layers_th_reelweight: "रील वज़न", layers_th_size: "साइज़", layers_th_gsm: "GSM", layers_th_bf: "BF",
-      layers_row_label_n: "लेयर {n}",
+      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_reelweight: "रील वज़न", layers_th_size: "साइज़", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_row_label_n: "लेयर {n}", layers_item_select: "— रील चुनें —",
+      layers_err_stock_move_failed: "सेव हो गया, लेकिन लेयर की रील के लिए इन्वेंटरी स्टॉक अपडेट नहीं हो सका — इन्वेंटरी > स्थिति अपडेट करें में देखें।",
       form_artworkno_label: "आर्टवर्क नंबर", form_artworkno_placeholder: "जैसे AW-2031",
       form_type_label: "टाइप", form_type_select: "— चुनें —",
       type_boxes: "बॉक्स", type_partition: "पार्टीशन", type_pads: "पैड",
@@ -2793,7 +2816,7 @@
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_search_placeholder: "आइटम, SKU, श्रेणी खोजें…",
       inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_zone: "ज़ोन", inv_th_category: "श्रेणी",
-      inv_th_available: "उपलब्ध", inv_th_inuse: "उपयोग में", inv_th_damaged: "क्षतिग्रस्त",
+      inv_th_available: "उपलब्ध", inv_th_reserved: "आरक्षित", inv_th_inuse: "उपयोग में", inv_th_damaged: "क्षतिग्रस्त",
       inv_th_price: "मूल्य/यूनिट", inv_th_value: "मूल्य", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
       inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
@@ -2807,7 +2830,7 @@
       inv_log_heading: "खरीद इतिहास",
       inv_log_search_placeholder: "आइटम, सप्लायर, या प्राप्तकर्ता खोजें…",
       inv_log_empty: "अभी तक कोई खरीद दर्ज नहीं हुई।",
-      inv_action_receive: "प्राप्त करें", inv_status_action: "स्थिति अपडेट करें",
+      inv_action_receive: "प्राप्त करें", inv_status_action: "स्थिति अपडेट करें", inv_action_reserve: "आरक्षित करें",
       inv_status_ok: "स्टॉक में", inv_status_low: "कम स्टॉक", inv_status_out: "स्टॉक खत्म",
       inv_items_title: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_items_desc: "अपने वेयरहाउस का हर प्रोडक्ट जोड़ें — उसका SKU, श्रेणी, यूनिट, सप्लायर, और रीऑर्डर पॉइंट। इन्वेंटरी स्क्रीन तक पहुंच रखने वाला कोई भी व्यक्ति फिर उस पर स्टॉक प्राप्त कर सकता है; यहां आइटम जोड़ना, संपादित करना, या हटाना केवल Admin कर सकता है।",
@@ -2895,14 +2918,16 @@
       inv_err_bad_weight: "प्रति रील वज़न (kg) शून्य से अधिक दर्ज करें — यह आइटम वज़न के हिसाब से कीमत तय होती है।",
       inv_status_title: "स्थिति अपडेट करें",
       inv_status_from_label: "से", inv_status_to_label: "तक",
-      inv_status_available: "उपलब्ध", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
+      inv_status_available: "उपलब्ध", inv_status_reserved: "आरक्षित", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
       inv_status_qty_label: "मात्रा",
+      inv_status_jobcard_label: "जॉब कार्ड नंबर", inv_status_jobcard_placeholder: "जैसे JC-1042",
       inv_status_note_label: "नोट (वैकल्पिक)",
       inv_status_note_placeholder: "जैसे, जॉब कार्ड #.. के लिए निकाला गया, गिरकर टूट गया…",
       inv_status_confirm: "सेव करें",
-      inv_status_current_line: "{name} — उपलब्ध: {available} {unit} · उपयोग में: {inUse} · क्षतिग्रस्त: {damaged}",
+      inv_status_current_line: "{name} — उपलब्ध: {available} {unit} · आरक्षित: {reserved} · उपयोग में: {inUse} · क्षतिग्रस्त: {damaged}",
       inv_status_err_same: "से और तक अलग-अलग स्थिति होनी चाहिए।",
       inv_status_err_insufficient: "उस स्थिति में केवल {qty} ही उपलब्ध है।",
+      inv_status_err_jobcard_required: "यह आरक्षण किस जॉब कार्ड नंबर के लिए रखा जा रहा है, वह दर्ज करें।",
       inv_purchase_err_status_committed: "हटाया नहीं जा सकता: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
       inv_move_err_qty_committed: "प्राप्त मात्रा घटाई नहीं जा सकती: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
       banner_inventory_sync_failed_prefix: "इन्वेंटरी सिंक समस्या:"
@@ -2982,8 +3007,9 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
-      layers_heading: "లేయర్లు", layers_th_reelweight: "రీల్ బరువు", layers_th_size: "సైజు", layers_th_gsm: "GSM", layers_th_bf: "BF",
-      layers_row_label_n: "లేయర్ {n}",
+      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_reelweight: "రీల్ బరువు", layers_th_size: "సైజు", layers_th_gsm: "GSM", layers_th_bf: "BF",
+      layers_row_label_n: "లేయర్ {n}", layers_item_select: "— రీల్‌ను ఎంచుకోండి —",
+      layers_err_stock_move_failed: "సేవ్ అయ్యింది, కానీ లేయర్ రీల్ కోసం ఇన్వెంటరీ స్టాక్‌ను అప్‌డేట్ చేయలేకపోయాము — ఇన్వెంటరీ > స్థితిని అప్‌డేట్ చేయండి చూడండి.",
       form_artworkno_label: "ఆర్ట్‌వర్క్ నంబర్", form_artworkno_placeholder: "ఉదా. AW-2031",
       form_type_label: "టైప్", form_type_select: "— ఎంచుకోండి —",
       type_boxes: "బాక్సులు", type_partition: "పార్టిషన్", type_pads: "ప్యాడ్స్",
@@ -3092,7 +3118,7 @@
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_search_placeholder: "ఐటమ్, SKU, కేటగిరీ వెతకండి…",
       inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_zone: "జోన్", inv_th_category: "కేటగిరీ",
-      inv_th_available: "అందుబాటులో", inv_th_inuse: "వాడుకలో", inv_th_damaged: "పాడైనవి",
+      inv_th_available: "అందుబాటులో", inv_th_reserved: "రిజర్వ్ చేయబడింది", inv_th_inuse: "వాడుకలో", inv_th_damaged: "పాడైనవి",
       inv_th_price: "ధర/యూనిట్", inv_th_value: "విలువ", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
       inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
@@ -3106,7 +3132,7 @@
       inv_log_heading: "కొనుగోలు చరిత్ర",
       inv_log_search_placeholder: "ఐటమ్, సప్లయర్, లేదా స్వీకరించినవారిని వెతకండి…",
       inv_log_empty: "ఇంకా ఎలాంటి కొనుగోలు నమోదు కాలేదు.",
-      inv_action_receive: "స్వీకరించండి", inv_status_action: "స్థితిని అప్‌డేట్ చేయండి",
+      inv_action_receive: "స్వీకరించండి", inv_status_action: "స్థితిని అప్‌డేట్ చేయండి", inv_action_reserve: "రిజర్వ్ చేయండి",
       inv_status_ok: "స్టాక్‌లో ఉంది", inv_status_low: "తక్కువ స్టాక్", inv_status_out: "స్టాక్ లేదు",
       inv_items_title: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_items_desc: "మీ వేర్‌హౌస్‌లో ఉన్న ప్రతి ప్రొడక్ట్‌ను జోడించండి — దాని SKU, కేటగిరీ, యూనిట్, సప్లయర్, మరియు రీఆర్డర్ పాయింట్. ఇన్వెంటరీ స్క్రీన్‌కు యాక్సెస్ ఉన్న ఎవరైనా దానిపై స్టాక్‌ను స్వీకరించవచ్చు; ఇక్కడ ఐటమ్‌లను జోడించడం, సవరించడం, లేదా తొలగించడం అడ్మిన్ మాత్రమే చేయగలరు.",
@@ -3194,14 +3220,16 @@
       inv_err_bad_weight: "ప్రతి రీల్ బరువు (kg) సున్నా కంటే ఎక్కువగా నమోదు చేయండి — ఈ ఐటమ్ బరువు ఆధారంగా ధర నిర్ణయించబడుతుంది.",
       inv_status_title: "స్థితిని అప్‌డేట్ చేయండి",
       inv_status_from_label: "నుండి", inv_status_to_label: "కు",
-      inv_status_available: "అందుబాటులో", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
+      inv_status_available: "అందుబాటులో", inv_status_reserved: "రిజర్వ్ చేయబడింది", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
       inv_status_qty_label: "పరిమాణం",
+      inv_status_jobcard_label: "జాబ్ కార్డ్ నంబర్", inv_status_jobcard_placeholder: "ఉదా. JC-1042",
       inv_status_note_label: "నోట్ (ఐచ్ఛికం)",
       inv_status_note_placeholder: "ఉదా. జాబ్ కార్డ్ #.. కోసం తీసుకున్నారు, పడి పగిలింది…",
       inv_status_confirm: "సేవ్ చేయండి",
-      inv_status_current_line: "{name} — అందుబాటులో: {available} {unit} · వాడుకలో: {inUse} · పాడైనవి: {damaged}",
+      inv_status_current_line: "{name} — అందుబాటులో: {available} {unit} · రిజర్వ్: {reserved} · వాడుకలో: {inUse} · పాడైనవి: {damaged}",
       inv_status_err_same: "నుండి మరియు కు వేర్వేరు స్థితులుగా ఉండాలి.",
       inv_status_err_insufficient: "ఆ స్థితిలో {qty} మాత్రమే అందుబాటులో ఉంది.",
+      inv_status_err_jobcard_required: "ఈ రిజర్వేషన్ ఏ జాబ్ కార్డ్ నంబర్ కోసం ఉంచుతున్నారో నమోదు చేయండి.",
       inv_purchase_err_status_committed: "తొలగించడం సాధ్యం కాదు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
       inv_move_err_qty_committed: "స్వీకరించిన పరిమాణాన్ని తగ్గించలేరు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
       banner_inventory_sync_failed_prefix: "ఇన్వెంటరీ సింక్ సమస్య:"
@@ -3657,6 +3685,8 @@
     invStatusFromSelect: document.getElementById("invStatusFromSelect"),
     invStatusToSelect: document.getElementById("invStatusToSelect"),
     invStatusQtyInput: document.getElementById("invStatusQtyInput"),
+    invStatusJobCardRow: document.getElementById("invStatusJobCardRow"),
+    invStatusJobCardInput: document.getElementById("invStatusJobCardInput"),
     invStatusNoteInput: document.getElementById("invStatusNoteInput"),
     invStatusError: document.getElementById("invStatusError"),
     invStatusCancelBtn: document.getElementById("invStatusCancelBtn"),
@@ -3908,12 +3938,16 @@
   for(var layerN = 1; layerN <= 7; layerN++){
     el["layerRow" + layerN] = document.getElementById("layerRow" + layerN);
     el["layerLabel" + layerN] = document.getElementById("layerLabel" + layerN);
+    el["f_layer" + layerN + "_sku"] = document.getElementById("f_layer" + layerN + "_sku");
     el["f_layer" + layerN + "_reelweight"] = document.getElementById("f_layer" + layerN + "_reelweight");
     el["f_layer" + layerN + "_size"] = document.getElementById("f_layer" + layerN + "_size");
     el["f_layer" + layerN + "_gsm"] = document.getElementById("f_layer" + layerN + "_gsm");
     el["f_layer" + layerN + "_bf"] = document.getElementById("f_layer" + layerN + "_bf");
   }
   var lastUpdatedBy = "";
+  // See openModal's own comment on why this is snapshotted, and the submit handler's call to
+  // reconcileLayerReelStatusTransfers for how it's used.
+  var editingOriginalLayers = null;
 
   var syncDateInputLabel = bindDateDisplay(el.dateInput, el.dateInputLabel);
   var syncFDateLabel = bindDateDisplay(el.f_date, el.f_dateLabel);
@@ -3997,9 +4031,9 @@
     el.f_qtyperbundle, el.f_reasonforrejection, el.f_palletarea, el.f_dispatchedqty,
     el.f_stockrate, el.f_stockinwardreason, el.f_stockinwardqty, el.f_stockoutwardreason, el.f_stockoutwardqty
   ];
-  // Layer Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
+  // Layer Reel Item/Size/GSM/BF fields belong to Plant's own team, same as its other normal fields.
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
-    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_reelweight"], el["f_layer" + layerFieldN + "_size"], el["f_layer" + layerFieldN + "_gsm"], el["f_layer" + layerFieldN + "_bf"]);
+    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_sku"], el["f_layer" + layerFieldN + "_reelweight"], el["f_layer" + layerFieldN + "_size"], el["f_layer" + layerFieldN + "_gsm"], el["f_layer" + layerFieldN + "_bf"]);
   }
   // Every field only QC (or admin) can edit, regardless of which stage the entry itself belongs
   // to: the Specifications table, the Artwork No check, and the Hold switch.
@@ -5019,10 +5053,15 @@
   }
 
   // Collects only the layer rows that are actually in play for the given Ply count (Plant-only).
+  // `sku` (the Reel Item picked from the Inventory catalog dropdown, see renderLayerSkuOptions) is
+  // what reconcileLayerReelStatusTransfers reads on save to move that reel's stock from Available
+  // (or an existing Reservation — see reservedQtyForJobCard) to In Use; a row left on "— select
+  // reel —" just saves an empty sku and never touches inventory stock, same as before this existed.
   function computeLayersData(count){
     var layers = [];
     for(var i = 1; i <= count; i++){
       layers.push({
+        sku: el["f_layer" + i + "_sku"] ? el["f_layer" + i + "_sku"].value : "",
         reelWeight: el["f_layer" + i + "_reelweight"].value.trim(),
         size: el["f_layer" + i + "_size"].value.trim(),
         gsm: el["f_layer" + i + "_gsm"].value.trim(),
@@ -5774,6 +5813,24 @@
   }
   el.f_ply.addEventListener("change", updateLayersVisibility);
 
+  // Picking a Reel Item on a Layer row auto-fills that row's Size/GSM/BF from the catalog spec —
+  // still editable afterwards (the odd receipt can run a hair off nominal), but starting from the
+  // real item's own numbers beats re-typing them by hand every time and risking a mismatch against
+  // whichever SKU actually gets deducted on save. Clearing the dropdown back to "— select reel —"
+  // leaves whatever was typed there alone rather than blanking it, since it might still be useful
+  // free-text on an entry from before this dropdown existed.
+  for(var layerAutofillN = 1; layerAutofillN <= 7; layerAutofillN++){
+    (function(n){
+      el["f_layer" + n + "_sku"].addEventListener("change", function(){
+        var item = state.invCatalog[el["f_layer" + n + "_sku"].value];
+        if(!item) return;
+        el["f_layer" + n + "_size"].value = item.size || "";
+        el["f_layer" + n + "_gsm"].value = item.gsm != null ? item.gsm : "";
+        el["f_layer" + n + "_bf"].value = item.bf != null ? item.bf : "";
+      });
+    })(layerAutofillN);
+  }
+
   // ---------- Device stage lock ----------
   function normalizePhone(raw){
     var digits = String(raw||"").replace(/\D/g,"");
@@ -6362,6 +6419,7 @@
       snap.forEach(function(doc){ map[doc.id] = Object.assign({ sku: doc.id }, doc.data()); });
       state.invCatalog = map;
       renderInventoryCategoryFilterOptions();
+      renderLayerSkuOptions();
       if(state.appView === "inventory") renderInventory();
       if(el.invItemsOverlay && !el.invItemsOverlay.hidden){ renderInvItemsList(); renderInvItemCategoryOptions(); }
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
@@ -6391,21 +6449,104 @@
   function currentStockFor(sku){ var map = computeCurrentStockMap(); return map.hasOwnProperty(sku) ? map[sku] : 0; }
   // Every purchased unit starts life Available; a statusTransfer moves `qty` units from one
   // bucket to another (Available -> In Use, In Use -> Damaged, Damaged -> Available once repaired,
-  // etc). Summing a SKU's total purchases plus the net of every transfer always reconstructs the
-  // same total, whichever bucket each unit currently sits in — nothing is created or destroyed,
-  // it just moves. See addStatusTransfer for the write side and its qty-available check.
-  function statusBucketKey(status){ return status === "in_use" ? "inUse" : status === "damaged" ? "damaged" : "available"; }
+  // Available -> Reserved to hold specific reels for a future Job Card, etc). Summing a SKU's
+  // total purchases plus the net of every transfer always reconstructs the same total, whichever
+  // bucket each unit currently sits in — nothing is created or destroyed, it just moves. See
+  // addStatusTransfer for the write side and its qty-available check.
+  function statusBucketKey(status){
+    if(status === "in_use") return "inUse";
+    if(status === "damaged") return "damaged";
+    if(status === "reserved") return "reserved";
+    return "available";
+  }
   function computeStatusBucketsMap(){
     var map = {};
     var stockMap = computeCurrentStockMap();
-    Object.keys(stockMap).forEach(function(sku){ map[sku] = { available: stockMap[sku], inUse: 0, damaged: 0 }; });
+    Object.keys(stockMap).forEach(function(sku){ map[sku] = { available: stockMap[sku], inUse: 0, damaged: 0, reserved: 0 }; });
     state.invStatusTransfers.forEach(function(tr){
-      if(!map[tr.sku]) map[tr.sku] = { available: 0, inUse: 0, damaged: 0 };
+      if(!map[tr.sku]) map[tr.sku] = { available: 0, inUse: 0, damaged: 0, reserved: 0 };
       var qty = Number(tr.qty) || 0;
       map[tr.sku][statusBucketKey(tr.fromStatus)] -= qty;
       map[tr.sku][statusBucketKey(tr.toStatus)] += qty;
     });
     return map;
+  }
+  // Net quantity of `sku` currently sitting in the Reserved bucket earmarked for one specific Job
+  // Card No (see the Update Status modal's Job Card No field) — reconstructed the same
+  // nothing's-created-or-destroyed way computeStatusBucketsMap totals a whole bucket, just scoped
+  // to transfers that carry this jobCardNo. Used by reconcileLayerReelStatusTransfers so a Plant
+  // entry's Layers picker can auto-consume an existing reservation for its own Job Card No instead
+  // of dipping into plain Available stock meant for other jobs.
+  function reservedQtyForJobCard(sku, jobCardNo){
+    if(!jobCardNo) return 0;
+    var net = 0;
+    state.invStatusTransfers.forEach(function(tr){
+      if(tr.sku !== sku || tr.jobCardNo !== jobCardNo) return;
+      var qty = Number(tr.qty) || 0;
+      if(tr.toStatus === "reserved") net += qty;
+      if(tr.fromStatus === "reserved") net -= qty;
+    });
+    return Math.max(0, net);
+  }
+  // Diffs a Plant entry's Layers before/after a save (see computeLayersData for the `{sku, ...}`
+  // shape) and moves exactly the reels that actually changed between Inventory status buckets —
+  // called once from the entry save handler below, only while the open form is Plant (the only
+  // stage that ever collects `layers` at all). Comparing OLD counts per sku against NEW counts per
+  // sku (rather than just "does payload.layers exist") is what keeps this idempotent: reopening
+  // and resaving an entry whose Layers weren't touched nets old===new for every sku, so nothing
+  // moves — only a genuinely added, removed, or swapped reel triggers a transfer.
+  //
+  // Consuming (a sku's count went UP — a layer newly picked it): prefers releasing an existing
+  // Reservation held for THIS SAME Job Card No (see reservedQtyForJobCard and the Update Status
+  // modal's Reserve action) over dipping into plain Available stock, so a reel set aside in
+  // advance for this job is what actually gets used once production reaches it — no one has to
+  // remember to manually convert the reservation first. Only the shortfall beyond any reservation
+  // comes out of Available.
+  //
+  // Releasing (a sku's count went DOWN — a layer was cleared or swapped to a different item):
+  // always goes back to Available, never back to Reserved — once a reservation is consumed into
+  // In Use its own ledger already nets to zero, so there's no reservation left to restore; sending
+  // an edited-away pick back to plain Available is the simple, safe default.
+  //
+  // Best-effort: this runs after the entry itself has already saved successfully, so a transfer
+  // failing (e.g. someone else already manually moved that stock in the meantime) only logs and
+  // shows a banner rather than undoing the save.
+  function reconcileLayerReelStatusTransfers(oldLayers, newLayers, jobCardNo){
+    function skuCounts(layers){
+      var counts = {};
+      (layers || []).forEach(function(l){
+        var sku = l && l.sku;
+        if(sku) counts[sku] = (counts[sku] || 0) + 1;
+      });
+      return counts;
+    }
+    var oldCounts = skuCounts(oldLayers);
+    var newCounts = skuCounts(newLayers);
+    var allSkus = {};
+    Object.keys(oldCounts).forEach(function(s){ allSkus[s] = true; });
+    Object.keys(newCounts).forEach(function(s){ allSkus[s] = true; });
+    Object.keys(allSkus).forEach(function(sku){
+      var oldN = oldCounts[sku] || 0;
+      var newN = newCounts[sku] || 0;
+      if(newN > oldN){
+        var toConsume = newN - oldN;
+        var fromReserved = Math.min(reservedQtyForJobCard(sku, jobCardNo), toConsume);
+        if(fromReserved > 0){
+          addStatusTransfer(sku, "reserved", "in_use", fromReserved,
+            "Auto-consumed reservation for Job Card " + (jobCardNo || "—"), { jobCardNo: jobCardNo })
+            .catch(function(err){ if(window.console) console.error("Layer reservation consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
+        }
+        var fromAvailable = toConsume - fromReserved;
+        if(fromAvailable > 0){
+          addStatusTransfer(sku, "available", "in_use", fromAvailable, "Consumed by Plant Layers for Job Card " + (jobCardNo || "—"))
+            .catch(function(err){ if(window.console) console.error("Layer stock consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
+        }
+      } else if(oldN > newN){
+        var toRelease = oldN - newN;
+        addStatusTransfer(sku, "in_use", "available", toRelease, "Released — Layer changed on Job Card " + (jobCardNo || "—"))
+          .catch(function(err){ if(window.console) console.error("Layer stock release failed:", err); showBanner(t("layers_err_stock_move_failed")); });
+      }
+    });
   }
   function availableFor(sku){
     var b = computeStatusBucketsMap()[sku];
@@ -6413,14 +6554,14 @@
   }
   // Deleting a purchase, or editing one down to a smaller Quantity Received, both reduce that SKU's
   // total purchased qty (to 0 for a delete, to whatever the edited value is otherwise). If some of
-  // that SKU's stock has already been moved to In Use/Damaged, reducing the total below what's
-  // still committed there would make those buckets negative — block it instead, same spirit as
-  // addStatusTransfer's own "can't move more than you have" check.
+  // that SKU's stock has already been moved to In Use/Damaged/Reserved, reducing the total below
+  // what's still committed there would make those buckets negative — block it instead, same spirit
+  // as addStatusTransfer's own "can't move more than you have" check.
   function purchaseQtyChangeWouldBreakStatusBuckets(purchase, newQty){
     var sku = purchase.sku;
     var totalAfterChange = (computeCurrentStockMap()[sku] || 0) - (Number(purchase.qty) || 0) + (Number(newQty) || 0);
-    var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
-    var committed = buckets.inUse + buckets.damaged;
+    var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
+    var committed = buckets.inUse + buckets.damaged + buckets.reserved;
     return totalAfterChange < committed;
   }
   function purchaseDeletionWouldBreakStatusBuckets(purchase){
@@ -6484,6 +6625,40 @@
   // never matched real inventory items.
   function isReelUnit(item){
     return !!(item && item.pricedPerReel);
+  }
+
+  // Same "what actually distinguishes this row" spec string used elsewhere (Manage Inventory
+  // Items list, Reorder List) — reused here so a Plant entry's Layer dropdown can tell two
+  // same-named "Reel" items apart by GSM/Size/BF, the same way every other reel-picking UI in
+  // this app already does.
+  function layerSkuOptionLabel(item){
+    var specParts = [];
+    if(item.gsm != null && item.gsm !== "") specParts.push("GSM " + item.gsm);
+    if(item.size) specParts.push("Size " + item.size + (item.sizeUnit ? " " + item.sizeUnit : ""));
+    if(item.bf != null && item.bf !== "") specParts.push("BF " + item.bf);
+    return item.name + (specParts.length ? " (" + specParts.join(" / ") + ")" : "");
+  }
+  // Populates every Layer row's Reel Item dropdown from the reel/roll-priced items in the
+  // Inventory catalog (see isReelUnit) — a plain free-text GSM/Size/BF would let a typo silently
+  // point at the wrong SKU (or none at all) when the entry is saved and Available stock needs to
+  // be moved to In Use for whichever reel was actually used (see
+  // reconcileLayerReelStatusTransfers below), so picking from the real catalog is the only option
+  // offered. Called whenever the catalog changes (subscribeInventory's onSnapshot) and once more
+  // when the entry form opens (openModal), so the list is never stale by the time someone needs
+  // it. Preserves each select's current value across a refresh.
+  function renderLayerSkuOptions(){
+    var reelItems = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
+      .filter(isReelUnit)
+      .sort(function(a, b){ return layerSkuOptionLabel(a).localeCompare(layerSkuOptionLabel(b)); });
+    var optionsHtml = '<option value="">' + esc(t("layers_item_select")) + "</option>" +
+      reelItems.map(function(item){ return '<option value="' + esc(item.sku) + '">' + esc(layerSkuOptionLabel(item)) + "</option>"; }).join("");
+    for(var n = 1; n <= 7; n++){
+      var sel = el["f_layer" + n + "_sku"];
+      if(!sel) continue;
+      var prev = sel.value;
+      sel.innerHTML = optionsHtml;
+      sel.value = state.invCatalog[prev] ? prev : "";
+    }
   }
 
   // Shared arithmetic for both recording a NEW receipt and correcting an EXISTING one (see
@@ -6558,24 +6733,27 @@
     return state.db.collection("purchases").doc(purchaseId).update(payload);
   }
 
-  // Moves `qty` units of a SKU from one status bucket to another (Available/In Use/Damaged) and
-  // returns the write's promise. Rejects if there isn't enough quantity currently sitting in
-  // `fromStatus` — the same "can't move more than you have" check Ship used to do against total
-  // stock, now scoped to a single bucket.
-  function addStatusTransfer(sku, fromStatus, toStatus, qty, note){
+  // Moves `qty` units of a SKU from one status bucket to another (Available/Reserved/In Use/
+  // Damaged) and returns the write's promise. Rejects if there isn't enough quantity currently
+  // sitting in `fromStatus` — the same "can't move more than you have" check Ship used to do
+  // against total stock, now scoped to a single bucket. `extra` (optional) is merged onto the
+  // transfer's own payload — today just `{ jobCardNo }`, stamped on a move into (or out of)
+  // Reserved so reservedQtyForJobCard can later reconstruct how much of this SKU is held for one
+  // specific Job Card.
+  function addStatusTransfer(sku, fromStatus, toStatus, qty, note, extra){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     qty = Number(qty);
     if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
     if(fromStatus === toStatus) return Promise.reject(new Error(t("inv_status_err_same")));
-    var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
+    var buckets = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
     var fromQty = buckets[statusBucketKey(fromStatus)] || 0;
     if(qty > fromQty) return Promise.reject(new Error(tf("inv_status_err_insufficient", { qty: fromQty })));
-    var payload = {
+    var payload = Object.assign({
       sku: sku, itemName: item.name, fromStatus: fromStatus, toStatus: toStatus, qty: qty,
       note: (note || "").trim(), by: deviceSupervisorName || "",
       date: state.date, shift: state.shift || "", createdAt: Date.now()
-    };
+    }, extra || {});
     return state.db.collection("statusTransfers").add(payload);
   }
 
@@ -6730,7 +6908,7 @@
     var otherRows = filteredRows.filter(function(i){ return !isReelUnit(i); });
 
     function buildStockRow(item){
-      var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
+      var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       var value = inventoryStockValue(item, b.available);
       var tr = document.createElement("tr");
@@ -6746,6 +6924,7 @@
         "<td>" + esc(item.shade || "—") + "</td>" +
         "<td>" + esc(item.unit || "—") + "</td>" +
         '<td class="mono">' + b.available.toLocaleString() + "</td>" +
+        '<td class="mono">' + (b.reserved || 0).toLocaleString() + "</td>" +
         '<td class="mono">' + b.inUse.toLocaleString() + "</td>" +
         '<td class="mono">' + b.damaged.toLocaleString() + "</td>" +
         '<td class="mono">' + (item.defaultPrice ? esc(formatInr(item.defaultPrice)) : "—") + "</td>" +
@@ -6766,8 +6945,15 @@
         // "View" lists every individual reel on file for this GSM/Size/BF spec in a table, and
         // "Export" downloads that same table as CSV — both only meaningful for priced-per-reel
         // items, since every other item type has no per-unit breakdown to show or export
-        // (see openReelsViewModal / buildInventoryReelsCsv).
+        // (see openReelsViewModal / buildInventoryReelsCsv). "Reserve" is the same idea, scoped to
+        // reel items specifically — earmarking specific reels for a future Job Card so a later
+        // Plant entry's Layers picker can consume them automatically (see openStatusModal's
+        // presetTo param and reconcileLayerReelStatusTransfers below).
         if(isReelUnit(item)){
+          var reserveBtn = document.createElement("button");
+          reserveBtn.type = "button"; reserveBtn.className = "btn ghost invSmallBtn"; reserveBtn.textContent = t("inv_action_reserve");
+          reserveBtn.addEventListener("click", function(){ openStatusModal(item.sku, "reserved"); });
+          actionsCell.appendChild(reserveBtn);
           var viewBtn = document.createElement("button");
           viewBtn.type = "button"; viewBtn.className = "btn ghost invSmallBtn"; viewBtn.textContent = t("inv_reels_view_action");
           viewBtn.addEventListener("click", function(){ openReelsViewModal(item.sku); });
@@ -6785,20 +6971,21 @@
       return tr;
     }
 
-    // Totals row: Available / In Use / Damaged summed across whatever rows are actually showing in
-    // that table right now — i.e. AFTER search + every column filter above has been applied — so it
-    // always answers "how much of what I'm looking at" rather than a fixed grand total that stops
-    // matching the screen the moment someone filters it down.
+    // Totals row: Available / Reserved / In Use / Damaged summed across whatever rows are actually
+    // showing in that table right now — i.e. AFTER search + every column filter above has been
+    // applied — so it always answers "how much of what I'm looking at" rather than a fixed grand
+    // total that stops matching the screen the moment someone filters it down.
     function buildTotalsRow(rows){
-      var totals = { available: 0, inUse: 0, damaged: 0 };
+      var totals = { available: 0, inUse: 0, damaged: 0, reserved: 0 };
       rows.forEach(function(item){
-        var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
-        totals.available += b.available; totals.inUse += b.inUse; totals.damaged += b.damaged;
+        var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
+        totals.available += b.available; totals.inUse += b.inUse; totals.damaged += b.damaged; totals.reserved += (b.reserved || 0);
       });
       var tr = document.createElement("tr");
       tr.innerHTML =
         '<td colspan="8">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
         '<td class="num">' + totals.available.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.reserved.toLocaleString() + "</td>" +
         '<td class="num">' + totals.inUse.toLocaleString() + "</td>" +
         '<td class="num">' + totals.damaged.toLocaleString() + "</td>" +
         '<td colspan="5"></td>';
@@ -6888,17 +7075,17 @@
 
   // ---------- Inventory CSV exports (mirrors downloadCsv/csvEscape used by the main Log view) ----------
   function buildInventoryStockCsv(items, statusMap){
-    var header = ["Item", "SKU", "Zone", "Category", "GSM", "Size", "BF", "Shade", "Unit", "Available", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
+    var header = ["Item", "SKU", "Zone", "Category", "GSM", "Size", "BF", "Shade", "Unit", "Available", "Reserved", "In Use", "Damaged", "Price/Unit", "Value", "Reorder Point", "Status"];
     var lines = [header.map(csvEscape).join(",")];
     items.forEach(function(item){
-      var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
+      var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       lines.push([
         item.name, item.sku, item.zone || "", item.category || "",
         item.gsm != null ? item.gsm : "",
         item.size ? (item.size + (item.sizeUnit ? " " + item.sizeUnit : "")) : "",
         item.bf != null ? item.bf : "", item.shade || "",
-        item.unit || "", b.available, b.inUse, b.damaged,
+        item.unit || "", b.available, b.reserved || 0, b.inUse, b.damaged,
         (Number(item.defaultPrice) || 0).toFixed(2), inventoryStockValue(item, b.available).toFixed(2),
         Number(item.reorderPoint) || 0, inventoryStatusLabel(sClass)
       ].map(csvEscape).join(","));
@@ -8090,25 +8277,40 @@
     if(ev.target === el.invReelsViewOverlay){ el.invReelsViewOverlay.hidden = true; invReelsViewSku = null; }
   });
 
-  // ---------- Update Status modal (Available / In Use / Damaged) ----------
+  // ---------- Update Status modal (Available / Reserved / In Use / Damaged) ----------
   var invStatusContext = null; // { sku }
-  function openStatusModal(sku){
+  // `presetTo` (optional) pre-selects the To dropdown — used by the reel item row's own "Reserve"
+  // button (presetTo="reserved") so that one click lands straight on Available -> Reserved with
+  // the Job Card No field already showing, instead of making every reservation start from the
+  // generic From=Available/To=In Use default below.
+  function openStatusModal(sku, presetTo){
     var item = state.invCatalog[sku];
     if(!item) return;
     invStatusContext = { sku: sku };
-    var b = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0 };
+    var b = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
     el.invStatusItemLine.textContent = tf("inv_status_current_line", {
-      name: item.name, available: b.available.toLocaleString(), inUse: b.inUse.toLocaleString(),
-      damaged: b.damaged.toLocaleString(), unit: item.unit || ""
+      name: item.name, available: b.available.toLocaleString(), reserved: (b.reserved || 0).toLocaleString(),
+      inUse: b.inUse.toLocaleString(), damaged: b.damaged.toLocaleString(), unit: item.unit || ""
     });
     el.invStatusFromSelect.value = "available";
-    el.invStatusToSelect.value = "in_use";
+    el.invStatusToSelect.value = presetTo || "in_use";
     el.invStatusQtyInput.value = "";
+    el.invStatusJobCardInput.value = "";
     el.invStatusNoteInput.value = "";
     el.invStatusError.hidden = true;
+    refreshInvStatusJobCardVisibility();
     el.invStatusOverlay.hidden = false;
     el.invStatusQtyInput.focus();
   }
+  // The Job Card No field only matters (and is only shown) when stock is moving INTO Reserved —
+  // that's the one direction a reservation is actually being created/extended; moving stock back
+  // OUT of Reserved (releasing it, or converting it straight to In Use) doesn't need a fresh Job
+  // Card No typed in, since reservedQtyForJobCard already looks at the original reserving
+  // transfer's own stamped jobCardNo, not anything entered here.
+  function refreshInvStatusJobCardVisibility(){
+    el.invStatusJobCardRow.hidden = el.invStatusToSelect.value !== "reserved";
+  }
+  el.invStatusToSelect.addEventListener("change", refreshInvStatusJobCardVisibility);
   el.invStatusCancelBtn.addEventListener("click", function(){ el.invStatusOverlay.hidden = true; invStatusContext = null; });
   el.invStatusOverlay.addEventListener("click", function(ev){
     if(ev.target === el.invStatusOverlay){ el.invStatusOverlay.hidden = true; invStatusContext = null; }
@@ -8116,8 +8318,16 @@
   el.invStatusConfirmBtn.addEventListener("click", function(){
     if(!invStatusContext) return;
     el.invStatusError.hidden = true;
+    var toStatus = el.invStatusToSelect.value;
+    var jobCardNo = el.invStatusJobCardInput.value.trim();
+    if(toStatus === "reserved" && !jobCardNo){
+      el.invStatusError.textContent = t("inv_status_err_jobcard_required");
+      el.invStatusError.hidden = false;
+      return;
+    }
     el.invStatusConfirmBtn.disabled = true;
-    addStatusTransfer(invStatusContext.sku, el.invStatusFromSelect.value, el.invStatusToSelect.value, el.invStatusQtyInput.value, el.invStatusNoteInput.value)
+    addStatusTransfer(invStatusContext.sku, el.invStatusFromSelect.value, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value,
+      toStatus === "reserved" ? { jobCardNo: jobCardNo } : undefined)
       .then(function(){
         el.invStatusConfirmBtn.disabled = false;
         el.invStatusOverlay.hidden = true;
@@ -8368,7 +8578,10 @@
   function summarizeLayers(layers){
     if(!layers || !layers.length) return "";
     return layers.map(function(l, i){
-      return "L" + (i + 1) + ": " + (l.reelWeight || "—") + " | " + (l.size || "—") + "/" + (l.gsm || "—") + "/" + (l.bf || "—");
+      // Item name when this layer is tied to a real Inventory SKU (see computeLayersData) — falls
+      // back to just the typed spec numbers for older entries saved before that dropdown existed.
+      var itemName = l.sku && state.invCatalog[l.sku] ? state.invCatalog[l.sku].name : "";
+      return "L" + (i + 1) + ": " + (itemName ? itemName + " " : "") + (l.reelWeight || "—") + " | " + (l.size || "—") + "/" + (l.gsm || "—") + "/" + (l.bf || "—");
     }).join("; ");
   }
   function summarizeQcSpec(clientVal, visipakVal, pass){
@@ -9385,6 +9598,11 @@
   // ---------- Modal ----------
   function openModal(entry){
     state.editingId = entry ? entry.id : null;
+    // Snapshot of whatever this entry's Layers looked like BEFORE this edit — read back on save by
+    // reconcileLayerReelStatusTransfers so only the reel(s) that actually changed get moved between
+    // status buckets, instead of re-deducting a reel every time an already-saved Plant entry is
+    // reopened and saved again untouched. null for a brand-new entry (nothing to reconcile against).
+    editingOriginalLayers = entry ? (entry.layers || null) : null;
     var deviceLocked = state.deviceStages !== "ALL";
     var allowedStages = deviceLocked ? state.deviceStages : STAGES;
     var targetStage = entry ? entry.stage : (deviceLocked ? allowedStages[0] : STAGES[0]);
@@ -9431,9 +9649,12 @@
     el.f_qcfgstockavailable.value = entry && entry.qcFgStockAvailable != null ? entry.qcFgStockAvailable : "";
     el.f_ply.value = entry ? (entry.ply || "") : "";
     // Layers: populate whichever rows the saved entry actually has data for (up to 7); a new
-    // entry, or one saved before/without Layers, just leaves them blank.
+    // entry, or one saved before/without Layers, just leaves them blank. Refresh the Reel Item
+    // dropdowns first so a saved sku actually has a matching <option> to select before it's set.
+    renderLayerSkuOptions();
     for(var layerPopN = 1; layerPopN <= 7; layerPopN++){
       var layerData = (entry && entry.layers && entry.layers[layerPopN - 1]) || null;
+      el["f_layer" + layerPopN + "_sku"].value = (layerData && layerData.sku && state.invCatalog[layerData.sku]) ? layerData.sku : "";
       el["f_layer" + layerPopN + "_reelweight"].value = layerData ? (layerData.reelWeight || "") : "";
       el["f_layer" + layerPopN + "_size"].value = layerData ? (layerData.size || "") : "";
       el["f_layer" + layerPopN + "_gsm"].value = layerData ? (layerData.gsm || "") : "";
@@ -9945,6 +10166,12 @@
     }
     lastUpdatedBy = payload.updatedBy;
 
+    // Snapshotted now (before openModal/closeModal have any chance to reset editingOriginalLayers)
+    // so the post-save reconciliation below always diffs against what THIS save actually started
+    // from, not whatever a later modal open might have left the module-level var holding.
+    var originalLayersForReconcile = editingOriginalLayers;
+    var jobCardNoForReconcile = payload.jobCardNo;
+
     var isNewEntry = !state.editingId;
     var logEntryId = state.editingId;
     var promise;
@@ -9958,6 +10185,12 @@
       if(isNewEntry && res && res.id) logEntryId = res.id;
       saveBtn.disabled = false;
       logActivity(isNewEntry ? "add" : "edit", Object.assign({ id: logEntryId }, payload), payload.updatedBy);
+      // Plant's own Layers picking a real Reel Item (see computeLayersData) is what actually moves
+      // Inventory stock — only while this save's own open form is Plant itself (stageHasLayers),
+      // since that's the only stage whose form even collects `payload.layers` in the first place.
+      if(stageHasLayers(chosenStage)){
+        reconcileLayerReelStatusTransfers(originalLayersForReconcile, payload.layers, jobCardNoForReconcile);
+      }
       // Archive chosenStage's own snapshot (see stageHistorySnapshot's own comment above) now that
       // the main save is safely through — entryId is only known for certain at this point (a
       // brand-new entry's id comes back on res, e.g. a fresh QC entry advancing straight to Plant
