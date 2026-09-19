@@ -886,21 +886,49 @@
       <button class="btn ghost" id="invStockExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
     </div>
 
-    <div class="tableWrap">
-      <table>
-        <thead>
-          <tr>
-            <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
-            <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
-            <th data-i18n="inv_items_unit">Unit</th>
-            <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
-            <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
-            <th data-i18n="inv_th_status">Status</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="invStockBody"></tbody>
-      </table>
-      <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No products yet. Use "Manage Inventory Items" to add your first one.</div>
+    <!-- Reel/roll-priced items (identified by GSM/Size/BF, each bought reel-by-reel from many
+         vendors — see isReelUnit()) get their own section, kept apart from ordinary stock items,
+         the same way Purchase History is its own section below rather than mixed into this one.
+         Sorted by BF then Size (see renderInventory()) so reels of the same BF group together and
+         read top-to-bottom the way the mill's own paper-stock sheet does. -->
+    <div class="invLogSection">
+      <div class="invLogHead"><h3 data-i18n="inv_reels_stock_heading">Reel Items (GSM / Size / BF)</h3></div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
+              <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
+              <th data-i18n="inv_items_unit">Unit</th>
+              <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+              <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+              <th data-i18n="inv_th_status">Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="invReelsStockBody"></tbody>
+        </table>
+        <div class="logEmpty" id="invReelsStockEmpty" hidden data-i18n="inv_reels_stock_empty">No reel items yet.</div>
+      </div>
+    </div>
+
+    <div class="invLogSection">
+      <div class="invLogHead"><h3 data-i18n="inv_other_stock_heading">Other Items</h3></div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
+              <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
+              <th data-i18n="inv_items_unit">Unit</th>
+              <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+              <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+              <th data-i18n="inv_th_status">Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="invStockBody"></tbody>
+        </table>
+        <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No products yet. Use "Manage Inventory Items" to add your first one.</div>
+      </div>
     </div>
 
     <div class="invLogSection">
@@ -2372,6 +2400,9 @@
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
       inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
       inv_empty: "No products yet. Use \"Manage Inventory Items\" to add your first one.",
+      inv_reels_stock_heading: "Reel Items (GSM / Size / BF)",
+      inv_reels_stock_empty: "No reel items yet.",
+      inv_other_stock_heading: "Other Items",
       inv_reorder_heading: "Reorder List",
       inv_reorder_empty: "Nothing needs reordering right now.",
       inv_log_heading: "Purchase History",
@@ -2418,6 +2449,7 @@
       inv_items_err_duplicate_sku: "An item with this SKU already exists.",
       inv_items_err_save_failed: "Couldn't save item.",
       inv_items_err_remove_failed: "Couldn't remove item.",
+      banner_sku_auto_renamed: "That SKU was already in use, so this item was saved as {sku} instead.",
       inv_move_title: "Receive Stock",
       inv_move_edit_title: "Edit Receipt",
       inv_move_confirm_save: "Save Changes",
@@ -2440,6 +2472,7 @@
       inv_reels_err_no_rows: "Add at least one reel before logging receipts.",
       inv_reels_err_bad_weight: "Every reel needs a weight greater than zero.",
       inv_reels_view_action: "View", inv_reels_view_title: "Reels on File",
+      inv_reels_export_action: "Export",
       inv_reels_view_empty: "No reels received yet for this item.",
       inv_reels_view_summary_line: "{count} reels on file · Total Weight: {weight} kg · Total Amount: {amount}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
@@ -2649,6 +2682,9 @@
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
       inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
       inv_empty: "अभी तक कोई प्रोडक्ट नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
+      inv_reels_stock_heading: "रील आइटम (GSM / साइज़ / BF)",
+      inv_reels_stock_empty: "अभी तक कोई रील आइटम नहीं है।",
+      inv_other_stock_heading: "अन्य आइटम",
       inv_reorder_heading: "रीऑर्डर सूची",
       inv_reorder_empty: "अभी कुछ भी रीऑर्डर करने की ज़रूरत नहीं है।",
       inv_log_heading: "खरीद इतिहास",
@@ -2695,6 +2731,7 @@
       inv_items_err_duplicate_sku: "इस SKU वाला आइटम पहले से मौजूद है।",
       inv_items_err_save_failed: "आइटम सेव नहीं हो सका।",
       inv_items_err_remove_failed: "आइटम हटाया नहीं जा सका।",
+      banner_sku_auto_renamed: "यह SKU पहले से उपयोग में था, इसलिए यह आइटम {sku} के रूप में सेव किया गया।",
       inv_move_title: "स्टॉक प्राप्त करें",
       inv_move_edit_title: "रसीद संपादित करें",
       inv_move_confirm_save: "बदलाव सेव करें",
@@ -2717,6 +2754,7 @@
       inv_reels_err_no_rows: "रसीदें दर्ज करने से पहले कम से कम एक रील जोड़ें।",
       inv_reels_err_bad_weight: "हर रील का वज़न शून्य से अधिक होना चाहिए।",
       inv_reels_view_action: "देखें", inv_reels_view_title: "उपलब्ध रीलें",
+      inv_reels_export_action: "एक्सपोर्ट",
       inv_reels_view_empty: "इस आइटम के लिए अभी तक कोई रील प्राप्त नहीं हुई।",
       inv_reels_view_summary_line: "{count} रीलें उपलब्ध · कुल वज़न: {weight} kg · कुल राशि: {amount}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
@@ -2926,6 +2964,9 @@
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
       inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
       inv_empty: "ఇంకా ప్రొడక్ట్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
+      inv_reels_stock_heading: "రీల్ ఐటమ్‌లు (GSM / సైజ్ / BF)",
+      inv_reels_stock_empty: "ఇంకా రీల్ ఐటమ్‌లు లేవు.",
+      inv_other_stock_heading: "ఇతర ఐటమ్‌లు",
       inv_reorder_heading: "రీఆర్డర్ జాబితా",
       inv_reorder_empty: "ప్రస్తుతం రీఆర్డర్ చేయవలసినది ఏమీ లేదు.",
       inv_log_heading: "కొనుగోలు చరిత్ర",
@@ -2972,6 +3013,7 @@
       inv_items_err_duplicate_sku: "ఈ SKUతో ఐటమ్ ఇప్పటికే ఉంది.",
       inv_items_err_save_failed: "ఐటమ్ సేవ్ కాలేదు.",
       inv_items_err_remove_failed: "ఐటమ్ తొలగించబడలేదు.",
+      banner_sku_auto_renamed: "ఆ SKU ఇప్పటికే వాడుకలో ఉంది, కాబట్టి ఈ ఐటమ్ {sku}గా సేవ్ చేయబడింది.",
       inv_move_title: "స్టాక్‌ను స్వీకరించండి",
       inv_move_edit_title: "రసీదును సవరించండి",
       inv_move_confirm_save: "మార్పులను సేవ్ చేయండి",
@@ -2994,6 +3036,7 @@
       inv_reels_err_no_rows: "రసీదులను నమోదు చేయడానికి ముందు కనీసం ఒక రీల్ జోడించండి.",
       inv_reels_err_bad_weight: "ప్రతి రీల్‌కు సున్నా కంటే ఎక్కువ బరువు అవసరం.",
       inv_reels_view_action: "వీక్షించండి", inv_reels_view_title: "అందుబాటులో ఉన్న రీళ్లు",
+      inv_reels_export_action: "ఎగుమతి",
       inv_reels_view_empty: "ఈ ఐటమ్ కోసం ఇంకా రీళ్లు స్వీకరించలేదు.",
       inv_reels_view_summary_line: "{count} రీళ్లు అందుబాటులో ఉన్నాయి · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
@@ -3188,6 +3231,8 @@
     invStockExportBtn: document.getElementById("invStockExportBtn"),
     invStockBody: document.getElementById("invStockBody"),
     invStockEmpty: document.getElementById("invStockEmpty"),
+    invReelsStockBody: document.getElementById("invReelsStockBody"),
+    invReelsStockEmpty: document.getElementById("invReelsStockEmpty"),
     invLogSearch: document.getElementById("invLogSearch"),
     invLogExportBtn: document.getElementById("invLogExportBtn"),
     invLogBody: document.getElementById("invLogBody"),
@@ -6254,11 +6299,25 @@
 
     var canManage = state.isAdminDevice;
     var canMove = canManage || deviceCanViewStage("Inventory Management");
-    var rows = getFilteredStockItems();
+    var filteredRows = getFilteredStockItems();
+    // Reel/roll-priced items (see isReelUnit()) get their own dashboard section, kept apart from
+    // ordinary stock the same way Purchase History already sits in its own section below — so a
+    // long list of paper reels doesn't drown out spare parts, chemicals, etc. and vice versa.
+    // Within that section, reels sort by BF then Size (ascending) rather than alphabetically by
+    // name, so the mill's own paper-stock groupings (all of one BF together, sized smallest to
+    // largest) show up automatically as reels are added — no manual reordering needed.
+    var reelRows = filteredRows.filter(isReelUnit).sort(function(a, b){
+      var bfA = isFinite(Number(a.bf)) ? Number(a.bf) : Infinity;
+      var bfB = isFinite(Number(b.bf)) ? Number(b.bf) : Infinity;
+      if(bfA !== bfB) return bfA - bfB;
+      var sizeA = isFinite(parseFloat(a.size)) ? parseFloat(a.size) : Infinity;
+      var sizeB = isFinite(parseFloat(b.size)) ? parseFloat(b.size) : Infinity;
+      if(sizeA !== sizeB) return sizeA - sizeB;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    var otherRows = filteredRows.filter(function(i){ return !isReelUnit(i); });
 
-    el.invStockBody.innerHTML = "";
-    el.invStockEmpty.hidden = rows.length !== 0;
-    rows.forEach(function(item){
+    function buildStockRow(item){
       var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0 };
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       var value = inventoryStockValue(item, b.available);
@@ -6291,18 +6350,35 @@
         statusBtn.type = "button"; statusBtn.className = "btn ghost invSmallBtn"; statusBtn.textContent = t("inv_status_action");
         statusBtn.addEventListener("click", function(){ openStatusModal(item.sku); });
         actionsCell.appendChild(statusBtn);
-        // "View" lists every individual reel on file for this GSM/Size/BF spec in a table — only
-        // meaningful for priced-per-reel items, since every other item type has no per-unit
-        // breakdown to show (see openReelsViewModal).
+        // "View" lists every individual reel on file for this GSM/Size/BF spec in a table, and
+        // "Export" downloads that same table as CSV — both only meaningful for priced-per-reel
+        // items, since every other item type has no per-unit breakdown to show or export
+        // (see openReelsViewModal / buildInventoryReelsCsv).
         if(isReelUnit(item)){
           var viewBtn = document.createElement("button");
           viewBtn.type = "button"; viewBtn.className = "btn ghost invSmallBtn"; viewBtn.textContent = t("inv_reels_view_action");
           viewBtn.addEventListener("click", function(){ openReelsViewModal(item.sku); });
           actionsCell.appendChild(viewBtn);
+          var exportBtn = document.createElement("button");
+          exportBtn.type = "button"; exportBtn.className = "btn ghost invSmallBtn"; exportBtn.textContent = t("inv_reels_export_action");
+          exportBtn.addEventListener("click", function(){
+            var reelRowsForSku = state.invPurchases.filter(function(p){ return p.sku === item.sku; });
+            if(reelRowsForSku.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+            downloadCsv("visipak-reels-" + item.sku + ".csv", buildInventoryReelsCsv(item.sku));
+          });
+          actionsCell.appendChild(exportBtn);
         }
       }
-      el.invStockBody.appendChild(tr);
-    });
+      return tr;
+    }
+
+    el.invReelsStockBody.innerHTML = "";
+    el.invReelsStockEmpty.hidden = reelRows.length !== 0;
+    reelRows.forEach(function(item){ el.invReelsStockBody.appendChild(buildStockRow(item)); });
+
+    el.invStockBody.innerHTML = "";
+    el.invStockEmpty.hidden = otherRows.length !== 0;
+    otherRows.forEach(function(item){ el.invStockBody.appendChild(buildStockRow(item)); });
 
     renderInventoryLog();
     // Keep an open "View reels" modal live too, the same way Purchase History already refreshes
@@ -6397,6 +6473,27 @@
         (Number(p.pricePerUnit) || 0).toFixed(2),
         Number(p.discountPct) || 0, Number(p.gstPct) || 0, (Number(p.lineAmount) || 0).toFixed(2),
         p.supplier || "", p.receivedBy || "", p.note || ""
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  // One item's reels-on-file, in the exact same tabular shape the "View" modal shows (Reel No,
+  // Shade, Weight/Reel, Rate, Amount, Supplier, Received Date) — newest received first, same as
+  // renderReelsViewTable(). This is what the reel row's "Export" button downloads.
+  function buildInventoryReelsCsv(sku){
+    var rows = state.invPurchases.filter(function(p){ return p.sku === sku; })
+      .sort(function(a, b){
+        var ad = a.date || "", bd = b.date || "";
+        if(ad !== bd) return ad < bd ? 1 : -1;
+        return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+      });
+    var header = ["Reel No", "Shade", "Weight/Reel (kg)", "Rate", "Amount", "Supplier", "Received Date"];
+    var lines = [header.map(csvEscape).join(",")];
+    rows.forEach(function(p){
+      lines.push([
+        p.reelNo || "", p.shade || "", p.weightPerReel != null ? Number(p.weightPerReel) : "",
+        (Number(p.pricePerUnit) || 0).toFixed(2), (Number(p.lineAmount) || 0).toFixed(2),
+        p.supplier || "", p.date || ""
       ].map(csvEscape).join(","));
     });
     return lines.join("\r\n");
@@ -6606,10 +6703,28 @@
       el.invItemsError.hidden = false;
       return;
     }
+    // A collision on a NEW item's SKU no longer blocks the save — the same code (e.g. a Zone
+    // label typed straight into SKU, like "ZONE-2") is often reused on purpose across many
+    // physical items, so instead of rejecting it we silently make it unique by appending
+    // "-2", "-3", ... and proceed, telling the person which SKU was actually saved afterward.
+    // Exception: if the name matches the existing item at that SKU exactly, this isn't a new,
+    // different item reusing the code — it's the very same item being re-saved (e.g. clicking
+    // "Add item" again right after "Extract items from this invoice" already imported this exact
+    // row) — so that case updates the existing doc in place instead of spawning a duplicate.
+    var skuAutoRenamed = false;
     if(!editingInvSku && state.invCatalog[sku]){
-      el.invItemsError.textContent = t("inv_items_err_duplicate_sku");
-      el.invItemsError.hidden = false;
-      return;
+      var collidingItem = state.invCatalog[sku];
+      var isSameItemResave = (collidingItem.name || "").trim().toLowerCase() === name.toLowerCase();
+      if(isSameItemResave){
+        editingInvSku = sku;
+      } else {
+        var baseSku = sku, suffixN = 2;
+        while(state.invCatalog[sku]){
+          sku = baseSku + "-" + suffixN;
+          suffixN++;
+        }
+        skuAutoRenamed = true;
+      }
     }
     // Saved as three flat fields (not a nested object) so each one can be individually exempted
     // from Firestore's automatic single-field indexing in the console — see makeAttachmentController.
@@ -6655,6 +6770,7 @@
       el.invItemAddBtn.disabled = false;
       resetInvItemForm();
       renderInvItemsList();
+      if(skuAutoRenamed) showBanner(tf("banner_sku_auto_renamed", { sku: sku }));
     }).catch(function(err){
       el.invItemAddBtn.disabled = false;
       el.invItemsError.textContent = t("inv_items_err_save_failed") + " " + (err && err.message ? err.message : "");
