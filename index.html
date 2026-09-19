@@ -778,7 +778,7 @@
            Master Sheet record, which opens natively in Excel (see exportMasterSheetBtn's own
            listener below). -->
       <button class="btn ghost" id="exportMasterSheetBtn" type="button" hidden data-i18n="master_export_btn">Export Master Sheet</button>
-      <div class="viewToggle" role="tablist">
+      <div class="viewToggle" id="prodViewToggle" role="tablist">
         <button class="toggleBtn active" data-view="board" type="button" data-i18n="view_board">Board</button>
         <button class="toggleBtn" data-view="log" type="button" data-i18n="view_log">Log</button>
       </div>
@@ -874,81 +874,96 @@
       <button class="btn ghost" id="manageInventoryItemsBtn" type="button" hidden data-i18n="btn_manage_inventory_items">Manage Inventory Items</button>
     </div>
 
-    <div class="invLogSection">
-      <div class="invLogHead"><h3 data-i18n="inv_reorder_heading">Reorder List</h3></div>
-      <div id="invReorderList"></div>
-      <div class="logEmpty" id="invReorderEmpty" hidden data-i18n="inv_reorder_empty">Nothing needs reordering right now.</div>
+    <!-- Stock vs Purchase History are peer sub-tabs within Inventory (same pattern as the
+         Board/Log toggle inside Production, see .invViewToggle's own click handler below) — a
+         separate class from .viewToggle's so its buttons never get caught by the Production
+         toggle's document-wide .toggleBtn selector, and vice versa. -->
+    <div class="invViewToggle viewToggle" role="tablist">
+      <button class="toggleBtn active" data-invview="stock" type="button" data-i18n="inv_view_stock">Stock</button>
+      <button class="toggleBtn" data-invview="history" type="button" data-i18n="inv_view_history">Purchase History</button>
     </div>
 
-    <div class="logControls">
-      <input type="text" id="invSearch" placeholder="Search item, SKU, category…" data-i18n-placeholder="inv_search_placeholder">
-      <select id="invCategoryFilter"><option value="" data-i18n="filter_all">All</option></select>
-      <button class="btn ghost" id="invStockExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
-    </div>
-
-    <!-- Reel/roll-priced items (identified by GSM/Size/BF, each bought reel-by-reel from many
-         vendors — see isReelUnit()) get their own section, kept apart from ordinary stock items,
-         the same way Purchase History is its own section below rather than mixed into this one.
-         Sorted by BF then Size (see renderInventory()) so reels of the same BF group together and
-         read top-to-bottom the way the mill's own paper-stock sheet does. -->
-    <div class="invLogSection">
-      <div class="invLogHead"><h3 data-i18n="inv_reels_stock_heading">Reel Items (GSM / Size / BF)</h3></div>
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
-              <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
-              <th data-i18n="inv_items_unit">Unit</th>
-              <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
-              <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
-              <th data-i18n="inv_th_status">Status</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="invReelsStockBody"></tbody>
-        </table>
-        <div class="logEmpty" id="invReelsStockEmpty" hidden data-i18n="inv_reels_stock_empty">No reel items yet.</div>
+    <div id="invStockSection">
+      <div class="invLogSection">
+        <div class="invLogHead"><h3 data-i18n="inv_reorder_heading">Reorder List</h3></div>
+        <div id="invReorderList"></div>
+        <div class="logEmpty" id="invReorderEmpty" hidden data-i18n="inv_reorder_empty">Nothing needs reordering right now.</div>
       </div>
-    </div>
 
-    <div class="invLogSection">
-      <div class="invLogHead"><h3 data-i18n="inv_other_stock_heading">Other Items</h3></div>
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_sku">SKU</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
-              <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
-              <th data-i18n="inv_items_unit">Unit</th>
-              <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
-              <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
-              <th data-i18n="inv_th_status">Status</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="invStockBody"></tbody>
-        </table>
-        <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No products yet. Use "Manage Inventory Items" to add your first one.</div>
-      </div>
-    </div>
-
-    <div class="invLogSection">
-      <div class="invLogHead"><h3 data-i18n="inv_log_heading">Purchase History</h3></div>
       <div class="logControls">
-        <input type="text" id="invLogSearch" placeholder="Search item, supplier, received by…" data-i18n-placeholder="inv_log_search_placeholder">
-        <button class="btn ghost" id="invLogExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
+        <input type="text" id="invSearch" placeholder="Search item, SKU, category…" data-i18n-placeholder="inv_search_placeholder">
+        <select id="invCategoryFilter"><option value="" data-i18n="filter_all">All</option></select>
+        <button class="btn ghost" id="invStockExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
       </div>
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th><th data-i18n="inv_reels_th_reelno">Reel No</th><th data-i18n="inv_items_shade">Shade</th>
-              <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_discount">Disc %</th><th data-i18n="inv_th_gst">GST %</th><th data-i18n="inv_th_amount">Amount</th>
-              <th data-i18n="inv_th_supplier">Supplier</th><th data-i18n="inv_th_receivedby">Received By</th><th data-i18n="th_remarks">Note</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="invLogBody"></tbody>
-        </table>
-        <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No purchases logged yet.</div>
+
+      <!-- Reel/roll-priced items (identified by GSM/Size/BF, each bought reel-by-reel from many
+           vendors — see isReelUnit()) get their own section, kept apart from ordinary stock items.
+           Sorted by BF then Size (see renderInventory()) so reels of the same BF group together and
+           read top-to-bottom the way the mill's own paper-stock sheet does. SKU is intentionally
+           left off this table (it's still the Firestore document id and still shown in Manage
+           Inventory Items, Purchase History and CSV exports) to keep the on-screen dashboard
+           focused on the columns that matter day to day. -->
+      <div class="invLogSection">
+        <div class="invLogHead"><h3 data-i18n="inv_reels_stock_heading">Reel Items (GSM / Size / BF)</h3></div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
+                <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
+                <th data-i18n="inv_items_unit">Unit</th>
+                <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+                <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+                <th data-i18n="inv_th_status">Status</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="invReelsStockBody"></tbody>
+          </table>
+          <div class="logEmpty" id="invReelsStockEmpty" hidden data-i18n="inv_reels_stock_empty">No reel items yet.</div>
+        </div>
+      </div>
+
+      <div class="invLogSection">
+        <div class="invLogHead"><h3 data-i18n="inv_other_stock_heading">Other Items</h3></div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_zone">Zone</th><th data-i18n="inv_th_category">Category</th>
+                <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
+                <th data-i18n="inv_items_unit">Unit</th>
+                <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+                <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
+                <th data-i18n="inv_th_status">Status</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="invStockBody"></tbody>
+          </table>
+          <div class="logEmpty" id="invStockEmpty" hidden data-i18n="inv_empty">No products yet. Use "Manage Inventory Items" to add your first one.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="invHistorySection" hidden>
+      <div class="invLogSection">
+        <div class="invLogHead"><h3 data-i18n="inv_log_heading">Purchase History</h3></div>
+        <div class="logControls">
+          <input type="text" id="invLogSearch" placeholder="Search item, supplier, received by…" data-i18n-placeholder="inv_log_search_placeholder">
+          <button class="btn ghost" id="invLogExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="th_date">Date</th><th data-i18n="inv_th_item">Item</th><th data-i18n="inv_reels_th_reelno">Reel No</th><th data-i18n="inv_items_shade">Shade</th>
+                <th data-i18n="inv_th_qty">Qty</th><th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_discount">Disc %</th><th data-i18n="inv_th_gst">GST %</th><th data-i18n="inv_th_amount">Amount</th>
+                <th data-i18n="inv_th_supplier">Supplier</th><th data-i18n="inv_th_receivedby">Received By</th><th data-i18n="th_remarks">Note</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="invLogBody"></tbody>
+          </table>
+          <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No purchases logged yet.</div>
+        </div>
       </div>
     </div>
   </main>
@@ -2400,6 +2415,7 @@
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
       inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
       inv_empty: "No products yet. Use \"Manage Inventory Items\" to add your first one.",
+      inv_view_stock: "Stock", inv_view_history: "Purchase History",
       inv_reels_stock_heading: "Reel Items (GSM / Size / BF)",
       inv_reels_stock_empty: "No reel items yet.",
       inv_other_stock_heading: "Other Items",
@@ -2682,6 +2698,7 @@
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
       inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
       inv_empty: "अभी तक कोई प्रोडक्ट नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
+      inv_view_stock: "स्टॉक", inv_view_history: "खरीद इतिहास",
       inv_reels_stock_heading: "रील आइटम (GSM / साइज़ / BF)",
       inv_reels_stock_empty: "अभी तक कोई रील आइटम नहीं है।",
       inv_other_stock_heading: "अन्य आइटम",
@@ -2964,6 +2981,7 @@
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
       inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
       inv_empty: "ఇంకా ప్రొడక్ట్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
+      inv_view_stock: "స్టాక్", inv_view_history: "కొనుగోలు చరిత్ర",
       inv_reels_stock_heading: "రీల్ ఐటమ్‌లు (GSM / సైజ్ / BF)",
       inv_reels_stock_empty: "ఇంకా రీల్ ఐటమ్‌లు లేవు.",
       inv_other_stock_heading: "ఇతర ఐటమ్‌లు",
@@ -3157,6 +3175,7 @@
     db: firestoreDb,
     view: "board",
     appView: "production",  // "production" or "inventory" — see .mainNav / applyAppView
+    invView: "stock",       // "stock" or "history" — Stock/Purchase History sub-tabs inside Inventory
     invCatalog: {},          // `products` docs keyed by SKU — see subscribeInventory
     invPurchases: [],        // `purchases` (receiving ledger), newest first — see subscribeInventory
     invStatusTransfers: [],  // `statusTransfers` (Available/In Use/Damaged moves) — see subscribeInventory
@@ -3219,6 +3238,8 @@
     summaryBar: document.getElementById("summaryBar"),
     navInventoryLink: document.getElementById("navInventoryLink"),
     inventoryView: document.getElementById("inventoryView"),
+    invStockSection: document.getElementById("invStockSection"),
+    invHistorySection: document.getElementById("invHistorySection"),
     invStatSkus: document.getElementById("invStatSkus"),
     invStatUnits: document.getElementById("invStatUnits"),
     invStatValue: document.getElementById("invStatValue"),
@@ -5957,14 +5978,32 @@
   }
 
   // ---------- View toggle (Board/Log, inside Production) ----------
-  document.querySelectorAll(".toggleBtn").forEach(function(btn){
+  // Scoped to #prodViewToggle specifically (not a document-wide ".toggleBtn" selector) so it never
+  // catches the separate Stock/Purchase History toggle inside Inventory below, which reuses the
+  // same ".toggleBtn" pill styling but drives its own state.invView instead of state.view.
+  document.querySelectorAll("#prodViewToggle .toggleBtn").forEach(function(btn){
     btn.addEventListener("click", function(){
-      document.querySelectorAll(".toggleBtn").forEach(function(b){b.classList.remove("active");});
+      document.querySelectorAll("#prodViewToggle .toggleBtn").forEach(function(b){b.classList.remove("active");});
       btn.classList.add("active");
       state.view = btn.dataset.view;
       applyAppView();
     });
   });
+
+  // ---------- View toggle (Stock/Purchase History, inside Inventory) ----------
+  document.querySelectorAll(".invViewToggle .toggleBtn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".invViewToggle .toggleBtn").forEach(function(b){b.classList.remove("active");});
+      btn.classList.add("active");
+      state.invView = btn.dataset.invview;
+      applyInvView();
+    });
+  });
+  function applyInvView(){
+    var isHistory = state.invView === "history";
+    el.invStockSection.hidden = isHistory;
+    el.invHistorySection.hidden = !isHistory;
+  }
 
   // ---------- Top-level app nav (Production / Inventory) ----------
   // Production and Inventory are peer sections (see .mainNav in the header): switching to
@@ -5988,7 +6027,7 @@
     el.boardView.hidden = isInventory || state.view !== "board";
     el.logView.hidden = isInventory || state.view !== "log";
     el.inventoryView.hidden = !isInventory;
-    if(isInventory) renderInventory();
+    if(isInventory){ applyInvView(); renderInventory(); }
   }
 
   // ---------- Inventory Management (Store department's own screen — see .mainNav) ----------
@@ -6322,9 +6361,10 @@
       var sClass = inventoryStatus(b.available, item.reorderPoint);
       var value = inventoryStockValue(item, b.available);
       var tr = document.createElement("tr");
+      // SKU isn't shown here — it's still the Firestore document id and still appears in Manage
+      // Inventory Items, Purchase History and CSV exports, just not on this on-screen dashboard.
       tr.innerHTML =
         "<td>" + esc(item.name) + "</td>" +
-        '<td class="mono">' + esc(item.sku) + "</td>" +
         "<td>" + esc(item.zone || "—") + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
         '<td class="mono">' + esc(item.gsm != null ? String(item.gsm) : "—") + "</td>" +
