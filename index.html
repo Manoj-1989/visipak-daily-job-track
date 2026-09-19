@@ -1152,7 +1152,7 @@
         </div>
       </label>
       <label><span data-i18n="inv_extract_th_bf">BF</span>
-        <input type="number" id="invItemBfInput" class="mono" min="0" step="1">
+        <input type="text" id="invItemBfInput" class="mono" placeholder="e.g. 22 or VR">
       </label>
     </div>
     <div class="supAddRow">
@@ -6789,7 +6789,7 @@
       size: el.invItemSizeInput.value.trim() || null,
       sizeUnit: el.invItemSizeUnitInput.value.trim() || null,
       gsm: invNumOrNull(el.invItemGsmInput.value),
-      bf: invNumOrNull(el.invItemBfInput.value),
+      bf: el.invItemBfInput.value.trim() || null, // free text — BF isn't always purely numeric (e.g. "VR")
       shade: el.invItemShadeInput.value.trim() || null,
       defaultWeightPerReel: invNumOrNull(el.invItemWeightPerReelInput.value),
       reels: invNumOrNull(el.invItemReelsInput.value),
@@ -7116,7 +7116,7 @@
         '<td><input type="text" data-f="unit" value="' + esc(row.unit || "") + '"></td>' +
         '<td><input type="text" class="mono" data-f="hsnCode" value="' + esc(row.hsnCode || "") + '"></td>' +
         '<td><input type="number" class="mono" data-f="gsm" value="' + (row.gsm != null ? row.gsm : "") + '"></td>' +
-        '<td><input type="number" class="mono" data-f="bf" value="' + (row.bf != null ? row.bf : "") + '"></td>' +
+        '<td><input type="text" class="mono" data-f="bf" value="' + esc(row.bf != null ? row.bf : "") + '"></td>' +
         '<td><input type="text" class="mono" data-f="size" value="' + esc(sizeCombined) + '" placeholder="109 CM"></td>' +
         '<td><input type="number" class="mono" data-f="reels" value="' + (row.reels != null ? row.reels : "") + '"></td>' +
         '<td><input type="number" step="0.001" class="mono" data-f="weight" value="' + (row.weight != null ? row.weight : "") + '"></td>' +
@@ -7135,7 +7135,7 @@
             var parts = input.value.trim().split(/\s+/);
             row.size = parts[0] || "";
             row.sizeUnit = parts.slice(1).join(" ") || "";
-          } else if(field === "gsm" || field === "bf" || field === "reels" || field === "weight" || field === "rate"){
+          } else if(field === "gsm" || field === "reels" || field === "weight" || field === "rate"){
             row[field] = input.value === "" ? null : Number(input.value);
             if(field === "rate" && row.rateUncertain){
               // The user has looked at this row and edited it — the flag has served its purpose.
