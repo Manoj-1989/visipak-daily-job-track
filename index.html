@@ -418,7 +418,11 @@
   .invLogHead h3{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--ink);}
   .invReorderRow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
   .invReorderRow:last-child{border-bottom:none;}
-  .invReorderRow .invReorderName{font-weight:600;font-size:13px;flex:1;min-width:0;}
+  .invReorderRow .invReorderNameWrap{flex:1;min-width:0;}
+  .invReorderRow .invReorderName{font-weight:600;font-size:13px;}
+  /* Category/GSM/Size/BF subtitle — many reel items share the same generic name ("Reel") and only
+     differ by these specs, so without this line the reorder list can't tell them apart at a glance. */
+  .invReorderRow .invReorderSpecs{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .invReorderRow .invReorderMeta{font-size:11.5px;color:var(--ink-soft);font-family:var(--font-mono);white-space:nowrap;}
   .invRowActions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
   .invSmallBtn{padding:5px 9px;font-size:11.5px;}
@@ -6356,7 +6360,15 @@
     reorderItems.sort(function(a, b){ return b.deficit - a.deficit; });
     el.invReorderEmpty.hidden = reorderItems.length !== 0;
     el.invReorderList.innerHTML = reorderItems.map(function(r){
-      return '<div class="invReorderRow"><span class="invReorderName">' + esc(r.item.name) + "</span>" +
+      // Same "what actually distinguishes this row" spec line used in Manage Inventory Items —
+      // Category plus GSM/Size/BF when the item has them, blank for items with none of those.
+      var specParts = [];
+      if(r.item.category) specParts.push(r.item.category);
+      if(r.item.gsm != null && r.item.gsm !== "") specParts.push("GSM " + r.item.gsm);
+      if(r.item.size) specParts.push("Size " + r.item.size + (r.item.sizeUnit ? " " + r.item.sizeUnit : ""));
+      if(r.item.bf != null && r.item.bf !== "") specParts.push("BF " + r.item.bf);
+      var specsLine = specParts.length ? '<div class="invReorderSpecs">' + esc(specParts.join(" · ")) + "</div>" : "";
+      return '<div class="invReorderRow"><div class="invReorderNameWrap"><div class="invReorderName">' + esc(r.item.name) + "</div>" + specsLine + "</div>" +
         '<span class="invReorderMeta">' + r.qty.toLocaleString() + " / " + (Number(r.item.reorderPoint) || 0).toLocaleString() + " " + esc(r.item.unit || "") + "</span>" +
         '<span class="capChip ' + r.cls + '">' + esc(inventoryStatusLabel(r.cls)) + "</span></div>";
     }).join("");
