@@ -373,6 +373,19 @@
   .taskItem.priority-medium{border-left-color:var(--warn);}
   .taskItem.priority-low{border-left-color:var(--good);}
   .taskItem.done{opacity:.6;}
+  /* ---------- Purchase Orders (PO) board — a flat list, not a per-stage Kanban like Priority
+     Tasks above, so it reuses .taskItem's card look directly (background/border/padding) rather
+     than duplicating it, plus its own overdue/received modifiers. ---------- */
+  .poList{display:flex;flex-direction:column;gap:8px;}
+  .poItem.overdue{border-left-color:var(--crit);border-left-width:6px;}
+  .poOverdueBadge{
+    display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--crit);color:#fff;margin-left:6px;
+  }
+  .poReceivedBadge{
+    display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    padding:2px 8px;border-radius:20px;white-space:nowrap;background:var(--good-soft);color:var(--good);margin-left:6px;
+  }
   /* While a task is being dragged it's lifted out of normal flow visually (shadow + slight scale)
      so it reads clearly as "the thing that's moving" against the rest of the list, which keeps
      rendering underneath at its live reordered position (see the pointer-based drag handler). */
@@ -821,6 +834,21 @@
       <span class="statValue" id="statNotStarted">0</span>
     </div>
   </div>
+
+  <!-- Purchase Orders (PO): a procurement tracker sitting above Priority Tasks. Unlike Priority
+       Tasks, this is NOT scoped to the selected date (state.date) — a PO's own relevant date is
+       its own Delivery Required At Plant, which is usually in the future, so every not-yet-
+       received PO stays visible regardless of what date is picked up top (see
+       subscribePurchaseOrders below). Sorted Pending-first by soonest delivery date, then Received
+       ones below. Admin-only to add/edit/delete/mark received — every device can view. -->
+  <section class="taskBoard poBoard" id="poBoardSection">
+    <div class="taskBoardHead">
+      <h2 data-i18n="po_board_heading">Purchase Orders (PO)</h2>
+      <button class="btn ghost small" id="addPoBtn" type="button" hidden data-i18n="btn_add_po">+ Add PO</button>
+    </div>
+    <div class="poList" id="poListBody"></div>
+    <div class="emptyHint" id="poListEmpty" hidden data-i18n="po_empty">No purchase orders yet.</div>
+  </section>
 
   <!-- Priority Tasks: a separate day-planning board sitting above the production department
        columns below. Tasks are independent planning items (not linked to job-card entries),
@@ -1333,6 +1361,7 @@
         <option value="purchases" data-i18n="trash_type_purchases">Purchase</option>
         <option value="entries" data-i18n="trash_type_entries">Job Card</option>
         <option value="tasks" data-i18n="trash_type_tasks">Task</option>
+        <option value="purchaseOrders" data-i18n="trash_type_purchaseOrders">Purchase Order</option>
         <option value="supervisors" data-i18n="trash_type_supervisors">User</option>
       </select>
     </div>
@@ -2202,6 +2231,61 @@
   </div>
 </div>
 
+<!-- Purchase Order modal — a separate, lighter-weight add/edit form, same idea as the Priority
+     Task modal above. Fields are exactly PO Number/Customer Name/Product-Material Code/Material
+     Description/Quantity/Delivery Required At Plant, plus Your name for attribution. Status
+     (Pending/Received) isn't edited here — it's toggled directly from the board list's own
+     checkbox (see buildPoItem), same pattern as a Task's Done checkbox. -->
+<div class="modalOverlay" id="poModalOverlay" hidden>
+  <form class="modal" id="poForm">
+    <h2 id="poModalTitle">Add PO</h2>
+    <div class="formGrid">
+      <label><span data-i18n="po_number_label">PO Number</span>
+        <input type="text" id="po_number" required placeholder="e.g. PO-4021" data-i18n-placeholder="po_number_placeholder">
+      </label>
+      <label><span data-i18n="po_customer_label">Customer Name</span>
+        <input type="text" id="po_customer" required placeholder="e.g. ABC Packaging Pvt Ltd" data-i18n-placeholder="po_customer_placeholder">
+      </label>
+      <label><span data-i18n="po_productcode_label">Product/Material Code</span>
+        <input type="text" id="po_productcode" placeholder="e.g. RM-KRAFT-250" data-i18n-placeholder="po_productcode_placeholder">
+      </label>
+      <label class="span2"><span data-i18n="po_materialdesc_label">Material Description</span>
+        <input type="text" id="po_materialdesc" placeholder="e.g. Kraft Paper 250 GSM, 109cm" data-i18n-placeholder="po_materialdesc_placeholder">
+      </label>
+      <label><span data-i18n="form_qty_label">Quantity</span>
+        <input type="number" id="po_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
+      </label>
+      <label><span data-i18n="po_delivery_label">Delivery Required At Plant</span>
+        <span class="dateFieldWrap">
+          <input type="date" id="po_delivery" required>
+          <span class="dateFieldLabel" id="po_deliveryLabel" aria-hidden="true"></span>
+        </span>
+      </label>
+      <label class="span2"><span data-i18n="task_yourname_label">Your name</span>
+        <input type="text" id="po_updatedby" required placeholder="Your name" data-i18n-placeholder="form_updatedby_placeholder">
+      </label>
+    </div>
+    <div class="modalActions">
+      <button type="button" class="btn danger" id="poDeleteBtn" hidden data-i18n="generic_delete">Delete</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn ghost" id="poCancelBtn">Cancel</button>
+      <button type="submit" class="btn primary" id="poSaveBtn" data-i18n="generic_save">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="modalOverlay" id="poDeleteConfirmOverlay" hidden>
+  <div class="modal">
+    <h2 data-i18n="po_del_title">Delete Purchase Order?</h2>
+    <p id="poDeleteConfirmSummary" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;"></p>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="poDeleteConfirmCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn danger" id="poDeleteConfirmYesBtn" data-i18n="generic_delete">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Full-size viewer for a Client Specifications attachment (a photo, or one page of a captured
      PDF) — see openLightbox in the script. Shows the image in place instead of navigating to it,
      because Chrome can silently fail to open a large data: URL in a new tab (a blank tab) even
@@ -2509,6 +2593,21 @@
       banner_task_delete_failed_prefix: "Couldn't delete task:",
       banner_task_reorder_failed_prefix: "Couldn't save new order:",
       task_drag_handle_title: "Drag to reorder",
+      po_board_heading: "Purchase Orders (PO)", btn_add_po: "+ Add PO",
+      po_empty: "No purchase orders yet.",
+      po_number_label: "PO Number", po_number_placeholder: "e.g. PO-4021",
+      po_customer_label: "Customer Name", po_customer_placeholder: "e.g. ABC Packaging Pvt Ltd",
+      po_productcode_label: "Product/Material Code", po_productcode_placeholder: "e.g. RM-KRAFT-250",
+      po_materialdesc_label: "Material Description", po_materialdesc_placeholder: "e.g. Kraft Paper 250 GSM, 109cm",
+      po_delivery_label: "Delivery Required At Plant",
+      po_delivery_line: "Delivery required at plant: {date}",
+      po_overdue_badge: "Overdue", po_status_received: "Received",
+      form_add_po: "Add PO", form_edit_po: "Edit PO", form_view_po: "View PO",
+      po_del_title: "Delete Purchase Order?",
+      po_del_summary: "PO {po} will be permanently removed. This can't be undone.",
+      banner_po_save_failed_prefix: "Couldn't save purchase order:",
+      banner_po_delete_failed_prefix: "Couldn't delete purchase order:",
+      trash_type_purchaseOrders: "Purchase Order",
       nav_production: "Production", nav_inventory: "Inventory",
       inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_value: "Inventory Value", inv_stat_reorder: "Items to Reorder",
       btn_manage_inventory_items: "Manage Inventory Items",
@@ -2811,6 +2910,21 @@
       banner_task_delete_failed_prefix: "कार्य हटाया नहीं जा सका:",
       banner_task_reorder_failed_prefix: "नया क्रम सेव नहीं हो सका:",
       task_drag_handle_title: "क्रम बदलने के लिए खींचें",
+      po_board_heading: "परचेज़ ऑर्डर (PO)", btn_add_po: "+ PO जोड़ें",
+      po_empty: "अभी तक कोई परचेज़ ऑर्डर नहीं है।",
+      po_number_label: "PO नंबर", po_number_placeholder: "जैसे PO-4021",
+      po_customer_label: "ग्राहक का नाम", po_customer_placeholder: "जैसे ABC Packaging Pvt Ltd",
+      po_productcode_label: "प्रोडक्ट/मटीरियल कोड", po_productcode_placeholder: "जैसे RM-KRAFT-250",
+      po_materialdesc_label: "मटीरियल विवरण", po_materialdesc_placeholder: "जैसे Kraft Paper 250 GSM, 109cm",
+      po_delivery_label: "प्लांट पर डिलीवरी आवश्यक तिथि",
+      po_delivery_line: "प्लांट पर डिलीवरी आवश्यक: {date}",
+      po_overdue_badge: "विलंबित", po_status_received: "प्राप्त हुआ",
+      form_add_po: "PO जोड़ें", form_edit_po: "PO बदलें", form_view_po: "PO देखें",
+      po_del_title: "परचेज़ ऑर्डर हटाएं?",
+      po_del_summary: "PO {po} स्थायी रूप से हटा दिया जाएगा। इसे पूर्ववत नहीं किया जा सकता।",
+      banner_po_save_failed_prefix: "परचेज़ ऑर्डर सेव नहीं हो सका:",
+      banner_po_delete_failed_prefix: "परचेज़ ऑर्डर हटाया नहीं जा सका:",
+      trash_type_purchaseOrders: "परचेज़ ऑर्डर",
       nav_production: "प्रोडक्शन", nav_inventory: "इन्वेंटरी",
       inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_value: "इन्वेंटरी मूल्य", inv_stat_reorder: "रीऑर्डर करने योग्य आइटम",
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
@@ -3113,6 +3227,21 @@
       banner_task_delete_failed_prefix: "పని తొలగించబడలేదు:",
       banner_task_reorder_failed_prefix: "కొత్త క్రమం సేవ్ కాలేదు:",
       task_drag_handle_title: "క్రమం మార్చడానికి లాగండి",
+      po_board_heading: "కొనుగోలు ఆర్డర్లు (PO)", btn_add_po: "+ PO జోడించండి",
+      po_empty: "ఇంకా ఏ కొనుగోలు ఆర్డర్లు లేవు.",
+      po_number_label: "PO నంబర్", po_number_placeholder: "ఉదా. PO-4021",
+      po_customer_label: "కస్టమర్ పేరు", po_customer_placeholder: "ఉదా. ABC Packaging Pvt Ltd",
+      po_productcode_label: "ప్రొడక్ట్/మెటీరియల్ కోడ్", po_productcode_placeholder: "ఉదా. RM-KRAFT-250",
+      po_materialdesc_label: "మెటీరియల్ వివరణ", po_materialdesc_placeholder: "ఉదా. Kraft Paper 250 GSM, 109cm",
+      po_delivery_label: "ప్లాంట్‌కు డెలివరీ అవసరమైన తేదీ",
+      po_delivery_line: "ప్లాంట్‌కు డెలివరీ అవసరం: {date}",
+      po_overdue_badge: "ఆలస్యమైంది", po_status_received: "అందుకున్నారు",
+      form_add_po: "PO జోడించండి", form_edit_po: "PO సవరించండి", form_view_po: "PO చూడండి",
+      po_del_title: "కొనుగోలు ఆర్డర్‌ను తొలగించాలా?",
+      po_del_summary: "PO {po} శాశ్వతంగా తొలగించబడుతుంది. దీన్ని రద్దు చేయలేరు.",
+      banner_po_save_failed_prefix: "కొనుగోలు ఆర్డర్ సేవ్ కాలేదు:",
+      banner_po_delete_failed_prefix: "కొనుగోలు ఆర్డర్ తొలగించబడలేదు:",
+      trash_type_purchaseOrders: "కొనుగోలు ఆర్డర్",
       nav_production: "ప్రొడక్షన్", nav_inventory: "ఇన్వెంటరీ",
       inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_value: "ఇన్వెంటరీ విలువ", inv_stat_reorder: "రీఆర్డర్ చేయవలసిన ఐటమ్‌లు",
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
@@ -3393,6 +3522,9 @@
           (d.productName ? " · " + d.productName : "") + (d.stage ? " · " + d.stage : "");
       case "tasks":
         return d.title || d.productName || trashTypeLabel("tasks");
+      case "purchaseOrders":
+        return (d.poNumber ? "PO " + d.poNumber : trashTypeLabel("purchaseOrders")) +
+          (d.customerName ? " · " + d.customerName : "");
       case "supervisors":
         return (d.name || item.docId) + (d.role ? " · " + d.role : "");
       default:
@@ -3525,6 +3657,14 @@
     tasks: [],
     unsubTasks: null,
     editingTaskId: null,
+    // Purchase Orders board — a running procurement list, NOT scoped to state.date (see
+    // subscribePurchaseOrders/renderPurchaseOrders below): every not-yet-received PO stays visible
+    // regardless of which date is picked up top, since its own relevant date is its Delivery
+    // Required At Plant.
+    purchaseOrders: [],
+    unsubPurchaseOrders: null,
+    editingPoId: null,
+    poModalReadOnly: false,
     // Customer/Product/Type/PLY autofill catalog — kept in sync from Firestore (see
     // subscribeCatalog below), shared by every device. { customers: { "<name>": { products: {
     // "<name>": { type, ply } } } } }; empty until the first snapshot arrives.
@@ -3799,6 +3939,28 @@
     taskDeleteConfirmSummary: document.getElementById("taskDeleteConfirmSummary"),
     taskDeleteConfirmCancelBtn: document.getElementById("taskDeleteConfirmCancelBtn"),
     taskDeleteConfirmYesBtn: document.getElementById("taskDeleteConfirmYesBtn"),
+    poBoardSection: document.getElementById("poBoardSection"),
+    addPoBtn: document.getElementById("addPoBtn"),
+    poListBody: document.getElementById("poListBody"),
+    poListEmpty: document.getElementById("poListEmpty"),
+    poModalOverlay: document.getElementById("poModalOverlay"),
+    poForm: document.getElementById("poForm"),
+    poModalTitle: document.getElementById("poModalTitle"),
+    po_number: document.getElementById("po_number"),
+    po_customer: document.getElementById("po_customer"),
+    po_productcode: document.getElementById("po_productcode"),
+    po_materialdesc: document.getElementById("po_materialdesc"),
+    po_quantity: document.getElementById("po_quantity"),
+    po_delivery: document.getElementById("po_delivery"),
+    po_deliveryLabel: document.getElementById("po_deliveryLabel"),
+    po_updatedby: document.getElementById("po_updatedby"),
+    poDeleteBtn: document.getElementById("poDeleteBtn"),
+    poCancelBtn: document.getElementById("poCancelBtn"),
+    poSaveBtn: document.getElementById("poSaveBtn"),
+    poDeleteConfirmOverlay: document.getElementById("poDeleteConfirmOverlay"),
+    poDeleteConfirmSummary: document.getElementById("poDeleteConfirmSummary"),
+    poDeleteConfirmCancelBtn: document.getElementById("poDeleteConfirmCancelBtn"),
+    poDeleteConfirmYesBtn: document.getElementById("poDeleteConfirmYesBtn"),
     f_date: document.getElementById("f_date"),
     f_dateLabel: document.getElementById("f_dateLabel"),
     f_shift: document.getElementById("f_shift"),
@@ -3952,6 +4114,7 @@
   var syncDateInputLabel = bindDateDisplay(el.dateInput, el.dateInputLabel);
   var syncFDateLabel = bindDateDisplay(el.f_date, el.f_dateLabel);
   var syncTDateLabel = bindDateDisplay(el.t_date, el.t_dateLabel);
+  var syncPoDeliveryLabel = bindDateDisplay(el.po_delivery, el.po_deliveryLabel);
 
   el.dateInput.value = state.date;
   syncDateInputLabel();
@@ -5889,6 +6052,9 @@
     // read-only mode and renderTasks' drag-handle/checkbox gating below), same admin-only pattern
     // as Manage Users/Activity Log above.
     el.addTaskBtn.hidden = !state.isAdminDevice;
+    // Purchase Orders: same admin-only add/edit/delete/mark-received pattern as Priority Tasks
+    // just above — every device can still see the PO board, just read-only.
+    el.addPoBtn.hidden = !state.isAdminDevice;
     // Inventory nav link: visible to Admin (full access, same as everywhere else) or to a device
     // specifically assigned the "Inventory Management" stage via Manage Users — the Store
     // department. Curating the item catalog itself stays Admin-only (see Manage Inventory Items).
@@ -6395,6 +6561,8 @@
     el.controlsBar.hidden = isInventory;
     el.summaryBar.hidden = isInventory;
     el.taskBoardSection.hidden = isInventory || state.view !== "board";
+    // Purchase Orders board sits directly above Priority Tasks — same board-only visibility.
+    el.poBoardSection.hidden = isInventory || state.view !== "board";
     el.boardView.hidden = isInventory || state.view !== "board";
     el.logView.hidden = isInventory || state.view !== "log";
     el.inventoryView.hidden = !isInventory;
@@ -9836,9 +10004,11 @@
     if(!el.lightboxOverlay.hidden) closeLightbox();
     else if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
     else if(!el.taskDeleteConfirmOverlay.hidden) closeTaskDeleteConfirm();
+    else if(!el.poDeleteConfirmOverlay.hidden) closePoDeleteConfirm();
     else if(!el.activityOverlay.hidden) el.activityOverlay.hidden = true;
     else if(!el.modalOverlay.hidden) cancelModal();
     else if(!el.taskModalOverlay.hidden) closeTaskModal();
+    else if(!el.poModalOverlay.hidden) closePoModal();
     else if(!el.profileMenu.hidden) closeProfileMenu();
   });
 
@@ -10797,6 +10967,194 @@
     if(ev.target === el.taskDeleteConfirmOverlay) closeTaskDeleteConfirm();
   });
 
+  // ---------- Purchase Orders (PO) board ----------
+  // A flat procurement list sitting above Priority Tasks — see the poBoardSection HTML comment for
+  // why this is deliberately NOT scoped to state.date the way Priority Tasks is. Every PO stays
+  // live until an admin marks it Received or deletes it, sorted Pending-first by soonest Delivery
+  // Required At Plant, then Received ones below (most recently received first).
+  function isPoReceived(po){ return !!(po && po.status === "Received"); }
+  // Overdue is judged against the REAL calendar date (todayStr()), not state.date — a PO's
+  // deadline is a fixed calendar commitment, unrelated to whichever date the rest of the app
+  // happens to be filtered to right now.
+  function isPoOverdue(po){
+    return !isPoReceived(po) && !!po.deliveryRequiredAtPlant && po.deliveryRequiredAtPlant < todayStr();
+  }
+  function subscribePurchaseOrders(){
+    if(state.unsubPurchaseOrders){ state.unsubPurchaseOrders(); state.unsubPurchaseOrders = null; }
+    state.unsubPurchaseOrders = state.db.collection("purchaseOrders").onSnapshot(function(snap){
+      state.purchaseOrders = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data() || {}); });
+      // Sorted client-side (same composite-index caution as subscribeTasks above): Pending before
+      // Received; within Pending, soonest delivery date first (a PO with no delivery date yet
+      // sorts last, not first, so it doesn't masquerade as the most urgent); within Received, most
+      // recently marked-received first.
+      state.purchaseOrders.sort(function(a, b){
+        var ra = isPoReceived(a) ? 1 : 0, rb = isPoReceived(b) ? 1 : 0;
+        if(ra !== rb) return ra - rb;
+        if(ra === 0){
+          var da = a.deliveryRequiredAtPlant || "9999-99-99";
+          var db = b.deliveryRequiredAtPlant || "9999-99-99";
+          if(da !== db) return da < db ? -1 : 1;
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        }
+        return (b.updatedAt || 0) - (a.updatedAt || 0);
+      });
+      renderPurchaseOrders();
+    }, function(err){
+      showBanner(t("banner_live_updates_stopped_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  }
+  // Builds one PO card — reuses .taskItem's look (see the CSS comment on .poList) rather than a
+  // parallel set of card classes, since visually it's the same "card in a vertical list" shape as
+  // a Priority Task, just without the priority badge/stage grouping/drag handle a task has.
+  function buildPoItem(po){
+    var received = isPoReceived(po);
+    var overdue = isPoOverdue(po);
+    var item = document.createElement("div");
+    item.className = "taskItem poItem" + (received ? " done" : "") + (overdue ? " overdue" : "");
+    item.dataset.id = po.id;
+    var metaBits = [];
+    if(po.productCode) metaBits.push(po.productCode);
+    if(po.materialDescription) metaBits.push(po.materialDescription);
+    if(po.quantity != null) metaBits.push(t("card_qty_label") + " " + po.quantity);
+    var deliveryLine = po.deliveryRequiredAtPlant
+      ? tf("po_delivery_line", { date: fmtDateForDisplay(po.deliveryRequiredAtPlant) }) : "";
+    // Only the admin device can toggle/edit/delete a PO — the checkbox is disabled (not removed)
+    // for everyone else, same read-vs-write split as a Priority Task's Done checkbox.
+    var canEdit = state.isAdminDevice;
+    item.innerHTML =
+      '<span class="taskDragHandleSpacer"></span>' +
+      '<input type="checkbox" class="taskCheck poReceivedCheck"' + (received ? " checked" : "") + (canEdit ? "" : " disabled") + '>' +
+      '<div class="taskBody">' +
+        '<div class="taskTitleRow">' +
+          '<span class="taskTitle">' + esc(po.poNumber || "") + '</span>' +
+          (overdue ? '<span class="poOverdueBadge">' + esc(t("po_overdue_badge")) + '</span>' : "") +
+          (received ? '<span class="poReceivedBadge">' + esc(t("po_status_received")) + '</span>' : "") +
+        '</div>' +
+        (po.customerName ? '<div class="taskSub">' + esc(po.customerName) + '</div>' : "") +
+        '<div class="taskSub taskMeta"' + (metaBits.length ? "" : " hidden") + '></div>' +
+        (deliveryLine ? '<div class="taskNotes">' + esc(deliveryLine) + '</div>' : "") +
+      '</div>';
+    item.querySelector(".taskMeta").textContent = metaBits.join(" · ");
+    if(canEdit){
+      var checkEl = item.querySelector(".poReceivedCheck");
+      checkEl.addEventListener("click", function(ev){ ev.stopPropagation(); });
+      checkEl.addEventListener("change", function(){
+        var checked = this.checked;
+        state.db.doc("purchaseOrders/" + po.id).update({ status: checked ? "Received" : "Pending", updatedAt: Date.now() }).catch(function(err){
+          showBanner(t("banner_po_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+        });
+      });
+    }
+    item.querySelector(".taskBody").addEventListener("click", function(){ openPoModal(po); });
+    return item;
+  }
+  function renderPurchaseOrders(){
+    el.poListBody.innerHTML = "";
+    el.poListEmpty.hidden = state.purchaseOrders.length > 0;
+    state.purchaseOrders.forEach(function(po){ el.poListBody.appendChild(buildPoItem(po)); });
+  }
+
+  // ---------- Purchase Order modal ----------
+  var PO_FORM_FIELDS = [
+    el.po_number, el.po_customer, el.po_productcode, el.po_materialdesc,
+    el.po_quantity, el.po_delivery, el.po_updatedby
+  ];
+  function openPoModal(po){
+    // Only the admin device may add/edit/delete/mark-received a PO — every other device can still
+    // open one to read it, same read-only pattern as openTaskModal.
+    var readOnly = !state.isAdminDevice;
+    if(!po && readOnly) return; // defensive: the Add PO button is hidden for these devices anyway
+    state.editingPoId = po ? po.id : null;
+    state.poModalReadOnly = readOnly;
+    el.poModalTitle.textContent = t(readOnly ? "form_view_po" : (po ? "form_edit_po" : "form_add_po"));
+    el.po_number.value = po ? (po.poNumber || "") : "";
+    el.po_customer.value = po ? (po.customerName || "") : "";
+    el.po_productcode.value = po ? (po.productCode || "") : "";
+    el.po_materialdesc.value = po ? (po.materialDescription || "") : "";
+    el.po_quantity.value = po && po.quantity != null ? po.quantity : "";
+    el.po_delivery.value = po ? (po.deliveryRequiredAtPlant || "") : "";
+    syncPoDeliveryLabel();
+    el.po_updatedby.value = po ? (po.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
+    PO_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
+    el.poDeleteBtn.hidden = !po || readOnly;
+    el.poSaveBtn.hidden = readOnly;
+    el.poCancelBtn.textContent = readOnly ? t("form_close") : t("generic_cancel");
+    el.poModalOverlay.hidden = false;
+    el.po_number.focus();
+  }
+  function closePoModal(){
+    el.poModalOverlay.hidden = true;
+    state.editingPoId = null;
+    el.poForm.reset();
+    syncPoDeliveryLabel();
+  }
+  el.addPoBtn.addEventListener("click", function(){ openPoModal(null); });
+  el.poCancelBtn.addEventListener("click", closePoModal);
+  el.poModalOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.poModalOverlay) closePoModal();
+  });
+
+  el.poForm.addEventListener("submit", function(ev){
+    ev.preventDefault();
+    if(state.poModalReadOnly) return;
+    el.poSaveBtn.disabled = true;
+    var payload = {
+      poNumber: el.po_number.value.trim(),
+      customerName: el.po_customer.value.trim(),
+      productCode: el.po_productcode.value.trim(),
+      materialDescription: el.po_materialdesc.value.trim(),
+      quantity: el.po_quantity.value === "" ? null : Number(el.po_quantity.value),
+      deliveryRequiredAtPlant: el.po_delivery.value || null,
+      updatedBy: el.po_updatedby.value.trim(),
+      updatedAt: Date.now()
+    };
+    lastUpdatedBy = payload.updatedBy;
+    var promise;
+    if(state.editingPoId){
+      promise = state.db.doc("purchaseOrders/" + state.editingPoId).update(payload);
+    } else {
+      payload.status = "Pending";
+      payload.createdAt = Date.now();
+      promise = state.db.collection("purchaseOrders").add(payload);
+    }
+    promise.then(function(){
+      el.poSaveBtn.disabled = false;
+      closePoModal();
+    }).catch(function(err){
+      el.poSaveBtn.disabled = false;
+      showBanner(t("banner_po_save_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  });
+
+  var pendingDeletePo = null;
+  el.poDeleteBtn.addEventListener("click", function(){
+    if(!state.editingPoId || state.poModalReadOnly) return;
+    var po = state.purchaseOrders.find(function(p){ return p.id === state.editingPoId; });
+    pendingDeletePo = po || { id: state.editingPoId };
+    el.poDeleteConfirmSummary.textContent = tf("po_del_summary", { po: pendingDeletePo.poNumber || "" });
+    el.poDeleteConfirmOverlay.hidden = false;
+  });
+  function closePoDeleteConfirm(){
+    el.poDeleteConfirmOverlay.hidden = true;
+    pendingDeletePo = null;
+  }
+  el.poDeleteConfirmCancelBtn.addEventListener("click", closePoDeleteConfirm);
+  el.poDeleteConfirmYesBtn.addEventListener("click", function(){
+    if(!pendingDeletePo) return;
+    el.poDeleteConfirmYesBtn.disabled = true;
+    softDeleteDoc("purchaseOrders", pendingDeletePo.id, omitKeys(pendingDeletePo, ["id"])).then(function(){
+      el.poDeleteConfirmYesBtn.disabled = false;
+      closePoDeleteConfirm();
+      closePoModal();
+    }).catch(function(err){
+      el.poDeleteConfirmYesBtn.disabled = false;
+      showBanner(t("banner_po_delete_failed_prefix") + " " + (err && err.message ? err.message : "unknown error"));
+    });
+  });
+  el.poDeleteConfirmOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.poDeleteConfirmOverlay) closePoDeleteConfirm();
+  });
+
   el.dateInput.addEventListener("change", function(){
     state.date = el.dateInput.value || todayStr();
     subscribeBoard();
@@ -10875,6 +11233,7 @@
   subscribeCatalog();
   subscribeMasterSheet();
   subscribeTasks();
+  subscribePurchaseOrders();
   subscribeInventory();
   subscribeTrash();
   fixMaraneTypoInEntries();
