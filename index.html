@@ -1342,15 +1342,16 @@
 
 <!-- Recycle Bin: every "Delete"/"Remove" button in the app (Inventory Items, Purchases, Job Cards,
      Tasks, Users) soft-deletes into the shared `trash` collection instead of hard-deleting, so
-     anything removed by mistake can be restored here within 15 days — see softDeleteDoc() /
+     anything removed by mistake can be restored here within 45 days — see softDeleteDoc() /
      restoreTrashItem() / subscribeTrash() in the script below. Admin-only, same as Manage Inventory
-     Items and Manage Users. -->
+     Items and Manage Users. Each row also has its own "Delete Forever" action (openTrashPurgeConfirm
+     below) for a permanent delete on demand, without waiting for the 45-day window. -->
 <div class="modalOverlay" id="recycleBinOverlay" hidden>
   <div class="modal wide" style="max-width:860px;">
     <h2 data-i18n="trash_title">Recycle Bin</h2>
     <p data-i18n="trash_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
       Anything deleted anywhere in the app — Inventory Items, Purchases, Job Cards, Tasks, or Users — lands
-      here first. Restore it any time within 15 days of deletion; after that (or if you delete it forever
+      here first. Restore it any time within 45 days of deletion; after that (or if you delete it forever
       yourself) it's gone for good.
     </p>
     <div class="logControls">
@@ -1385,6 +1386,22 @@
     <div class="modalActions">
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="trashCloseBtn" data-i18n="generic_done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirms a Recycle Bin row's PERMANENT delete — once this runs there's no more trash copy to
+     restore from, unlike the normal soft-delete flow. See the 🗑 "Delete Forever" action in
+     renderTrashList / openTrashPurgeConfirm below. -->
+<div class="modalOverlay" id="trashPurgeConfirmOverlay" hidden>
+  <div class="modal">
+    <h2 data-i18n="trash_purge_confirm_title">Delete Forever?</h2>
+    <p id="trashPurgeConfirmSummary" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;"></p>
+    <div class="readOnlyNote" id="trashPurgeConfirmError" hidden style="margin-top:4px;"></div>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="trashPurgeConfirmCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn danger" id="trashPurgeConfirmYesBtn" data-i18n="trash_delete_forever_action">Delete Forever</button>
     </div>
   </div>
 </div>
@@ -1602,14 +1619,13 @@
         <input type="number" id="invStatusQtyInput" min="0" step="1">
       </label>
     </div>
-    <!-- Only meaningful (and only shown) when moving stock TO Reserved — ties the held reel(s) to
-         the specific future Job Card they're being set aside for, so Plant's own Layers picker can
-         later auto-detect and consume this exact reservation instead of dipping into plain
-         Available stock for that job (see reservedQtyForJobCard/reconcileLayerReelStatusTransfers
-         below). -->
-    <div class="supAddRow" style="grid-template-columns:1fr;" id="invStatusJobCardRow" hidden>
-      <label><span data-i18n="inv_status_jobcard_label">Job Card No</span>
-        <input type="text" id="invStatusJobCardInput" placeholder="e.g. JC-1042" data-i18n-placeholder="inv_status_jobcard_placeholder">
+    <!-- Only meaningful (and only shown) when moving stock TO Reserved — ties the held stock to the
+         specific Purchase Order it's being set aside for. Read-only: click/focus opens the PO
+         picker (openPoPicker below) so the value always points at a real, tracked PO instead of
+         free text. -->
+    <div class="supAddRow" style="grid-template-columns:1fr;" id="invStatusPoRow" hidden>
+      <label><span data-i18n="inv_status_po_label">PO</span>
+        <input type="text" id="invStatusPoInput" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
       </label>
     </div>
     <div class="supAddRow" style="grid-template-columns:1fr;">
@@ -1622,6 +1638,55 @@
       <button type="button" class="btn ghost" id="invStatusCancelBtn" data-i18n="generic_cancel">Cancel</button>
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="invStatusConfirmBtn" data-i18n="inv_status_confirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reserve — a focused version of Update Status for the Reel row's own "Reserve" quick action:
+     always Available -> Reserved, asking only for Quantity and the Purchase Order the stock is
+     being held for (see openReserveModal below) instead of the full From/To/Note form. Clicking
+     the PO field opens the PO picker (openPoPicker), same as the general Update Status modal's own
+     PO field. -->
+<div class="modalOverlay invMoveModal" id="invReserveOverlay" hidden>
+  <div class="modal">
+    <h2 data-i18n="inv_reserve_title">Reserve</h2>
+    <p class="invMoveCurrentQty" id="invReserveItemLine"></p>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_status_qty_label">Quantity</span>
+        <input type="number" id="invReserveQtyInput" min="0" step="1">
+      </label>
+    </div>
+    <div class="supAddRow" style="grid-template-columns:1fr;">
+      <label><span data-i18n="inv_status_po_label">PO</span>
+        <input type="text" id="invReservePoInput" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
+      </label>
+    </div>
+    <div class="readOnlyNote" id="invReserveError" hidden style="margin-top:4px;"></div>
+    <div class="modalActions" style="margin-top:10px;">
+      <button type="button" class="btn ghost" id="invReserveCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="invReserveConfirmBtn" data-i18n="inv_status_confirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PO Picker — lists open Purchase Orders (same Pending-first/soonest-delivery sort as the PO
+     board) so Reserve/Update Status can tie a reservation to a real tracked PO instead of free
+     text. Opens on top of whichever modal called openPoPicker (Reserve or Update Status); picking a
+     row calls that modal's own callback and closes the picker back down to it. -->
+<div class="modalOverlay" id="poPickerOverlay" hidden style="z-index:60;">
+  <div class="modal wide" style="max-width:560px;">
+    <h2 data-i18n="po_picker_title">Select Purchase Order</h2>
+    <div class="logControls">
+      <input type="text" id="poPickerSearchInput" placeholder="Search PO number, customer, material…" data-i18n-placeholder="po_picker_search_placeholder">
+    </div>
+    <div class="tableWrap" style="max-height:360px;overflow-y:auto;">
+      <div class="poList" id="poPickerBody"></div>
+      <div class="logEmpty" id="poPickerEmpty" hidden data-i18n="po_picker_empty">No open purchase orders.</div>
+    </div>
+    <div class="modalActions" style="margin-top:10px;">
+      <div class="spacer"></div>
+      <button type="button" class="btn ghost" id="poPickerCancelBtn" data-i18n="generic_cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -2696,7 +2761,7 @@
       filter_all_bf: "All BF", filter_all_shades: "All Shades", filter_all_units: "All Units",
       filter_all_status: "All Status", inv_totals_label: "Total ({count} items)",
       btn_recycle_bin: "🗑 Recycle Bin", trash_title: "Recycle Bin",
-      trash_desc: "Anything deleted anywhere in the app — Inventory Items, Purchases, Job Cards, Tasks, or Users — lands here first. Restore it any time within 15 days of deletion; after that (or if you delete it forever yourself) it's gone for good.",
+      trash_desc: "Anything deleted anywhere in the app — Inventory Items, Purchases, Job Cards, Tasks, or Users — lands here first. Restore it any time within 45 days of deletion; after that (or if you delete it forever yourself) it's gone for good.",
       trash_search_placeholder: "Search deleted items…",
       trash_type_products: "Inventory Item", trash_type_purchases: "Purchase", trash_type_entries: "Job Card",
       trash_type_tasks: "Task", trash_type_supervisors: "User",
@@ -2708,6 +2773,8 @@
       trash_err_conflict: "Can't restore — an item with this ID already exists. Remove or rename it first.",
       trash_err_restore_failed: "Restore failed. Please try again.",
       trash_err_purge_failed: "Couldn't delete this permanently. Please try again.",
+      trash_purge_confirm_title: "Delete Forever?",
+      trash_purge_confirm_summary: "{item} will be permanently deleted right now — this skips the rest of its Recycle Bin window and can't be undone.",
       inv_reels_view_empty: "No reels received yet for this item.",
       inv_reels_view_summary_line: "{count} reels on file · Total Weight: {weight} kg · Total Amount: {amount}",
       inv_err_unknown_item: "That item couldn't be found — try again.",
@@ -2717,14 +2784,18 @@
       inv_status_from_label: "From", inv_status_to_label: "To",
       inv_status_available: "Available", inv_status_reserved: "Reserved", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
       inv_status_qty_label: "Quantity",
-      inv_status_jobcard_label: "Job Card No", inv_status_jobcard_placeholder: "e.g. JC-1042",
+      inv_status_po_label: "PO", inv_status_po_placeholder: "Click to select a PO",
       inv_status_note_label: "Note (optional)",
       inv_status_note_placeholder: "e.g. checked out for Job Card #.., dropped and cracked…",
       inv_status_confirm: "Save",
       inv_status_current_line: "{name} — Available: {available} {unit} · Reserved: {reserved} · In Use: {inUse} · Damaged: {damaged}",
       inv_status_err_same: "From and To must be different statuses.",
       inv_status_err_insufficient: "Only {qty} available in that status.",
-      inv_status_err_jobcard_required: "Enter the Job Card No this reservation is being held for.",
+      inv_status_err_po_required: "Select the Purchase Order this reservation is being held for.",
+      inv_reserve_title: "Reserve",
+      po_picker_title: "Select Purchase Order",
+      po_picker_search_placeholder: "Search PO number, customer, material…",
+      po_picker_empty: "No open purchase orders.",
       inv_purchase_err_status_committed: "Can't delete: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
       inv_move_err_qty_committed: "Can't reduce Quantity Received: some of this receipt's stock is already marked In Use or Damaged. Move it back to Available first.",
       banner_inventory_sync_failed_prefix: "Inventory sync issue:"
@@ -3013,7 +3084,7 @@
       filter_all_bf: "सभी BF", filter_all_shades: "सभी शेड", filter_all_units: "सभी यूनिट",
       filter_all_status: "सभी स्थिति", inv_totals_label: "कुल ({count} आइटम)",
       btn_recycle_bin: "🗑 रीसायकल बिन", trash_title: "रीसायकल बिन",
-      trash_desc: "ऐप में कहीं भी हटाई गई कोई भी चीज़ — इन्वेंटरी आइटम, खरीद, जॉब कार्ड, कार्य, या उपयोगकर्ता — यहां पहले आती है। हटाने के 15 दिनों के भीतर कभी भी इसे पुनर्स्थापित करें; उसके बाद (या यदि आप इसे स्वयं हमेशा के लिए हटा देते हैं) यह हमेशा के लिए चला जाता है।",
+      trash_desc: "ऐप में कहीं भी हटाई गई कोई भी चीज़ — इन्वेंटरी आइटम, खरीद, जॉब कार्ड, कार्य, या उपयोगकर्ता — यहां पहले आती है। हटाने के 45 दिनों के भीतर कभी भी इसे पुनर्स्थापित करें; उसके बाद (या यदि आप इसे स्वयं हमेशा के लिए हटा देते हैं) यह हमेशा के लिए चला जाता है।",
       trash_search_placeholder: "हटाए गए आइटम खोजें…",
       trash_type_products: "इन्वेंटरी आइटम", trash_type_purchases: "खरीद", trash_type_entries: "जॉब कार्ड",
       trash_type_tasks: "कार्य", trash_type_supervisors: "उपयोगकर्ता",
@@ -3025,6 +3096,8 @@
       trash_err_conflict: "पुनर्स्थापित नहीं कर सकते — इस ID वाला आइटम पहले से मौजूद है। पहले उसे हटाएं या नाम बदलें।",
       trash_err_restore_failed: "पुनर्स्थापना विफल रही। कृपया पुनः प्रयास करें।",
       trash_err_purge_failed: "इसे स्थायी रूप से नहीं हटाया जा सका। कृपया पुनः प्रयास करें।",
+      trash_purge_confirm_title: "हमेशा के लिए हटाएं?",
+      trash_purge_confirm_summary: "{item} अभी हमेशा के लिए हटा दिया जाएगा — यह रीसायकल बिन की बची हुई अवधि को छोड़ देता है और इसे पूर्ववत नहीं किया जा सकता।",
       inv_reels_view_empty: "इस आइटम के लिए अभी तक कोई रील प्राप्त नहीं हुई।",
       inv_reels_view_summary_line: "{count} रीलें उपलब्ध · कुल वज़न: {weight} kg · कुल राशि: {amount}",
       inv_err_unknown_item: "वह आइटम नहीं मिला — फिर से कोशिश करें।",
@@ -3034,14 +3107,18 @@
       inv_status_from_label: "से", inv_status_to_label: "तक",
       inv_status_available: "उपलब्ध", inv_status_reserved: "आरक्षित", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
       inv_status_qty_label: "मात्रा",
-      inv_status_jobcard_label: "जॉब कार्ड नंबर", inv_status_jobcard_placeholder: "जैसे JC-1042",
+      inv_status_po_label: "PO", inv_status_po_placeholder: "PO चुनने के लिए क्लिक करें",
       inv_status_note_label: "नोट (वैकल्पिक)",
       inv_status_note_placeholder: "जैसे, जॉब कार्ड #.. के लिए निकाला गया, गिरकर टूट गया…",
       inv_status_confirm: "सेव करें",
       inv_status_current_line: "{name} — उपलब्ध: {available} {unit} · आरक्षित: {reserved} · उपयोग में: {inUse} · क्षतिग्रस्त: {damaged}",
       inv_status_err_same: "से और तक अलग-अलग स्थिति होनी चाहिए।",
       inv_status_err_insufficient: "उस स्थिति में केवल {qty} ही उपलब्ध है।",
-      inv_status_err_jobcard_required: "यह आरक्षण किस जॉब कार्ड नंबर के लिए रखा जा रहा है, वह दर्ज करें।",
+      inv_status_err_po_required: "यह आरक्षण किस परचेज़ ऑर्डर के लिए रखा जा रहा है, उसे चुनें।",
+      inv_reserve_title: "आरक्षित करें",
+      po_picker_title: "परचेज़ ऑर्डर चुनें",
+      po_picker_search_placeholder: "PO नंबर, ग्राहक, मटीरियल खोजें…",
+      po_picker_empty: "कोई खुला परचेज़ ऑर्डर नहीं है।",
       inv_purchase_err_status_committed: "हटाया नहीं जा सकता: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
       inv_move_err_qty_committed: "प्राप्त मात्रा घटाई नहीं जा सकती: इस रसीद का कुछ स्टॉक पहले से ही 'उपयोग में' या 'क्षतिग्रस्त' के रूप में चिह्नित है। पहले इसे वापस उपलब्ध में ले जाएं।",
       banner_inventory_sync_failed_prefix: "इन्वेंटरी सिंक समस्या:"
@@ -3330,7 +3407,7 @@
       filter_all_bf: "అన్ని BF", filter_all_shades: "అన్ని షేడ్‌లు", filter_all_units: "అన్ని యూనిట్లు",
       filter_all_status: "అన్ని స్థితులు", inv_totals_label: "మొత్తం ({count} ఐటమ్‌లు)",
       btn_recycle_bin: "🗑 రీసైకిల్ బిన్", trash_title: "రీసైకిల్ బిన్",
-      trash_desc: "యాప్‌లో ఎక్కడైనా తొలగించినది — ఇన్వెంటరీ ఐటమ్‌లు, కొనుగోళ్లు, జాబ్ కార్డులు, టాస్క్‌లు లేదా యూజర్లు — ఇక్కడ ముందుగా వస్తుంది. తొలగించిన 15 రోజుల్లోపు ఎప్పుడైనా దీన్ని పునరుద్ధరించండి; ఆ తర్వాత (లేదా మీరే శాశ్వతంగా తొలగిస్తే) అది శాశ్వతంగా పోతుంది.",
+      trash_desc: "యాప్‌లో ఎక్కడైనా తొలగించినది — ఇన్వెంటరీ ఐటమ్‌లు, కొనుగోళ్లు, జాబ్ కార్డులు, టాస్క్‌లు లేదా యూజర్లు — ఇక్కడ ముందుగా వస్తుంది. తొలగించిన 45 రోజుల్లోపు ఎప్పుడైనా దీన్ని పునరుద్ధరించండి; ఆ తర్వాత (లేదా మీరే శాశ్వతంగా తొలగిస్తే) అది శాశ్వతంగా పోతుంది.",
       trash_search_placeholder: "తొలగించిన ఐటమ్‌లను వెతకండి…",
       trash_type_products: "ఇన్వెంటరీ ఐటమ్", trash_type_purchases: "కొనుగోలు", trash_type_entries: "జాబ్ కార్డు",
       trash_type_tasks: "టాస్క్", trash_type_supervisors: "యూజర్",
@@ -3342,6 +3419,8 @@
       trash_err_conflict: "పునరుద్ధరించలేరు — ఈ ID తో ఐటమ్ ఇప్పటికే ఉంది. ముందుగా దాన్ని తీసివేయండి లేదా పేరు మార్చండి.",
       trash_err_restore_failed: "పునరుద్ధరణ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
       trash_err_purge_failed: "దీన్ని శాశ్వతంగా తొలగించలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      trash_purge_confirm_title: "శాశ్వతంగా తొలగించాలా?",
+      trash_purge_confirm_summary: "{item} ఇప్పుడే శాశ్వతంగా తొలగించబడుతుంది — ఇది రీసైకిల్ బిన్‌లో మిగిలిన సమయాన్ని దాటవేస్తుంది మరియు దీన్ని రద్దు చేయలేరు.",
       inv_reels_view_empty: "ఈ ఐటమ్ కోసం ఇంకా రీళ్లు స్వీకరించలేదు.",
       inv_reels_view_summary_line: "{count} రీళ్లు అందుబాటులో ఉన్నాయి · మొత్తం బరువు: {weight} kg · మొత్తం మొత్తం: {amount}",
       inv_err_unknown_item: "ఆ ఐటమ్ కనుగొనబడలేదు — మళ్ళీ ప్రయత్నించండి.",
@@ -3351,14 +3430,18 @@
       inv_status_from_label: "నుండి", inv_status_to_label: "కు",
       inv_status_available: "అందుబాటులో", inv_status_reserved: "రిజర్వ్ చేయబడింది", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
       inv_status_qty_label: "పరిమాణం",
-      inv_status_jobcard_label: "జాబ్ కార్డ్ నంబర్", inv_status_jobcard_placeholder: "ఉదా. JC-1042",
+      inv_status_po_label: "PO", inv_status_po_placeholder: "PO ఎంచుకోవడానికి క్లిక్ చేయండి",
       inv_status_note_label: "నోట్ (ఐచ్ఛికం)",
       inv_status_note_placeholder: "ఉదా. జాబ్ కార్డ్ #.. కోసం తీసుకున్నారు, పడి పగిలింది…",
       inv_status_confirm: "సేవ్ చేయండి",
       inv_status_current_line: "{name} — అందుబాటులో: {available} {unit} · రిజర్వ్: {reserved} · వాడుకలో: {inUse} · పాడైనవి: {damaged}",
       inv_status_err_same: "నుండి మరియు కు వేర్వేరు స్థితులుగా ఉండాలి.",
       inv_status_err_insufficient: "ఆ స్థితిలో {qty} మాత్రమే అందుబాటులో ఉంది.",
-      inv_status_err_jobcard_required: "ఈ రిజర్వేషన్ ఏ జాబ్ కార్డ్ నంబర్ కోసం ఉంచుతున్నారో నమోదు చేయండి.",
+      inv_status_err_po_required: "ఈ రిజర్వేషన్ ఏ కొనుగోలు ఆర్డర్ కోసం ఉంచుతున్నారో ఎంచుకోండి.",
+      inv_reserve_title: "రిజర్వ్ చేయండి",
+      po_picker_title: "కొనుగోలు ఆర్డర్‌ను ఎంచుకోండి",
+      po_picker_search_placeholder: "PO నంబర్, కస్టమర్, మెటీరియల్ వెతకండి…",
+      po_picker_empty: "తెరిచి ఉన్న కొనుగోలు ఆర్డర్లు లేవు.",
       inv_purchase_err_status_committed: "తొలగించడం సాధ్యం కాదు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
       inv_move_err_qty_committed: "స్వీకరించిన పరిమాణాన్ని తగ్గించలేరు: ఈ రసీదులోని కొంత స్టాక్ ఇప్పటికే 'వాడుకలో' లేదా 'పాడైనవి'గా గుర్తించబడింది. ముందుగా దాన్ని అందుబాటులోకి తిరిగి తరలించండి.",
       banner_inventory_sync_failed_prefix: "ఇన్వెంటరీ సింక్ సమస్య:"
@@ -3445,12 +3528,14 @@
   // calling .delete() directly: it snapshots the full document into a shared `trash` collection
   // first, THEN deletes the live document, so nothing is ever lost even if the calling code has a
   // bug. There's no server/Cloud Function in this static-hosted app to run a scheduled cleanup, so
-  // "kept for 15 days, then removed permanently" is enforced lazily on the client instead — see
+  // "kept for 45 days, then removed permanently" is enforced lazily on the client instead — see
   // subscribeTrash()'s purge pass — which means the actual purge happens the next time ANY admin
-  // device is online and syncs past the 15-day mark, not at the exact second it elapses. That's an
-  // acceptable trade-off for a client-only app with no backend, and 15 days of slack either way
-  // doesn't matter for what this is protecting against (an accidental delete).
-  var TRASH_RETENTION_DAYS = 15;
+  // device is online and syncs past the 45-day mark, not at the exact second it elapses. That's an
+  // acceptable trade-off for a client-only app with no backend, and a few days of slack either way
+  // doesn't matter for what this is protecting against (an accidental delete). An admin who needs a
+  // trashed item gone sooner than that doesn't have to wait — see the per-row "Delete Forever"
+  // action in renderTrashList/openTrashPurgeConfirm below, which purges it immediately.
+  var TRASH_RETENTION_DAYS = 45;
   // Several in-memory lists (purchases/entries/tasks/products) merge a client-side key — "id" for
   // the first three, "sku" for products — onto the actual Firestore fields when they're first read
   // (see each one's onSnapshot mapping), purely so the rest of the app has something to key off of;
@@ -3587,22 +3672,18 @@
         });
       });
       actionsCell.appendChild(restoreBtn);
+      // Icon-only so it reads as clearly distinct from — and more consequential than — Restore;
+      // opens a confirm step (openTrashPurgeConfirm) rather than purging immediately, since this
+      // is the one delete in the whole app with no Recycle Bin safety net behind it.
       var purgeBtn = document.createElement("button");
-      purgeBtn.type = "button"; purgeBtn.className = "btn danger invSmallBtn"; purgeBtn.textContent = t("trash_delete_forever_action");
-      purgeBtn.addEventListener("click", function(){
-        el.trashError.hidden = true;
-        purgeBtn.disabled = true;
-        state.db.collection("trash").doc(item.id).delete().catch(function(){
-          purgeBtn.disabled = false;
-          el.trashError.textContent = t("trash_err_purge_failed");
-          el.trashError.hidden = false;
-        });
-      });
+      purgeBtn.type = "button"; purgeBtn.className = "btn danger invSmallBtn"; purgeBtn.textContent = "🗑";
+      purgeBtn.title = t("trash_delete_forever_action");
+      purgeBtn.setAttribute("aria-label", t("trash_delete_forever_action"));
+      purgeBtn.addEventListener("click", function(){ openTrashPurgeConfirm(item); });
       actionsCell.appendChild(purgeBtn);
       el.trashBody.appendChild(tr);
     });
   }
-
   function fmtTime12(hhmm){
     if(!hhmm) return "";
     var parts = hhmm.split(":");
@@ -3778,6 +3859,11 @@
     trashEmpty: document.getElementById("trashEmpty"),
     trashError: document.getElementById("trashError"),
     trashCloseBtn: document.getElementById("trashCloseBtn"),
+    trashPurgeConfirmOverlay: document.getElementById("trashPurgeConfirmOverlay"),
+    trashPurgeConfirmSummary: document.getElementById("trashPurgeConfirmSummary"),
+    trashPurgeConfirmError: document.getElementById("trashPurgeConfirmError"),
+    trashPurgeConfirmCancelBtn: document.getElementById("trashPurgeConfirmCancelBtn"),
+    trashPurgeConfirmYesBtn: document.getElementById("trashPurgeConfirmYesBtn"),
     invMoveOverlay: document.getElementById("invMoveOverlay"),
     invMoveTitle: document.getElementById("invMoveTitle"),
     invMoveItemLine: document.getElementById("invMoveItemLine"),
@@ -3825,12 +3911,24 @@
     invStatusFromSelect: document.getElementById("invStatusFromSelect"),
     invStatusToSelect: document.getElementById("invStatusToSelect"),
     invStatusQtyInput: document.getElementById("invStatusQtyInput"),
-    invStatusJobCardRow: document.getElementById("invStatusJobCardRow"),
-    invStatusJobCardInput: document.getElementById("invStatusJobCardInput"),
+    invStatusPoRow: document.getElementById("invStatusPoRow"),
+    invStatusPoInput: document.getElementById("invStatusPoInput"),
     invStatusNoteInput: document.getElementById("invStatusNoteInput"),
     invStatusError: document.getElementById("invStatusError"),
     invStatusCancelBtn: document.getElementById("invStatusCancelBtn"),
     invStatusConfirmBtn: document.getElementById("invStatusConfirmBtn"),
+    invReserveOverlay: document.getElementById("invReserveOverlay"),
+    invReserveItemLine: document.getElementById("invReserveItemLine"),
+    invReserveQtyInput: document.getElementById("invReserveQtyInput"),
+    invReservePoInput: document.getElementById("invReservePoInput"),
+    invReserveError: document.getElementById("invReserveError"),
+    invReserveCancelBtn: document.getElementById("invReserveCancelBtn"),
+    invReserveConfirmBtn: document.getElementById("invReserveConfirmBtn"),
+    poPickerOverlay: document.getElementById("poPickerOverlay"),
+    poPickerSearchInput: document.getElementById("poPickerSearchInput"),
+    poPickerBody: document.getElementById("poPickerBody"),
+    poPickerEmpty: document.getElementById("poPickerEmpty"),
+    poPickerCancelBtn: document.getElementById("poPickerCancelBtn"),
     logBody: document.getElementById("logBody"),
     logTableHeadRow: document.getElementById("logTableHeadRow"),
     logEmpty: document.getElementById("logEmpty"),
@@ -5218,8 +5316,8 @@
   // Collects only the layer rows that are actually in play for the given Ply count (Plant-only).
   // `sku` (the Reel Item picked from the Inventory catalog dropdown, see renderLayerSkuOptions) is
   // what reconcileLayerReelStatusTransfers reads on save to move that reel's stock from Available
-  // (or an existing Reservation — see reservedQtyForJobCard) to In Use; a row left on "— select
-  // reel —" just saves an empty sku and never touches inventory stock, same as before this existed.
+  // to In Use; a row left on "— select reel —" just saves an empty sku and never touches inventory
+  // stock, same as before this existed.
   function computeLayersData(count){
     var layers = [];
     for(var i = 1; i <= count; i++){
@@ -6639,23 +6737,6 @@
     });
     return map;
   }
-  // Net quantity of `sku` currently sitting in the Reserved bucket earmarked for one specific Job
-  // Card No (see the Update Status modal's Job Card No field) — reconstructed the same
-  // nothing's-created-or-destroyed way computeStatusBucketsMap totals a whole bucket, just scoped
-  // to transfers that carry this jobCardNo. Used by reconcileLayerReelStatusTransfers so a Plant
-  // entry's Layers picker can auto-consume an existing reservation for its own Job Card No instead
-  // of dipping into plain Available stock meant for other jobs.
-  function reservedQtyForJobCard(sku, jobCardNo){
-    if(!jobCardNo) return 0;
-    var net = 0;
-    state.invStatusTransfers.forEach(function(tr){
-      if(tr.sku !== sku || tr.jobCardNo !== jobCardNo) return;
-      var qty = Number(tr.qty) || 0;
-      if(tr.toStatus === "reserved") net += qty;
-      if(tr.fromStatus === "reserved") net -= qty;
-    });
-    return Math.max(0, net);
-  }
   // Diffs a Plant entry's Layers before/after a save (see computeLayersData for the `{sku, ...}`
   // shape) and moves exactly the reels that actually changed between Inventory status buckets —
   // called once from the entry save handler below, only while the open form is Plant (the only
@@ -6664,17 +6745,14 @@
   // and resaving an entry whose Layers weren't touched nets old===new for every sku, so nothing
   // moves — only a genuinely added, removed, or swapped reel triggers a transfer.
   //
-  // Consuming (a sku's count went UP — a layer newly picked it): prefers releasing an existing
-  // Reservation held for THIS SAME Job Card No (see reservedQtyForJobCard and the Update Status
-  // modal's Reserve action) over dipping into plain Available stock, so a reel set aside in
-  // advance for this job is what actually gets used once production reaches it — no one has to
-  // remember to manually convert the reservation first. Only the shortfall beyond any reservation
-  // comes out of Available.
+  // Consuming (a sku's count went UP — a layer newly picked it): always comes straight out of
+  // Available. Reservations are tracked by Purchase Order now (see the Reserve modal above), not by
+  // Job Card, so there's no longer an automatic link between "this Job Card's Layers" and "a
+  // Reservation held for it" to consume from first — releasing a PO's reservation back to Available
+  // (or converting it to In Use) is a deliberate Inventory action instead.
   //
   // Releasing (a sku's count went DOWN — a layer was cleared or swapped to a different item):
-  // always goes back to Available, never back to Reserved — once a reservation is consumed into
-  // In Use its own ledger already nets to zero, so there's no reservation left to restore; sending
-  // an edited-away pick back to plain Available is the simple, safe default.
+  // always goes back to Available — a plain mirror of the consume side above.
   //
   // Best-effort: this runs after the entry itself has already saved successfully, so a transfer
   // failing (e.g. someone else already manually moved that stock in the meantime) only logs and
@@ -6698,17 +6776,8 @@
       var newN = newCounts[sku] || 0;
       if(newN > oldN){
         var toConsume = newN - oldN;
-        var fromReserved = Math.min(reservedQtyForJobCard(sku, jobCardNo), toConsume);
-        if(fromReserved > 0){
-          addStatusTransfer(sku, "reserved", "in_use", fromReserved,
-            "Auto-consumed reservation for Job Card " + (jobCardNo || "—"), { jobCardNo: jobCardNo })
-            .catch(function(err){ if(window.console) console.error("Layer reservation consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
-        }
-        var fromAvailable = toConsume - fromReserved;
-        if(fromAvailable > 0){
-          addStatusTransfer(sku, "available", "in_use", fromAvailable, "Consumed by Plant Layers for Job Card " + (jobCardNo || "—"))
-            .catch(function(err){ if(window.console) console.error("Layer stock consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
-        }
+        addStatusTransfer(sku, "available", "in_use", toConsume, "Consumed by Plant Layers for Job Card " + (jobCardNo || "—"))
+          .catch(function(err){ if(window.console) console.error("Layer stock consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
       } else if(oldN > newN){
         var toRelease = oldN - newN;
         addStatusTransfer(sku, "in_use", "available", toRelease, "Released — Layer changed on Job Card " + (jobCardNo || "—"))
@@ -6905,9 +6974,9 @@
   // Damaged) and returns the write's promise. Rejects if there isn't enough quantity currently
   // sitting in `fromStatus` — the same "can't move more than you have" check Ship used to do
   // against total stock, now scoped to a single bucket. `extra` (optional) is merged onto the
-  // transfer's own payload — today just `{ jobCardNo }`, stamped on a move into (or out of)
-  // Reserved so reservedQtyForJobCard can later reconstruct how much of this SKU is held for one
-  // specific Job Card.
+  // transfer's own payload — today just `{ poNumber, poId }`, stamped on a move into Reserved so
+  // the reservation stays traceable to the Purchase Order it was made for (see the Update Status
+  // and Reserve modals' PO field, and openPoPicker).
   function addStatusTransfer(sku, fromStatus, toStatus, qty, note, extra){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
@@ -7114,13 +7183,12 @@
         // "Export" downloads that same table as CSV — both only meaningful for priced-per-reel
         // items, since every other item type has no per-unit breakdown to show or export
         // (see openReelsViewModal / buildInventoryReelsCsv). "Reserve" is the same idea, scoped to
-        // reel items specifically — earmarking specific reels for a future Job Card so a later
-        // Plant entry's Layers picker can consume them automatically (see openStatusModal's
-        // presetTo param and reconcileLayerReelStatusTransfers below).
+        // reel items specifically — earmarking specific reels for a Purchase Order, via the
+        // dedicated Quantity+PO dialog (see openReserveModal below).
         if(isReelUnit(item)){
           var reserveBtn = document.createElement("button");
           reserveBtn.type = "button"; reserveBtn.className = "btn ghost invSmallBtn"; reserveBtn.textContent = t("inv_action_reserve");
-          reserveBtn.addEventListener("click", function(){ openStatusModal(item.sku, "reserved"); });
+          reserveBtn.addEventListener("click", function(){ openReserveModal(item.sku); });
           actionsCell.appendChild(reserveBtn);
           var viewBtn = document.createElement("button");
           viewBtn.type = "button"; viewBtn.className = "btn ghost invSmallBtn"; viewBtn.textContent = t("inv_reels_view_action");
@@ -7509,6 +7577,35 @@
   });
   el.trashSearchInput.addEventListener("input", renderTrashList);
   el.trashTypeFilter.addEventListener("change", renderTrashList);
+  // ---------- Recycle Bin: permanent delete confirm ----------
+  var pendingPurgeTrashItem = null;
+  function openTrashPurgeConfirm(item){
+    pendingPurgeTrashItem = item;
+    el.trashPurgeConfirmSummary.textContent = tf("trash_purge_confirm_summary", { item: trashItemLabel(item) });
+    el.trashPurgeConfirmError.hidden = true;
+    el.trashPurgeConfirmYesBtn.disabled = false;
+    el.trashPurgeConfirmOverlay.hidden = false;
+  }
+  function closeTrashPurgeConfirm(){
+    el.trashPurgeConfirmOverlay.hidden = true;
+    pendingPurgeTrashItem = null;
+  }
+  el.trashPurgeConfirmCancelBtn.addEventListener("click", closeTrashPurgeConfirm);
+  el.trashPurgeConfirmOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.trashPurgeConfirmOverlay) closeTrashPurgeConfirm();
+  });
+  el.trashPurgeConfirmYesBtn.addEventListener("click", function(){
+    if(!pendingPurgeTrashItem) return;
+    el.trashPurgeConfirmError.hidden = true;
+    el.trashPurgeConfirmYesBtn.disabled = true;
+    state.db.collection("trash").doc(pendingPurgeTrashItem.id).delete().then(function(){
+      closeTrashPurgeConfirm();
+    }).catch(function(){
+      el.trashPurgeConfirmYesBtn.disabled = false;
+      el.trashPurgeConfirmError.textContent = t("trash_err_purge_failed");
+      el.trashPurgeConfirmError.hidden = false;
+    });
+  });
   el.invItemClearBtn.addEventListener("click", resetInvItemForm);
   el.invItemAddBtn.addEventListener("click", function(){
     var sku = editingInvSku || el.invItemSkuInput.value.trim().toUpperCase().replace(/\s+/g, "-");
@@ -8447,38 +8544,40 @@
 
   // ---------- Update Status modal (Available / Reserved / In Use / Damaged) ----------
   var invStatusContext = null; // { sku }
-  // `presetTo` (optional) pre-selects the To dropdown — used by the reel item row's own "Reserve"
-  // button (presetTo="reserved") so that one click lands straight on Available -> Reserved with
-  // the Job Card No field already showing, instead of making every reservation start from the
-  // generic From=Available/To=In Use default below.
-  function openStatusModal(sku, presetTo){
+  var invStatusSelectedPo = null; // { id, poNumber } — set by the PO picker, see openPoPicker below
+  function openStatusModal(sku){
     var item = state.invCatalog[sku];
     if(!item) return;
     invStatusContext = { sku: sku };
+    invStatusSelectedPo = null;
     var b = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
     el.invStatusItemLine.textContent = tf("inv_status_current_line", {
       name: item.name, available: b.available.toLocaleString(), reserved: (b.reserved || 0).toLocaleString(),
       inUse: b.inUse.toLocaleString(), damaged: b.damaged.toLocaleString(), unit: item.unit || ""
     });
     el.invStatusFromSelect.value = "available";
-    el.invStatusToSelect.value = presetTo || "in_use";
+    el.invStatusToSelect.value = "in_use";
     el.invStatusQtyInput.value = "";
-    el.invStatusJobCardInput.value = "";
+    el.invStatusPoInput.value = "";
     el.invStatusNoteInput.value = "";
     el.invStatusError.hidden = true;
-    refreshInvStatusJobCardVisibility();
+    refreshInvStatusPoVisibility();
     el.invStatusOverlay.hidden = false;
     el.invStatusQtyInput.focus();
   }
-  // The Job Card No field only matters (and is only shown) when stock is moving INTO Reserved —
-  // that's the one direction a reservation is actually being created/extended; moving stock back
-  // OUT of Reserved (releasing it, or converting it straight to In Use) doesn't need a fresh Job
-  // Card No typed in, since reservedQtyForJobCard already looks at the original reserving
-  // transfer's own stamped jobCardNo, not anything entered here.
-  function refreshInvStatusJobCardVisibility(){
-    el.invStatusJobCardRow.hidden = el.invStatusToSelect.value !== "reserved";
+  // The PO field only matters (and is only shown) when stock is moving INTO Reserved — that's the
+  // one direction a reservation is actually being created/extended; moving stock back OUT of
+  // Reserved (releasing it, or converting it straight to In Use) doesn't need a PO picked here.
+  function refreshInvStatusPoVisibility(){
+    el.invStatusPoRow.hidden = el.invStatusToSelect.value !== "reserved";
   }
-  el.invStatusToSelect.addEventListener("change", refreshInvStatusJobCardVisibility);
+  el.invStatusToSelect.addEventListener("change", refreshInvStatusPoVisibility);
+  el.invStatusPoInput.addEventListener("click", function(){
+    openPoPicker(function(po){
+      invStatusSelectedPo = po;
+      el.invStatusPoInput.value = po.poNumber || "";
+    });
+  });
   el.invStatusCancelBtn.addEventListener("click", function(){ el.invStatusOverlay.hidden = true; invStatusContext = null; });
   el.invStatusOverlay.addEventListener("click", function(ev){
     if(ev.target === el.invStatusOverlay){ el.invStatusOverlay.hidden = true; invStatusContext = null; }
@@ -8487,15 +8586,14 @@
     if(!invStatusContext) return;
     el.invStatusError.hidden = true;
     var toStatus = el.invStatusToSelect.value;
-    var jobCardNo = el.invStatusJobCardInput.value.trim();
-    if(toStatus === "reserved" && !jobCardNo){
-      el.invStatusError.textContent = t("inv_status_err_jobcard_required");
+    if(toStatus === "reserved" && !invStatusSelectedPo){
+      el.invStatusError.textContent = t("inv_status_err_po_required");
       el.invStatusError.hidden = false;
       return;
     }
     el.invStatusConfirmBtn.disabled = true;
     addStatusTransfer(invStatusContext.sku, el.invStatusFromSelect.value, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value,
-      toStatus === "reserved" ? { jobCardNo: jobCardNo } : undefined)
+      toStatus === "reserved" ? { poNumber: invStatusSelectedPo.poNumber, poId: invStatusSelectedPo.id } : undefined)
       .then(function(){
         el.invStatusConfirmBtn.disabled = false;
         el.invStatusOverlay.hidden = true;
@@ -8505,6 +8603,124 @@
         el.invStatusError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
         el.invStatusError.hidden = false;
       });
+  });
+
+  // ---------- Reserve modal (Reel row's own "Reserve" quick action) ----------
+  // Always Available -> Reserved, and — unlike the general Update Status modal above — asks only
+  // for Quantity and the Purchase Order the stock is being set aside for, since that's the whole
+  // point of this shortcut (see the reel item row's Reserve button in the Stock table).
+  var invReserveContext = null; // { sku }
+  var invReserveSelectedPo = null; // { id, poNumber } — set by the PO picker, see openPoPicker below
+  function openReserveModal(sku){
+    var item = state.invCatalog[sku];
+    if(!item) return;
+    invReserveContext = { sku: sku };
+    invReserveSelectedPo = null;
+    var b = computeStatusBucketsMap()[sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
+    el.invReserveItemLine.textContent = tf("inv_status_current_line", {
+      name: item.name, available: b.available.toLocaleString(), reserved: (b.reserved || 0).toLocaleString(),
+      inUse: b.inUse.toLocaleString(), damaged: b.damaged.toLocaleString(), unit: item.unit || ""
+    });
+    el.invReserveQtyInput.value = "";
+    el.invReservePoInput.value = "";
+    el.invReserveError.hidden = true;
+    el.invReserveOverlay.hidden = false;
+    el.invReserveQtyInput.focus();
+  }
+  el.invReservePoInput.addEventListener("click", function(){
+    openPoPicker(function(po){
+      invReserveSelectedPo = po;
+      el.invReservePoInput.value = po.poNumber || "";
+    });
+  });
+  el.invReserveCancelBtn.addEventListener("click", function(){ el.invReserveOverlay.hidden = true; invReserveContext = null; });
+  el.invReserveOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.invReserveOverlay){ el.invReserveOverlay.hidden = true; invReserveContext = null; }
+  });
+  el.invReserveConfirmBtn.addEventListener("click", function(){
+    if(!invReserveContext) return;
+    el.invReserveError.hidden = true;
+    if(!invReserveSelectedPo){
+      el.invReserveError.textContent = t("inv_status_err_po_required");
+      el.invReserveError.hidden = false;
+      return;
+    }
+    el.invReserveConfirmBtn.disabled = true;
+    addStatusTransfer(invReserveContext.sku, "available", "reserved", el.invReserveQtyInput.value, "",
+      { poNumber: invReserveSelectedPo.poNumber, poId: invReserveSelectedPo.id })
+      .then(function(){
+        el.invReserveConfirmBtn.disabled = false;
+        el.invReserveOverlay.hidden = true;
+        invReserveContext = null;
+      }).catch(function(err){
+        el.invReserveConfirmBtn.disabled = false;
+        el.invReserveError.textContent = err && err.message ? err.message : t("inv_items_err_save_failed");
+        el.invReserveError.hidden = false;
+      });
+  });
+
+  // ---------- PO Picker (shared by Update Status's PO field and the Reserve modal above) ----------
+  // A simple "pick one" list, sitting on top of whichever modal opened it — see openPoPicker's
+  // `onSelect` callback param. Reuses buildPoItem's card look (via the .taskItem/.poItem classes)
+  // but as a plain clickable row instead of the board's checkbox/edit-on-click card.
+  var poPickerOnSelect = null;
+  function poPickerMatches(po, q){
+    if(!q) return true;
+    var hay = ((po.poNumber || "") + " " + (po.customerName || "") + " " + (po.productCode || "") + " " + (po.materialDescription || "")).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+  function buildPoPickerRow(po){
+    var received = isPoReceived(po);
+    var overdue = isPoOverdue(po);
+    var row = document.createElement("div");
+    row.className = "taskItem poItem" + (received ? " done" : "") + (overdue ? " overdue" : "");
+    var metaBits = [];
+    if(po.productCode) metaBits.push(po.productCode);
+    if(po.materialDescription) metaBits.push(po.materialDescription);
+    if(po.quantity != null) metaBits.push(t("card_qty_label") + " " + po.quantity);
+    var deliveryLine = po.deliveryRequiredAtPlant
+      ? tf("po_delivery_line", { date: fmtDateForDisplay(po.deliveryRequiredAtPlant) }) : "";
+    row.innerHTML =
+      '<div class="taskBody">' +
+        '<div class="taskTitleRow">' +
+          '<span class="taskTitle">' + esc(po.poNumber || "") + '</span>' +
+          (overdue ? '<span class="poOverdueBadge">' + esc(t("po_overdue_badge")) + '</span>' : "") +
+          (received ? '<span class="poReceivedBadge">' + esc(t("po_status_received")) + '</span>' : "") +
+        '</div>' +
+        (po.customerName ? '<div class="taskSub">' + esc(po.customerName) + '</div>' : "") +
+        '<div class="taskSub taskMeta"' + (metaBits.length ? "" : " hidden") + '></div>' +
+        (deliveryLine ? '<div class="taskNotes">' + esc(deliveryLine) + '</div>' : "") +
+      '</div>';
+    row.querySelector(".taskMeta").textContent = metaBits.join(" · ");
+    row.querySelector(".taskBody").addEventListener("click", function(){
+      var cb = poPickerOnSelect;
+      closePoPicker();
+      if(cb) cb(po);
+    });
+    return row;
+  }
+  function renderPoPicker(){
+    var q = (el.poPickerSearchInput.value || "").trim().toLowerCase();
+    var matches = state.purchaseOrders.filter(function(po){ return poPickerMatches(po, q); });
+    el.poPickerBody.innerHTML = "";
+    el.poPickerEmpty.hidden = matches.length > 0;
+    matches.forEach(function(po){ el.poPickerBody.appendChild(buildPoPickerRow(po)); });
+  }
+  el.poPickerSearchInput.addEventListener("input", renderPoPicker);
+  function openPoPicker(onSelect){
+    poPickerOnSelect = onSelect;
+    el.poPickerSearchInput.value = "";
+    renderPoPicker();
+    el.poPickerOverlay.hidden = false;
+    el.poPickerSearchInput.focus();
+  }
+  function closePoPicker(){
+    el.poPickerOverlay.hidden = true;
+    poPickerOnSelect = null;
+  }
+  el.poPickerCancelBtn.addEventListener("click", closePoPicker);
+  el.poPickerOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.poPickerOverlay) closePoPicker();
   });
 
   // ---------- Board rendering ----------
@@ -10002,6 +10218,7 @@
   document.addEventListener("keydown", function(ev){
     if(ev.key !== "Escape") return;
     if(!el.lightboxOverlay.hidden) closeLightbox();
+    else if(!el.trashPurgeConfirmOverlay.hidden) closeTrashPurgeConfirm();
     else if(!el.deleteConfirmOverlay.hidden) closeDeleteConfirm();
     else if(!el.taskDeleteConfirmOverlay.hidden) closeTaskDeleteConfirm();
     else if(!el.poDeleteConfirmOverlay.hidden) closePoDeleteConfirm();
