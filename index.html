@@ -387,6 +387,7 @@
     display:flex;align-items:center;justify-content:space-between;gap:8px;
     background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:6px 10px;font-size:12px;
   }
+  .orphanReelRight{display:flex;align-items:center;gap:8px;flex:none;}
   .orphanReelReleaseBtn{
     flex:none;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;
     border:1px solid var(--warn);background:transparent;color:var(--warn);cursor:pointer;
@@ -6493,11 +6494,23 @@
     orphanSkus.forEach(function(sku){
       var item = state.invCatalog[sku];
       var label = item ? layerSkuOptionLabel(item) : sku;
+      // Same Available/Low Stock/Out of Stock chip the Layers rows show — computed off the
+      // Available bucket, same as everywhere else (see refreshPoLayerReelStatus). Releasing this
+      // orphan moves its qty from Reserved into Available, so this is exactly the number/status
+      // that improves — in this row, and on the Inventory tab's own Available/Reserved columns for
+      // this SKU — the instant the release call resolves.
+      var statusHtml = "";
+      if(item){
+        var cls = inventoryStatus(availableFor(sku), item.reorderPoint);
+        var slabel = cls === "crit" ? t("layers_reelstatus_out") : cls === "warn" ? t("layers_reelstatus_low") : t("layers_reelstatus_available");
+        statusHtml = '<span class="capChip ' + cls + '">' + esc(slabel) + '</span>';
+      }
       var row = document.createElement("div");
       row.className = "orphanReelRow";
       var btnHtml = state.isAdminDevice
         ? '<button type="button" class="orphanReelReleaseBtn">' + esc(t("po_orphanreel_release_btn")) + '</button>' : "";
-      row.innerHTML = '<span>' + esc(label) + " x" + map[sku] + '</span>' + btnHtml;
+      row.innerHTML = '<span>' + esc(label) + " x" + map[sku] + '</span>' +
+        '<span class="orphanReelRight">' + statusHtml + btnHtml + '</span>';
       if(state.isAdminDevice){
         row.querySelector(".orphanReelReleaseBtn").addEventListener("click", function(){
           var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
