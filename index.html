@@ -468,6 +468,8 @@
   input.mono, select.mono{font-family:var(--font-mono);}
   .invMoveModal .modal{max-width:420px;}
   .invMoveCurrentQty{font-size:13px;color:var(--ink-soft);margin:-6px 0 4px;}
+  .invStatusNoPoCheck{display:flex !important;flex-direction:row !important;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);text-transform:none !important;letter-spacing:0 !important;margin-bottom:6px;}
+  .invStatusNoPoCheck input{width:auto;}
   .invMoveAmountLine{font-size:13.5px;font-weight:600;color:var(--ink);font-family:var(--font-mono);
     margin:-4px 0 10px;padding:8px 10px;background:var(--surface-2);border-radius:6px;}
   .logControls{display:flex;flex-wrap:wrap;gap:10px;}
@@ -1690,9 +1692,16 @@
     <!-- Only meaningful (and only shown) when moving stock TO Reserved — ties the held stock to the
          specific Purchase Order it's being set aside for. Read-only: click/focus opens the PO
          picker (openPoPicker below) so the value always points at a real, tracked PO instead of
-         free text. -->
+         free text. The checkbox is the escape hatch for the OTHER reason to move stock into
+         Reserved: fixing the ledger itself (e.g. correcting a bucket that drifted negative) rather
+         than earmarking stock for a real order — that's not "for" any PO, so requiring one would
+         block a legitimate correction. Checking it swaps the PO picker for a plain note instead. -->
     <div class="supAddRow" style="grid-template-columns:1fr;" id="invStatusPoRow" hidden>
-      <label><span data-i18n="inv_status_po_label">PO</span>
+      <label class="invStatusNoPoCheck">
+        <input type="checkbox" id="invStatusNoPoCheck">
+        <span data-i18n="inv_status_no_po_label">Manual correction — not tied to a specific PO</span>
+      </label>
+      <label id="invStatusPoField"><span data-i18n="inv_status_po_label">PO</span>
         <input type="text" id="invStatusPoInput" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
       </label>
     </div>
@@ -2964,6 +2973,7 @@
       inv_status_available: "Available", inv_status_reserved: "Reserved", inv_status_inuse: "In Use", inv_status_damaged: "Damaged",
       inv_status_qty_label: "Quantity",
       inv_status_po_label: "PO", inv_status_po_placeholder: "Click to select a PO",
+      inv_status_no_po_label: "Manual correction — not tied to a specific PO",
       inv_status_note_label: "Note (optional)",
       inv_status_note_placeholder: "e.g. checked out for Job Card #.., dropped and cracked…",
       inv_status_confirm: "Save",
@@ -3302,6 +3312,7 @@
       inv_status_available: "उपलब्ध", inv_status_reserved: "आरक्षित", inv_status_inuse: "उपयोग में", inv_status_damaged: "क्षतिग्रस्त",
       inv_status_qty_label: "मात्रा",
       inv_status_po_label: "PO", inv_status_po_placeholder: "PO चुनने के लिए क्लिक करें",
+      inv_status_no_po_label: "मैन्युअल सुधार — किसी विशेष PO से जुड़ा नहीं",
       inv_status_note_label: "नोट (वैकल्पिक)",
       inv_status_note_placeholder: "जैसे, जॉब कार्ड #.. के लिए निकाला गया, गिरकर टूट गया…",
       inv_status_confirm: "सेव करें",
@@ -3640,6 +3651,7 @@
       inv_status_available: "అందుబాటులో", inv_status_reserved: "రిజర్వ్ చేయబడింది", inv_status_inuse: "వాడుకలో", inv_status_damaged: "పాడైనవి",
       inv_status_qty_label: "పరిమాణం",
       inv_status_po_label: "PO", inv_status_po_placeholder: "PO ఎంచుకోవడానికి క్లిక్ చేయండి",
+      inv_status_no_po_label: "మాన్యువల్ కరెక్షన్ — ఏ నిర్దిష్ట PO‌కి సంబంధించినది కాదు",
       inv_status_note_label: "నోట్ (ఐచ్ఛికం)",
       inv_status_note_placeholder: "ఉదా. జాబ్ కార్డ్ #.. కోసం తీసుకున్నారు, పడి పగిలింది…",
       inv_status_confirm: "సేవ్ చేయండి",
@@ -4135,6 +4147,8 @@
     invStatusToSelect: document.getElementById("invStatusToSelect"),
     invStatusQtyInput: document.getElementById("invStatusQtyInput"),
     invStatusPoRow: document.getElementById("invStatusPoRow"),
+    invStatusNoPoCheck: document.getElementById("invStatusNoPoCheck"),
+    invStatusPoField: document.getElementById("invStatusPoField"),
     invStatusPoInput: document.getElementById("invStatusPoInput"),
     invStatusNoteInput: document.getElementById("invStatusNoteInput"),
     invStatusError: document.getElementById("invStatusError"),
@@ -6583,6 +6597,21 @@
   // truly releasable (see globalReservedFor above), so both the number shown and the number an
   // actual release call asks for always agree — no more "shows x3, only frees 2" mismatch.
   var poOrphanReelsMap = {};
+  // A release request round-trips to Firestore and back before this panel's own onSnapshot refresh
+  // reflects it in state.invStatusTransfers — during that window, globalReservedFor() still reads
+  // the PRE-release amount. Without this flag, a second release fired during that window (a
+  // different row's Release, "Release All", or even a re-render triggered by some unrelated ledger
+  // change elsewhere while this one is still in flight) would recompute the same "truly reserved"
+  // figure and submit ANOTHER release for it, netting the bucket negative — exactly how a live PO
+  // was reported showing Reserved: -2. Held for the whole panel, across every render (not just the
+  // render right after a click), until the in-flight request actually resolves.
+  var poOrphanActionInFlight = false;
+  function setOrphanControlsDisabled(disabled){
+    if(el.poOrphanReleaseAllBtn) el.poOrphanReleaseAllBtn.disabled = disabled;
+    if(el.poOrphanReelsList){
+      Array.prototype.forEach.call(el.poOrphanReelsList.querySelectorAll(".orphanReelReleaseBtn"), function(btn){ btn.disabled = disabled; });
+    }
+  }
   function refreshPoOrphanReels(){
     var box = el.fld_poorphanreels, list = el.poOrphanReelsList;
     if(!box || !list) return;
@@ -6598,13 +6627,16 @@
     orphanSkus = orphanSkus.filter(function(sku){ return poOrphanReelsMap[sku] > 0; });
     list.innerHTML = "";
     box.hidden = orphanSkus.length === 0;
-    // Always come back enabled on a fresh render — a previous "Release All" that partially failed
-    // (one sku's write rejected, say) used to leave this stuck disabled forever, with the panel
-    // still showing and no way to retry. See the click handler below for the matching fix on the
-    // write side (allSettled instead of all-or-nothing).
+    // Come back enabled on a fresh render — a previous "Release All" that partially failed (one
+    // sku's write rejected, say) used to leave this stuck disabled forever, with the panel still
+    // showing and no way to retry (see the click handlers below for the matching write-side fix) —
+    // UNLESS a release is genuinely still in flight right now (poOrphanActionInFlight), in which
+    // case every render (including one triggered by some unrelated ledger change elsewhere while
+    // this one is still pending) must keep everything disabled, not just the render right after the
+    // click that started it.
     if(el.poOrphanReleaseAllBtn){
       el.poOrphanReleaseAllBtn.hidden = !state.isAdminDevice || orphanSkus.length < 2;
-      el.poOrphanReleaseAllBtn.disabled = false;
+      el.poOrphanReleaseAllBtn.disabled = poOrphanActionInFlight;
     }
     if(!orphanSkus.length) return;
     orphanSkus.forEach(function(sku){
@@ -6628,19 +6660,25 @@
       row.innerHTML = '<span>' + esc(label) + " x" + poOrphanReelsMap[sku] + '</span>' +
         '<span class="orphanReelRight">' + statusHtml + btnHtml + '</span>';
       if(state.isAdminDevice){
-        row.querySelector(".orphanReelReleaseBtn").addEventListener("click", function(){
+        var releaseBtnEl = row.querySelector(".orphanReelReleaseBtn");
+        releaseBtnEl.disabled = poOrphanActionInFlight;
+        releaseBtnEl.addEventListener("click", function(){
+          // Belt-and-braces: the button should already be disabled while a release is in flight, but
+          // never act on a click that slips through anyway (e.g. one queued right before disabling).
+          if(poOrphanActionInFlight) return;
           var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
-          var btn = this;
           // Recompute the cap fresh, right here — never trust the render-time snapshot for the
           // actual write, in case something else moved this sku's bucket in the meantime.
           var qty = Math.min(poOrphanReelsMap[sku] || 0, globalReservedFor(sku));
           if(qty <= 0){ refreshPoOrphanReels(); return; }
-          btn.disabled = true;
+          poOrphanActionInFlight = true;
+          setOrphanControlsDisabled(true);
           addStatusTransfer(sku, "reserved", "available", qty, "Released — manual cleanup (PO " + poTag.poNumber + ")", poTag)
-            .then(function(){ refreshPoOrphanReels(); })
+            .then(function(){ poOrphanActionInFlight = false; refreshPoOrphanReels(); })
             .catch(function(err){
-              btn.disabled = false;
+              poOrphanActionInFlight = false;
               showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
+              refreshPoOrphanReels();
             });
         });
       }
@@ -6652,11 +6690,12 @@
   // need 5 separate clicks — one call per sku, fired together (each checks/moves its own sku's
   // bucket independently, so there's no cross-sku ordering to worry about), then a single refresh.
   el.poOrphanReleaseAllBtn.addEventListener("click", function(){
+    if(poOrphanActionInFlight) return; // same belt-and-braces guard as the single-row button.
     var skus = Object.keys(poOrphanReelsMap);
     if(!skus.length || !state.editingPoId) return;
     var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
-    el.poOrphanReleaseAllBtn.disabled = true;
-    Array.prototype.forEach.call(el.poOrphanReelsList.querySelectorAll(".orphanReelReleaseBtn"), function(btn){ btn.disabled = true; });
+    poOrphanActionInFlight = true;
+    setOrphanControlsDisabled(true);
     // Each sku's release is independent (its own addStatusTransfer call, checked against its own
     // bucket) — one failing (a permission rule, a stale qty, whatever) must not stop the others
     // from going through, and must never leave this button stuck disabled with no way to retry.
@@ -6672,6 +6711,7 @@
         .then(function(){ return { sku: sku, ok: true }; })
         .catch(function(err){ return { sku: sku, ok: false, err: err }; });
     })).then(function(results){
+      poOrphanActionInFlight = false;
       refreshPoOrphanReels();
       var failed = results.filter(function(r){ return !r.ok; });
       if(failed.length){
@@ -9457,18 +9497,28 @@
     el.invStatusQtyInput.value = "";
     el.invStatusPoInput.value = "";
     el.invStatusNoteInput.value = "";
+    el.invStatusNoPoCheck.checked = false;
     el.invStatusError.hidden = true;
     refreshInvStatusPoVisibility();
     el.invStatusOverlay.hidden = false;
     el.invStatusQtyInput.focus();
   }
-  // The PO field only matters (and is only shown) when stock is moving INTO Reserved — that's the
+  // The PO row only matters (and is only shown) when stock is moving INTO Reserved — that's the
   // one direction a reservation is actually being created/extended; moving stock back OUT of
   // Reserved (releasing it, or converting it straight to In Use) doesn't need a PO picked here.
+  // Within that row, the checkbox is the escape hatch for a pure ledger correction (e.g. a bucket
+  // that drifted negative) that isn't actually earmarking stock for any real order — checking it
+  // swaps the PO picker for a plain note, and the write below goes untagged (no poId/poNumber),
+  // same as any other manual correction in this app.
   function refreshInvStatusPoVisibility(){
     el.invStatusPoRow.hidden = el.invStatusToSelect.value !== "reserved";
+    el.invStatusPoField.hidden = el.invStatusNoPoCheck.checked;
   }
   el.invStatusToSelect.addEventListener("change", refreshInvStatusPoVisibility);
+  el.invStatusNoPoCheck.addEventListener("change", function(){
+    if(el.invStatusNoPoCheck.checked){ invStatusSelectedPo = null; el.invStatusPoInput.value = ""; }
+    refreshInvStatusPoVisibility();
+  });
   el.invStatusPoInput.addEventListener("click", function(){
     openPoPicker(function(po){
       invStatusSelectedPo = po;
@@ -9483,14 +9533,15 @@
     if(!invStatusContext) return;
     el.invStatusError.hidden = true;
     var toStatus = el.invStatusToSelect.value;
-    if(toStatus === "reserved" && !invStatusSelectedPo){
+    var taggingPo = toStatus === "reserved" && !el.invStatusNoPoCheck.checked;
+    if(taggingPo && !invStatusSelectedPo){
       el.invStatusError.textContent = t("inv_status_err_po_required");
       el.invStatusError.hidden = false;
       return;
     }
     el.invStatusConfirmBtn.disabled = true;
     addStatusTransfer(invStatusContext.sku, el.invStatusFromSelect.value, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value,
-      toStatus === "reserved" ? { poNumber: invStatusSelectedPo.poNumber, poId: invStatusSelectedPo.id } : undefined)
+      taggingPo ? { poNumber: invStatusSelectedPo.poNumber, poId: invStatusSelectedPo.id } : undefined)
       .then(function(){
         el.invStatusConfirmBtn.disabled = false;
         el.invStatusOverlay.hidden = true;
@@ -12278,6 +12329,10 @@
       refreshPoLayerReelStatus(poPopN);
     }
     refreshPoLayersVisibility();
+    // A pending release from a PREVIOUSLY open PO's orphan panel is tracked by its own Promise, not
+    // by this flag surviving — so opening a (possibly different) PO always starts its panel
+    // unlocked rather than inheriting a stale in-flight state from whatever was open before.
+    poOrphanActionInFlight = false;
     refreshPoOrphanReels();
     PO_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
     el.poDeleteBtn.hidden = !po || readOnly;
