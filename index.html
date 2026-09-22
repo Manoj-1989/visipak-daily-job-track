@@ -782,6 +782,7 @@
     <nav class="mainNav" role="tablist">
       <button type="button" class="mainNavLink active" data-appview="production" role="tab" aria-selected="true" data-i18n="nav_production">Production</button>
       <button type="button" class="mainNavLink" id="navInventoryLink" role="tab" aria-selected="false" data-appview="inventory" hidden data-i18n="nav_inventory">Inventory</button>
+      <button type="button" class="mainNavLink" id="navDailyReportLink" role="tab" aria-selected="false" data-appview="dailyreport" hidden data-i18n="nav_dailyreport">Daily Report</button>
     </nav>
     <div class="controls" id="controlsBar">
       <label class="field"><span data-i18n="filter_date">Date</span>
@@ -1050,6 +1051,51 @@
           </table>
           <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No purchases logged yet.</div>
         </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Daily Inventory Report: its own top-level tab (not a section inside Inventory) — a per-item
+       Opening/Received/Consumed-Shipped/Closing rollup for one calendar day, entirely derived from
+       the same purchases/statusTransfers ledger Inventory itself reads. Unlike Production's Stock
+       Summary stage (a manual daily figure someone types in), nothing is entered here — pick a day
+       and the report replays the ledger as it stood then. See computeDailyInventoryReport() below. -->
+  <main id="dailyReportView" class="inventoryView" hidden>
+    <div class="invTopBar">
+      <div class="invTiles">
+        <div class="statTile"><span class="statLabel" data-i18n="dr_stat_opening">Opening</span><span class="statValue" id="drStatOpening">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="dr_stat_received">Received</span><span class="statValue" id="drStatReceived">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="dr_stat_consumed">Consumed / Shipped</span><span class="statValue" id="drStatConsumed">0</span></div>
+        <div class="statTile"><span class="statLabel" data-i18n="dr_stat_closing">Closing</span><span class="statValue" id="drStatClosing">0</span></div>
+      </div>
+      <label class="field"><span data-i18n="dr_date_label">Day</span>
+        <span class="dateFieldWrap">
+          <input type="date" id="drDateInput">
+          <span class="dateFieldLabel" id="drDateInputLabel" aria-hidden="true"></span>
+        </span>
+      </label>
+      <button class="btn ghost" id="drTodayBtn" type="button" data-i18n="dr_today_btn">Today</button>
+      <button class="btn ghost" id="drExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
+    </div>
+
+    <div class="invLogSection">
+      <div class="invLogHead"><h3 data-i18n="dr_heading">Daily Inventory Report</h3></div>
+      <div class="logControls">
+        <input type="text" id="drSearch" placeholder="Search item, category…" data-i18n-placeholder="inv_search_placeholder">
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="inv_th_item">Item</th><th data-i18n="inv_th_category">Category</th><th data-i18n="inv_items_unit">Unit</th>
+              <th data-i18n="dr_th_opening">Opening</th><th data-i18n="dr_th_received">Received</th><th data-i18n="dr_th_consumed">Consumed/Shipped</th><th data-i18n="dr_th_closing">Closing</th>
+              <th data-i18n="inv_th_status">Status</th>
+            </tr>
+          </thead>
+          <tbody id="drBody"></tbody>
+          <tfoot id="drFoot" hidden></tfoot>
+        </table>
+        <div class="logEmpty" id="drEmpty" hidden data-i18n="dr_empty">No items yet. Use "Manage Inventory Items" to add your first one.</div>
       </div>
     </div>
   </main>
@@ -2802,7 +2848,11 @@
       banner_po_save_failed_prefix: "Couldn't save purchase order:",
       banner_po_delete_failed_prefix: "Couldn't delete purchase order:",
       trash_type_purchaseOrders: "Purchase Order",
-      nav_production: "Production", nav_inventory: "Inventory",
+      nav_production: "Production", nav_inventory: "Inventory", nav_dailyreport: "Daily Report",
+      dr_heading: "Daily Inventory Report", dr_date_label: "Day", dr_today_btn: "Today",
+      dr_stat_opening: "Opening", dr_stat_received: "Received", dr_stat_consumed: "Consumed / Shipped", dr_stat_closing: "Closing",
+      dr_th_opening: "Opening", dr_th_received: "Received", dr_th_consumed: "Consumed/Shipped", dr_th_closing: "Closing",
+      dr_empty: "No items yet. Use \"Manage Inventory Items\" to add your first one.",
       inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_value: "Inventory Value", inv_stat_reorder: "Items to Reorder",
       btn_manage_inventory_items: "Manage Inventory Items",
       inv_search_placeholder: "Search item, SKU, category…",
@@ -3136,7 +3186,11 @@
       banner_po_save_failed_prefix: "परचेज़ ऑर्डर सेव नहीं हो सका:",
       banner_po_delete_failed_prefix: "परचेज़ ऑर्डर हटाया नहीं जा सका:",
       trash_type_purchaseOrders: "परचेज़ ऑर्डर",
-      nav_production: "प्रोडक्शन", nav_inventory: "इन्वेंटरी",
+      nav_production: "प्रोडक्शन", nav_inventory: "इन्वेंटरी", nav_dailyreport: "डेली रिपोर्ट",
+      dr_heading: "डेली इन्वेंटरी रिपोर्ट", dr_date_label: "दिन", dr_today_btn: "आज",
+      dr_stat_opening: "ओपनिंग", dr_stat_received: "प्राप्त", dr_stat_consumed: "उपयोग / भेजा गया", dr_stat_closing: "क्लोजिंग",
+      dr_th_opening: "ओपनिंग", dr_th_received: "प्राप्त", dr_th_consumed: "उपयोग/भेजा गया", dr_th_closing: "क्लोजिंग",
+      dr_empty: "अभी तक कोई आइटम नहीं है। पहला आइटम जोड़ने के लिए \"Manage Inventory Items\" का उपयोग करें।",
       inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_value: "इन्वेंटरी मूल्य", inv_stat_reorder: "रीऑर्डर करने योग्य आइटम",
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_search_placeholder: "आइटम, SKU, श्रेणी खोजें…",
@@ -3470,7 +3524,11 @@
       banner_po_save_failed_prefix: "కొనుగోలు ఆర్డర్ సేవ్ కాలేదు:",
       banner_po_delete_failed_prefix: "కొనుగోలు ఆర్డర్ తొలగించబడలేదు:",
       trash_type_purchaseOrders: "కొనుగోలు ఆర్డర్",
-      nav_production: "ప్రొడక్షన్", nav_inventory: "ఇన్వెంటరీ",
+      nav_production: "ప్రొడక్షన్", nav_inventory: "ఇన్వెంటరీ", nav_dailyreport: "డైలీ రిపోర్ట్",
+      dr_heading: "డైలీ ఇన్వెంటరీ రిపోర్ట్", dr_date_label: "రోజు", dr_today_btn: "ఈరోజు",
+      dr_stat_opening: "ఓపెనింగ్", dr_stat_received: "అందుకున్నవి", dr_stat_consumed: "వాడినవి / పంపినవి", dr_stat_closing: "క్లోజింగ్",
+      dr_th_opening: "ఓపెనింగ్", dr_th_received: "అందుకున్నవి", dr_th_consumed: "వాడినవి/పంపినవి", dr_th_closing: "క్లోజింగ్",
+      dr_empty: "ఇంకా ఐటమ్‌లు లేవు. మొదటి ఐటమ్ జోడించడానికి \"Manage Inventory Items\" ఉపయోగించండి.",
       inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_value: "ఇన్వెంటరీ విలువ", inv_stat_reorder: "రీఆర్డర్ చేయవలసిన ఐటమ్‌లు",
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_search_placeholder: "ఐటమ్, SKU, కేటగిరీ వెతకండి…",
@@ -3932,6 +3990,20 @@
     controlsBar: document.getElementById("controlsBar"),
     summaryBar: document.getElementById("summaryBar"),
     navInventoryLink: document.getElementById("navInventoryLink"),
+    navDailyReportLink: document.getElementById("navDailyReportLink"),
+    dailyReportView: document.getElementById("dailyReportView"),
+    drStatOpening: document.getElementById("drStatOpening"),
+    drStatReceived: document.getElementById("drStatReceived"),
+    drStatConsumed: document.getElementById("drStatConsumed"),
+    drStatClosing: document.getElementById("drStatClosing"),
+    drDateInput: document.getElementById("drDateInput"),
+    drDateInputLabel: document.getElementById("drDateInputLabel"),
+    drTodayBtn: document.getElementById("drTodayBtn"),
+    drExportBtn: document.getElementById("drExportBtn"),
+    drSearch: document.getElementById("drSearch"),
+    drBody: document.getElementById("drBody"),
+    drFoot: document.getElementById("drFoot"),
+    drEmpty: document.getElementById("drEmpty"),
     inventoryView: document.getElementById("inventoryView"),
     invStockSection: document.getElementById("invStockSection"),
     invHistorySection: document.getElementById("invHistorySection"),
@@ -6751,9 +6823,12 @@
     // department. Curating the item catalog itself stays Admin-only (see Manage Inventory Items).
     var canSeeInventory = state.isAdminDevice || deviceCanViewStage("Inventory Management");
     el.navInventoryLink.hidden = !canSeeInventory;
+    // Daily Inventory Report is just another read of the same purchases/statusTransfers ledger
+    // Inventory itself reads, so it's gated on exactly the same access check.
+    el.navDailyReportLink.hidden = !canSeeInventory;
     el.manageInventoryItemsBtn.hidden = !state.isAdminDevice;
     el.recycleBinBtn.hidden = !state.isAdminDevice;
-    if(!canSeeInventory && state.appView === "inventory"){
+    if(!canSeeInventory && (state.appView === "inventory" || state.appView === "dailyreport")){
       // Access was just revoked (a different, non-inventory device logged in on this browser) —
       // fall back to Production rather than leaving an inaccessible screen showing.
       state.appView = "production";
@@ -7249,15 +7324,19 @@
   });
   function applyAppView(){
     var isInventory = state.appView === "inventory";
-    el.controlsBar.hidden = isInventory;
-    el.summaryBar.hidden = isInventory;
-    el.taskBoardSection.hidden = isInventory || state.view !== "board";
+    var isDailyReport = state.appView === "dailyreport";
+    var isAway = isInventory || isDailyReport;
+    el.controlsBar.hidden = isAway;
+    el.summaryBar.hidden = isAway;
+    el.taskBoardSection.hidden = isAway || state.view !== "board";
     // Purchase Orders board sits directly above Priority Tasks — same board-only visibility.
-    el.poBoardSection.hidden = isInventory || state.view !== "board";
-    el.boardView.hidden = isInventory || state.view !== "board";
-    el.logView.hidden = isInventory || state.view !== "log";
+    el.poBoardSection.hidden = isAway || state.view !== "board";
+    el.boardView.hidden = isAway || state.view !== "board";
+    el.logView.hidden = isAway || state.view !== "log";
     el.inventoryView.hidden = !isInventory;
+    el.dailyReportView.hidden = !isDailyReport;
     if(isInventory){ applyInvView(); renderInventory(); }
+    if(isDailyReport) renderDailyReport();
   }
 
   // ---------- Inventory Management (Store department's own screen — see .mainNav) ----------
@@ -7280,21 +7359,31 @@
       renderInventoryCategoryFilterOptions();
       renderLayerSkuOptions();
       if(state.appView === "inventory") renderInventory();
+      if(state.appView === "dailyreport") renderDailyReport();
       if(el.invItemsOverlay && !el.invItemsOverlay.hidden){ renderInvItemsList(); renderInvItemCategoryOptions(); }
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
-    // Newest first, capped — plenty for a store's day-to-day ledger; computeCurrentStockMap sums
-    // every row per SKU (no running balance is stored), and Purchase History only shows a recent
-    // window anyway (same trade-off the main job-card Log view already makes).
-    state.unsubInvPurchases = state.db.collection("purchases").orderBy("createdAt", "desc").limit(1000).onSnapshot(function(snap){
+    // NOT capped with .limit() — unlike the main job-card Log view (a display-only recent-activity
+    // feed, where showing only the newest N is a fine trade-off), computeCurrentStockMap() does an
+    // EXACT SUM of every purchase row per SKU. A .limit() here would silently drop older purchases
+    // out of that sum once the collection grows past the cap, quietly under-counting stock with no
+    // error or warning anywhere. orderBy("createdAt","desc") is kept only so Purchase History's
+    // display order matches the rest of the app — it no longer bounds how much is loaded.
+    state.unsubInvPurchases = state.db.collection("purchases").orderBy("createdAt", "desc").onSnapshot(function(snap){
       state.invPurchases = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       if(state.appView === "inventory") renderInventory();
+      if(state.appView === "dailyreport") renderDailyReport();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
-    // Available/In Use/Damaged is a second, independent ledger on top of the same purchases — see
-    // computeStatusBucketsMap. A transfer never changes a purchase row, it just moves quantity
-    // between buckets, so this can stay its own small collection.
-    state.unsubInvStatusTransfers = state.db.collection("statusTransfers").orderBy("createdAt", "desc").limit(1000).onSnapshot(function(snap){
+    // Same reasoning as purchases above: computeStatusBucketsMap() does an exact running sum of
+    // every transfer ever recorded (Available/In Use/Damaged/Reserved all derive from this), not a
+    // bounded "recent activity" feed, so it must never be capped — a store's day-to-day Receive/
+    // Reserve/Release traffic can pass 1000 documents well within its lifetime, and a capped query
+    // would then silently show the wrong Reserved/Available numbers with nothing in the UI to
+    // suggest why (this was the root cause behind reels showing correctly Reserved in a PO's own
+    // Layers table but reading back as 0 on the Inventory tab once the collection grew past 1000).
+    state.unsubInvStatusTransfers = state.db.collection("statusTransfers").orderBy("createdAt", "desc").onSnapshot(function(snap){
       state.invStatusTransfers = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       if(state.appView === "inventory") renderInventory();
+      if(state.appView === "dailyreport") renderDailyReport();
       // A reel getting reserved/released against a PO (see reservedBucketsForPo) shows up on both
       // the PO board and any Priority Task card linked to that PO — re-render both whenever this
       // ledger changes, not just when Inventory itself is the visible screen.
@@ -8031,6 +8120,159 @@
     var rows = getFilteredPurchaseRows();
     if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
     downloadCsv("visipak-inventory-purchases.csv", buildInventoryPurchasesCsv(rows));
+  });
+
+  // ---------- Daily Inventory Report (its own top-level tab — see .mainNav) ----------
+  // A per-item Opening/Received/Consumed-Shipped/Closing rollup for one calendar day, entirely
+  // derived from the same purchases/statusTransfers ledger the Inventory tab itself reads — no
+  // separate data entry, unlike Production's Stock Summary stage (a manual daily figure someone
+  // types into a Job Card). Pick a day and the report replays the ledger as it stood at the end of
+  // that day, so reopening a past date always reproduces the same numbers regardless of what's
+  // happened to stock since — a real historical snapshot, not just "right now" relabeled.
+  //
+  // Opening for day D is defined as Closing for day D-1, and Closing is derived two independent
+  // ways that must always agree by construction: (a) Opening + Received - Consumed/Shipped, and
+  // (b) a full replay of every purchase/transfer dated on or before D (computeAvailableAsOfDate).
+  // Keeping both in the same function is what makes this report an audit trail rather than another
+  // number that can silently drift from the ledger it's supposed to summarize.
+
+  // Adds/subtracts whole calendar days to an ISO "YYYY-MM-DD" string. Used to step back one day to
+  // find the previous day's Closing balance (= this day's Opening).
+  function addDaysToIsoDate(iso, days){
+    var parts = (iso || "").split("-");
+    if(parts.length !== 3) return iso;
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    d.setDate(d.getDate() + days);
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+  // The Available bucket exactly as it stood at the end of `asOfDate` (inclusive) — every purchase
+  // and every status transfer dated on or before that day, replayed with the same "start Available,
+  // apply every transfer's delta" arithmetic as computeStatusBucketsMap(), just date-bounded instead
+  // of using the full live collections.
+  function computeAvailableAsOfDate(asOfDate){
+    var map = {};
+    state.invPurchases.forEach(function(p){
+      if(!p.date || p.date > asOfDate) return;
+      map[p.sku] = (map[p.sku] || 0) + (Number(p.qty) || 0);
+    });
+    state.invStatusTransfers.forEach(function(tr){
+      if(!tr.date || tr.date > asOfDate) return;
+      var qty = Number(tr.qty) || 0;
+      if(!map.hasOwnProperty(tr.sku)) map[tr.sku] = 0;
+      if(tr.fromStatus === "available") map[tr.sku] -= qty;
+      if(tr.toStatus === "available") map[tr.sku] += qty;
+    });
+    return map;
+  }
+  // One row per catalog item for the given day. Received counts both new purchases logged that day
+  // and any transfer that moved stock BACK into Available that day (a release); Consumed/Shipped
+  // counts every transfer that moved stock OUT of Available that day (reserved, put in use,
+  // marked damaged) — the same "Available is the base bucket everything else moves out of and back
+  // into" model computeStatusBucketsMap() already uses, just split into a day's own in/out totals.
+  function computeDailyInventoryReport(dateStr){
+    var openingMap = computeAvailableAsOfDate(addDaysToIsoDate(dateStr, -1));
+    var closingMap = computeAvailableAsOfDate(dateStr);
+    var receivedMap = {}, consumedMap = {};
+    state.invPurchases.forEach(function(p){
+      if(p.date !== dateStr) return;
+      receivedMap[p.sku] = (receivedMap[p.sku] || 0) + (Number(p.qty) || 0);
+    });
+    state.invStatusTransfers.forEach(function(tr){
+      if(tr.date !== dateStr) return;
+      var qty = Number(tr.qty) || 0;
+      if(tr.fromStatus === "available") consumedMap[tr.sku] = (consumedMap[tr.sku] || 0) + qty;
+      if(tr.toStatus === "available") receivedMap[tr.sku] = (receivedMap[tr.sku] || 0) + qty;
+    });
+    return Object.keys(state.invCatalog).map(function(sku){
+      return {
+        item: state.invCatalog[sku],
+        opening: openingMap[sku] || 0,
+        received: receivedMap[sku] || 0,
+        consumed: consumedMap[sku] || 0,
+        closing: closingMap[sku] || 0,
+      };
+    });
+  }
+  function getFilteredDailyReportRows(){
+    var dateStr = el.drDateInput.value || todayStr();
+    var rows = computeDailyInventoryReport(dateStr);
+    var term = (el.drSearch.value || "").trim().toLowerCase();
+    if(term){
+      rows = rows.filter(function(r){
+        var hay = (layerSkuOptionLabel(r.item) + " " + (r.item.category || "")).toLowerCase();
+        return hay.indexOf(term) !== -1;
+      });
+    }
+    rows.sort(function(a, b){ return layerSkuOptionLabel(a.item).localeCompare(layerSkuOptionLabel(b.item)); });
+    return rows;
+  }
+  function renderDailyReport(){
+    if(!el.drDateInput.value) el.drDateInput.value = todayStr();
+    var rows = getFilteredDailyReportRows();
+    var totals = { opening: 0, received: 0, consumed: 0, closing: 0 };
+    el.drBody.innerHTML = "";
+    rows.forEach(function(r){
+      totals.opening += r.opening; totals.received += r.received; totals.consumed += r.consumed; totals.closing += r.closing;
+      var cls = inventoryStatus(r.closing, r.item.reorderPoint);
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" + esc(layerSkuOptionLabel(r.item)) + "</td>" +
+        "<td>" + esc(r.item.category || "—") + "</td>" +
+        "<td>" + esc(r.item.unit || "—") + "</td>" +
+        '<td class="mono">' + r.opening.toLocaleString() + "</td>" +
+        '<td class="mono">' + r.received.toLocaleString() + "</td>" +
+        '<td class="mono">' + r.consumed.toLocaleString() + "</td>" +
+        '<td class="mono">' + r.closing.toLocaleString() + "</td>" +
+        '<td><span class="capChip ' + cls + '">' + esc(inventoryStatusLabel(cls)) + "</span></td>";
+      el.drBody.appendChild(tr);
+    });
+    el.drEmpty.hidden = rows.length !== 0;
+    el.drFoot.innerHTML = "";
+    el.drFoot.hidden = rows.length === 0;
+    if(rows.length){
+      var totalTr = document.createElement("tr");
+      totalTr.innerHTML =
+        '<td colspan="3">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
+        '<td class="num">' + totals.opening.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.received.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.consumed.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.closing.toLocaleString() + "</td>" +
+        "<td></td>";
+      el.drFoot.appendChild(totalTr);
+    }
+    el.drStatOpening.textContent = totals.opening.toLocaleString();
+    el.drStatReceived.textContent = totals.received.toLocaleString();
+    el.drStatConsumed.textContent = totals.consumed.toLocaleString();
+    el.drStatClosing.textContent = totals.closing.toLocaleString();
+  }
+  function buildDailyReportCsv(rows, dateStr){
+    var header = ["Date", "Item", "Category", "Unit", "Opening", "Received", "Consumed/Shipped", "Closing", "Status"];
+    var lines = [header.map(csvEscape).join(",")];
+    rows.forEach(function(r){
+      var cls = inventoryStatus(r.closing, r.item.reorderPoint);
+      lines.push([
+        dateStr, layerSkuOptionLabel(r.item), r.item.category || "", r.item.unit || "",
+        r.opening, r.received, r.consumed, r.closing, inventoryStatusLabel(cls)
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  var syncDrDateDisplay = bindDateDisplay(el.drDateInput, el.drDateInputLabel);
+  el.drDateInput.value = todayStr();
+  syncDrDateDisplay();
+  el.drDateInput.addEventListener("change", function(){ renderDailyReport(); });
+  el.drTodayBtn.addEventListener("click", function(){
+    el.drDateInput.value = todayStr();
+    syncDrDateDisplay();
+    renderDailyReport();
+  });
+  el.drSearch.addEventListener("input", function(){ renderDailyReport(); });
+  el.drExportBtn.addEventListener("click", function(){
+    var rows = getFilteredDailyReportRows();
+    if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    downloadCsv("visipak-daily-inventory-report-" + (el.drDateInput.value || todayStr()) + ".csv", buildDailyReportCsv(rows, el.drDateInput.value || todayStr()));
   });
 
   // ---------- Manage Inventory Items (Admin-only catalog editor) ----------
