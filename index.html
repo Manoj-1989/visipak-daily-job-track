@@ -2376,6 +2376,36 @@
           <option value="7 Ply">7 Ply</option>
         </select>
       </label>
+      <!-- Reserve Reel: reveals the same Layers-style reel picker below, sized to this PO's own Ply
+           (3/5/7 rows), for reserving specific reels directly against this PO from its own form —
+           the same underlying reserve-immediately behavior as the Priority Task's Reel checkbox,
+           just triggered from here instead. Only usable once this PO itself has been saved (the
+           reservation has to tag SOME PO id) — see refreshPoLayersVisibility's guard. -->
+      <div class="formGridItem" id="fld_poreservereel">
+        <span data-i18n="po_reservereel_label">Reserve Reel</span>
+        <label class="passFailToggle">
+          <input type="checkbox" id="po_reservereel">
+          <span class="pfTrack"></span>
+          <span class="pfLabel"></span>
+        </label>
+      </div>
+      <div class="span2 qcSpecsBlock" id="fld_poreellayers" hidden>
+        <span data-i18n="layers_heading">Layers</span>
+        <table class="qcSpecsTable">
+          <thead>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_status">Status</th></tr>
+          </thead>
+          <tbody id="poLayersBody">
+            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td><span class="capChip" id="po_layer1_status" hidden></span></td></tr>
+            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td><span class="capChip" id="po_layer2_status" hidden></span></td></tr>
+            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td><span class="capChip" id="po_layer3_status" hidden></span></td></tr>
+            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td><span class="capChip" id="po_layer4_status" hidden></span></td></tr>
+            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td><span class="capChip" id="po_layer5_status" hidden></span></td></tr>
+            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td><span class="capChip" id="po_layer6_status" hidden></span></td></tr>
+            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td><span class="capChip" id="po_layer7_status" hidden></span></td></tr>
+          </tbody>
+        </table>
+      </div>
       <label><span data-i18n="form_qty_label">Quantity</span>
         <input type="number" id="po_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
       </label>
@@ -2729,6 +2759,8 @@
       po_productcode_label: "Product/Material Code", po_productcode_placeholder: "e.g. RM-KRAFT-250",
       po_materialdesc_label: "Material Description", po_materialdesc_placeholder: "e.g. Kraft Paper 250 GSM, 109cm",
       po_ply_label: "Ply",
+      po_reservereel_label: "Reserve Reel",
+      po_err_save_before_reel: "Save this PO first, then reopen it to reserve reels.",
       po_delivery_label: "Delivery Required At Plant",
       po_delivery_line: "Delivery required at plant: {date}",
       po_overdue_badge: "Overdue", po_status_received: "Received",
@@ -3058,6 +3090,8 @@
       po_productcode_label: "प्रोडक्ट/मटीरियल कोड", po_productcode_placeholder: "जैसे RM-KRAFT-250",
       po_materialdesc_label: "मटीरियल विवरण", po_materialdesc_placeholder: "जैसे Kraft Paper 250 GSM, 109cm",
       po_ply_label: "प्लाई",
+      po_reservereel_label: "रील आरक्षित करें",
+      po_err_save_before_reel: "पहले इस PO को सेव करें, फिर रील आरक्षित करने के लिए इसे दोबारा खोलें।",
       po_delivery_label: "प्लांट पर डिलीवरी आवश्यक तिथि",
       po_delivery_line: "प्लांट पर डिलीवरी आवश्यक: {date}",
       po_overdue_badge: "विलंबित", po_status_received: "प्राप्त हुआ",
@@ -3387,6 +3421,8 @@
       po_productcode_label: "ప్రొడక్ట్/మెటీరియల్ కోడ్", po_productcode_placeholder: "ఉదా. RM-KRAFT-250",
       po_materialdesc_label: "మెటీరియల్ వివరణ", po_materialdesc_placeholder: "ఉదా. Kraft Paper 250 GSM, 109cm",
       po_ply_label: "ప్లై",
+      po_reservereel_label: "రీల్ రిజర్వ్ చేయండి",
+      po_err_save_before_reel: "ముందుగా ఈ POని సేవ్ చేయండి, తర్వాత రీళ్లను రిజర్వ్ చేయడానికి దీన్ని మళ్లీ తెరవండి.",
       po_delivery_label: "ప్లాంట్‌కు డెలివరీ అవసరమైన తేదీ",
       po_delivery_line: "ప్లాంట్‌కు డెలివరీ అవసరం: {date}",
       po_overdue_badge: "ఆలస్యమైంది", po_status_received: "అందుకున్నారు",
@@ -4131,6 +4167,10 @@
     po_productcode: document.getElementById("po_productcode"),
     po_materialdesc: document.getElementById("po_materialdesc"),
     po_ply: document.getElementById("po_ply"),
+    fld_poreservereel: document.getElementById("fld_poreservereel"),
+    po_reservereel: document.getElementById("po_reservereel"),
+    fld_poreellayers: document.getElementById("fld_poreellayers"),
+    poLayersBody: document.getElementById("poLayersBody"),
     po_quantity: document.getElementById("po_quantity"),
     po_delivery: document.getElementById("po_delivery"),
     po_deliveryLabel: document.getElementById("po_deliveryLabel"),
@@ -4294,6 +4334,13 @@
     el["tLayerLabel" + tLayerN] = document.getElementById("tLayerLabel" + tLayerN);
     el["t_layer" + tLayerN + "_sku"] = document.getElementById("t_layer" + tLayerN + "_sku");
     el["t_layer" + tLayerN + "_status"] = document.getElementById("t_layer" + tLayerN + "_status");
+  }
+  // Same trick again, this time for the PO form's own Reserve Reel picker (see fld_poreellayers).
+  for(var poLayerN = 1; poLayerN <= 7; poLayerN++){
+    el["poLayerRow" + poLayerN] = document.getElementById("poLayerRow" + poLayerN);
+    el["poLayerLabel" + poLayerN] = document.getElementById("poLayerLabel" + poLayerN);
+    el["po_layer" + poLayerN + "_sku"] = document.getElementById("po_layer" + poLayerN + "_sku");
+    el["po_layer" + poLayerN + "_status"] = document.getElementById("po_layer" + poLayerN + "_status");
   }
   var lastUpdatedBy = "";
   // See openModal's own comment on why this is snapshotted, and the submit handler's call to
@@ -5430,6 +5477,15 @@
     }
     return layers;
   }
+  // Same idea again, for the PO form's own Reserve Reel rows (see fld_poreellayers) — `count` is
+  // this PO's own Ply (plyLayerCount(el.po_ply.value)).
+  function computePoLayersData(count){
+    var layers = [];
+    for(var i = 1; i <= count; i++){
+      layers.push({ sku: el["po_layer" + i + "_sku"] ? el["po_layer" + i + "_sku"].value : "" });
+    }
+    return layers;
+  }
 
   function recalcHRManpowerTotals(){
     var data = computeHRManpowerData();
@@ -6332,6 +6388,92 @@
     })(tLayerAutofillN);
   }
 
+  // ---------- PO form: its own "Reserve Reel" Layers picker ----------
+  // Same reserve-immediately picker as the Priority Task's Reel checkbox above, just reachable
+  // directly from the PO's own Add/Edit form instead of routing through a Task. The one real
+  // difference: a reservation has to be tagged to SOME PO id, and a brand-new "Add PO" doesn't have
+  // one until it's actually saved — so this stays gated to an EXISTING PO (state.editingPoId set);
+  // checking the box (or trying to pick a reel) on a new PO just asks for a save first.
+  var poLayerReservedSku = {}; // n -> sku currently held Reserved for this PO's row n (see openPoModal)
+  function refreshPoLayersVisibility(){
+    var ply = el.po_ply.value;
+    var count = (el.po_reservereel.checked && ply) ? plyLayerCount(ply) : 0;
+    el.fld_poreellayers.hidden = count === 0;
+    for(var n = 1; n <= 7; n++){
+      el["poLayerRow" + n].hidden = n > count;
+    }
+  }
+  el.po_ply.addEventListener("change", refreshPoLayersVisibility);
+  el.po_reservereel.addEventListener("change", function(){
+    if(el.po_reservereel.checked && !state.editingPoId){
+      el.po_reservereel.checked = false;
+      showBanner(t("po_err_save_before_reel"));
+      return;
+    }
+    if(el.po_reservereel.checked && !el.po_ply.value){
+      el.po_reservereel.checked = false;
+      showBanner(t("task_err_po_ply_required"));
+      return;
+    }
+    refreshPoLayersVisibility();
+  });
+  function refreshPoLayerReelStatus(n){
+    var chip = el["po_layer" + n + "_status"];
+    if(!chip) return;
+    var skuEl = el["po_layer" + n + "_sku"];
+    var sku = skuEl ? skuEl.value : "";
+    var item = sku ? state.invCatalog[sku] : null;
+    if(!item){
+      chip.hidden = true;
+      return;
+    }
+    var qty = availableFor(sku);
+    var cls = inventoryStatus(qty, item.reorderPoint);
+    var label = cls === "crit" ? t("layers_reelstatus_out") : cls === "warn" ? t("layers_reelstatus_low") : t("layers_reelstatus_available");
+    chip.className = "capChip " + cls;
+    chip.textContent = label;
+    chip.hidden = false;
+  }
+  for(var poLayerAutofillN = 1; poLayerAutofillN <= 7; poLayerAutofillN++){
+    (function(n){
+      el["po_layer" + n + "_sku"].addEventListener("change", function(){
+        var sel = el["po_layer" + n + "_sku"];
+        var newSku = sel.value;
+        var oldSku = poLayerReservedSku[n] || "";
+        if(newSku === oldSku){ refreshPoLayerReelStatus(n); return; }
+        if(!state.editingPoId){
+          // Defensive: the checkbox guard above should already have kept this hidden/unreachable
+          // on a brand-new PO, but never silently reserve against a PO that doesn't exist yet.
+          sel.value = "";
+          showBanner(t("po_err_save_before_reel"));
+          refreshPoLayerReelStatus(n);
+          return;
+        }
+        var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
+        var releaseNote = "Released — PO Layer changed (PO " + poTag.poNumber + ")";
+        var releaseP = oldSku
+          ? addStatusTransfer(oldSku, "reserved", "available", 1, releaseNote, poTag).catch(function(err){
+              if(window.console) console.error("PO reel release failed:", err);
+              showBanner(t("layers_err_stock_move_failed"));
+            })
+          : Promise.resolve();
+        releaseP.then(function(){
+          poLayerReservedSku[n] = "";
+          if(!newSku){ refreshPoLayerReelStatus(n); return; }
+          addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via PO", poTag)
+            .then(function(){
+              poLayerReservedSku[n] = newSku;
+              refreshPoLayerReelStatus(n);
+            }).catch(function(err){
+              sel.value = "";
+              showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
+              refreshPoLayerReelStatus(n);
+            });
+        });
+      });
+    })(poLayerAutofillN);
+  }
+
   // ---------- Device stage lock ----------
   function normalizePhone(raw){
     var digits = String(raw||"").replace(/\D/g,"");
@@ -7055,12 +7197,22 @@
     Object.keys(map).forEach(function(sku){ if(map[sku] <= 0) delete map[sku]; });
     return map;
   }
+  // Identifies each reserved reel by its full catalog spec (same "Name (GSM x / Size y / BF z)"
+  // label the Layer dropdowns themselves use — see layerSkuOptionLabel) plus its current overall
+  // Availability status, not just a bare item name — several catalog items are all literally named
+  // "Reel", so the name alone can't tell them apart on the PO/Task card (this is what distinguishes
+  // "which reel we selected").
   function reservedReelsSummaryForPo(poId){
     var map = reservedBucketsForPo(poId);
     return Object.keys(map).map(function(sku){
       var item = state.invCatalog[sku];
-      var name = item ? item.name : sku;
-      return name + " x" + map[sku];
+      var label = item ? layerSkuOptionLabel(item) : sku;
+      var statusLabel = "";
+      if(item){
+        var cls = inventoryStatus(availableFor(sku), item.reorderPoint);
+        statusLabel = " — " + (cls === "crit" ? t("layers_reelstatus_out") : cls === "warn" ? t("layers_reelstatus_low") : t("layers_reelstatus_available"));
+      }
+      return label + " x" + map[sku] + statusLabel;
     }).join(", ");
   }
   // Deleting a purchase, or editing one down to a smaller Quantity Received, both reduce that SKU's
@@ -7178,6 +7330,14 @@
       var tPrev = tSel.value;
       tSel.innerHTML = optionsHtml;
       tSel.value = state.invCatalog[tPrev] ? tPrev : "";
+    }
+    // ...and again for the PO form's own Reserve Reel rows (see fld_poreellayers).
+    for(var pn = 1; pn <= 7; pn++){
+      var pSel = el["po_layer" + pn + "_sku"];
+      if(!pSel) continue;
+      var pPrev = pSel.value;
+      pSel.innerHTML = optionsHtml;
+      pSel.value = state.invCatalog[pPrev] ? pPrev : "";
     }
   }
 
@@ -11627,8 +11787,11 @@
   // ---------- Purchase Order modal ----------
   var PO_FORM_FIELDS = [
     el.po_number, el.po_customer, el.po_productcode, el.po_materialdesc, el.po_ply,
-    el.po_quantity, el.po_delivery, el.po_updatedby
+    el.po_reservereel, el.po_quantity, el.po_delivery, el.po_updatedby
   ];
+  for(var poLayerFieldN = 1; poLayerFieldN <= 7; poLayerFieldN++){
+    PO_FORM_FIELDS.push(el["po_layer" + poLayerFieldN + "_sku"]);
+  }
   function openPoModal(po){
     // Only the admin device may add/edit/delete/mark-received a PO — every other device can still
     // open one to read it, same read-only pattern as openTaskModal.
@@ -11646,6 +11809,21 @@
     el.po_delivery.value = po ? (po.deliveryRequiredAtPlant || "") : "";
     syncPoDeliveryLabel();
     el.po_updatedby.value = po ? (po.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
+    // Reserve Reel rows: poLayerReservedSku starts fresh from whatever THIS PO actually has saved
+    // (po.layers) — never from whatever a previously-open PO left behind (see closePoModal). A
+    // brand-new PO (no po.reelReserve/layers yet, and no id to tag a reservation with) just starts
+    // unchecked and empty.
+    el.po_reservereel.checked = !!(po && po.reserveReel);
+    renderLayerSkuOptions();
+    poLayerReservedSku = {};
+    for(var poPopN = 1; poPopN <= 7; poPopN++){
+      var poLayerData = (po && po.layers && po.layers[poPopN - 1]) || null;
+      var poSku = (poLayerData && poLayerData.sku && state.invCatalog[poLayerData.sku]) ? poLayerData.sku : "";
+      el["po_layer" + poPopN + "_sku"].value = poSku;
+      poLayerReservedSku[poPopN] = poSku;
+      refreshPoLayerReelStatus(poPopN);
+    }
+    refreshPoLayersVisibility();
     PO_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
     el.poDeleteBtn.hidden = !po || readOnly;
     el.poSaveBtn.hidden = readOnly;
@@ -11657,6 +11835,8 @@
     el.poModalOverlay.hidden = true;
     state.editingPoId = null;
     el.poForm.reset();
+    poLayerReservedSku = {};
+    el.fld_poreellayers.hidden = true;
     syncPoDeliveryLabel();
   }
   el.addPoBtn.addEventListener("click", function(){ openPoModal(null); });
@@ -11675,6 +11855,10 @@
       productCode: el.po_productcode.value.trim(),
       materialDescription: el.po_materialdesc.value.trim(),
       ply: el.po_ply.value,
+      // Reels are already reserved live as they're picked (see the po_layer*_sku change handlers
+      // above) — this just snapshots which rows to show/re-populate next time this PO is opened.
+      reserveReel: el.po_reservereel.checked,
+      layers: el.po_reservereel.checked ? computePoLayersData(plyLayerCount(el.po_ply.value)) : null,
       quantity: el.po_quantity.value === "" ? null : Number(el.po_quantity.value),
       deliveryRequiredAtPlant: el.po_delivery.value || null,
       updatedBy: el.po_updatedby.value.trim(),
@@ -11716,6 +11900,20 @@
     el.poDeleteConfirmYesBtn.disabled = true;
     softDeleteDoc("purchaseOrders", pendingDeletePo.id, omitKeys(pendingDeletePo, ["id"])).then(function(){
       el.poDeleteConfirmYesBtn.disabled = false;
+      // Deleting the PO releases whatever it directly reserved (via its own Reserve Reel rows)
+      // back to Available — same "release on delete" behavior as a Priority Task's own reel rows.
+      // A Task that separately reserved reels against this now-deleted PO keeps its own
+      // reservation untouched here (releasing THAT is the Task's own delete/edit flow's job).
+      Object.keys(poLayerReservedSku).forEach(function(n){
+        var sku = poLayerReservedSku[n];
+        if(!sku) return;
+        addStatusTransfer(sku, "reserved", "available", 1, "Released — PO deleted",
+          { poNumber: pendingDeletePo.poNumber, poId: pendingDeletePo.id }).catch(function(err){
+          if(window.console) console.error("PO reel release failed:", err);
+          showBanner(t("layers_err_stock_move_failed"));
+        });
+        poLayerReservedSku[n] = "";
+      });
       closePoDeleteConfirm();
       closePoModal();
     }).catch(function(err){
@@ -11770,6 +11968,7 @@
     for(var layerLabelN = 1; layerLabelN <= 7; layerLabelN++){
       el["layerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
       el["tLayerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
+      el["poLayerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
     }
     updateFormFieldsForStage(el.f_stage.value);
     el.supAddBtn.textContent = editingSupervisorPhone ? t("sup_save_changes") : t("sup_add_user");
