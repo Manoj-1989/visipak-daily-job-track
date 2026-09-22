@@ -373,10 +373,25 @@
   .taskItem.priority-medium{border-left-color:var(--warn);}
   .taskItem.priority-low{border-left-color:var(--good);}
   .taskItem.done{opacity:.6;}
-  /* ---------- Purchase Orders (PO) board — a flat list, not a per-stage Kanban like Priority
-     Tasks above, so it reuses .taskItem's card look directly (background/border/padding) rather
-     than duplicating it, plus its own overdue/received modifiers. ---------- */
-  .poList{display:flex;flex-direction:column;gap:8px;}
+  /* ---------- Purchase Orders (PO) board — not grouped into per-stage Kanban columns like
+     Priority Tasks above (a PO has no "stage"), so it reuses .taskItem's card look directly
+     (background/border/padding) rather than duplicating it, plus its own overdue/received
+     modifiers. ---------- */
+  /* PO cards used to stack full-width, one per row (a "flat list"); they now flow into a
+     responsive multi-column grid — same "several narrow cards side by side" look as the Priority
+     Task board's Kanban columns — while each individual card's own fields stay stacked
+     top-to-bottom exactly as before (unchanged — see buildPoItem). */
+  .poList{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;align-items:start;}
+  .orphanReelsList{display:flex;flex-direction:column;gap:6px;}
+  .orphanReelRow{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:6px 10px;font-size:12px;
+  }
+  .orphanReelReleaseBtn{
+    flex:none;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;
+    border:1px solid var(--warn);background:transparent;color:var(--warn);cursor:pointer;
+  }
+  .orphanReelReleaseBtn:disabled{opacity:.5;cursor:default;}
   .poItem.overdue{border-left-color:var(--crit);border-left-width:6px;}
   .poOverdueBadge{
     display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
@@ -2406,6 +2421,10 @@
           </tbody>
         </table>
       </div>
+      <div class="span2 qcSpecsBlock" id="fld_poorphanreels" hidden>
+        <span data-i18n="po_orphanreels_heading">Other Reserved Reels (not shown above)</span>
+        <div id="poOrphanReelsList" class="orphanReelsList"></div>
+      </div>
       <label><span data-i18n="form_qty_label">Quantity</span>
         <input type="number" id="po_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
       </label>
@@ -2761,6 +2780,8 @@
       po_ply_label: "Ply",
       po_reservereel_label: "Reserve Reel",
       po_err_save_before_reel: "Save this PO first, then reopen it to reserve reels.",
+      po_orphanreels_heading: "Other Reserved Reels (not shown above)",
+      po_orphanreel_release_btn: "Release",
       po_delivery_label: "Delivery Required At Plant",
       po_delivery_line: "Delivery required at plant: {date}",
       po_overdue_badge: "Overdue", po_status_received: "Received",
@@ -3092,6 +3113,8 @@
       po_ply_label: "प्लाई",
       po_reservereel_label: "रील आरक्षित करें",
       po_err_save_before_reel: "पहले इस PO को सेव करें, फिर रील आरक्षित करने के लिए इसे दोबारा खोलें।",
+      po_orphanreels_heading: "अन्य आरक्षित रील्स (ऊपर नहीं दिखाई गईं)",
+      po_orphanreel_release_btn: "रिलीज़ करें",
       po_delivery_label: "प्लांट पर डिलीवरी आवश्यक तिथि",
       po_delivery_line: "प्लांट पर डिलीवरी आवश्यक: {date}",
       po_overdue_badge: "विलंबित", po_status_received: "प्राप्त हुआ",
@@ -3423,6 +3446,8 @@
       po_ply_label: "ప్లై",
       po_reservereel_label: "రీల్ రిజర్వ్ చేయండి",
       po_err_save_before_reel: "ముందుగా ఈ POని సేవ్ చేయండి, తర్వాత రీళ్లను రిజర్వ్ చేయడానికి దీన్ని మళ్లీ తెరవండి.",
+      po_orphanreels_heading: "ఇతర రిజర్వ్ చేసిన రీళ్లు (పైన చూపబడలేదు)",
+      po_orphanreel_release_btn: "విడుదల చేయండి",
       po_delivery_label: "ప్లాంట్‌కు డెలివరీ అవసరమైన తేదీ",
       po_delivery_line: "ప్లాంట్‌కు డెలివరీ అవసరం: {date}",
       po_overdue_badge: "ఆలస్యమైంది", po_status_received: "అందుకున్నారు",
@@ -4171,6 +4196,8 @@
     po_reservereel: document.getElementById("po_reservereel"),
     fld_poreellayers: document.getElementById("fld_poreellayers"),
     poLayersBody: document.getElementById("poLayersBody"),
+    fld_poorphanreels: document.getElementById("fld_poorphanreels"),
+    poOrphanReelsList: document.getElementById("poOrphanReelsList"),
     po_quantity: document.getElementById("po_quantity"),
     po_delivery: document.getElementById("po_delivery"),
     po_deliveryLabel: document.getElementById("po_deliveryLabel"),
@@ -6304,12 +6331,31 @@
       refreshTaskLayersVisibility();
     });
   });
+  // Same leak the PO's own picker had (see releasePoLayerRow above): a row that drops out of view
+  // — Ply/PO changed to fewer rows, or the Reel checkbox unchecked entirely — used to just hide,
+  // leaving whatever it had reserved stuck in the Reserved bucket forever. Release it the moment
+  // it goes from visible to hidden instead.
+  function releaseTaskLayerRow(n){
+    var sku = taskLayerReservedSku[n];
+    if(!sku) return;
+    taskLayerReservedSku[n] = "";
+    if(el["t_layer" + n + "_sku"]) el["t_layer" + n + "_sku"].value = "";
+    refreshTaskLayerReelStatus(n);
+    var po = taskSelectedPo;
+    addStatusTransfer(sku, "reserved", "available", 1, "Released — Priority Task row removed" + (po && po.poNumber ? " (PO " + po.poNumber + ")" : ""),
+      po ? { poNumber: po.poNumber, poId: po.id } : undefined).catch(function(err){
+      if(window.console) console.error("Task reel release failed:", err);
+      showBanner(t("layers_err_stock_move_failed"));
+    });
+  }
   function refreshTaskLayersVisibility(){
     var ply = taskSelectedPo ? taskSelectedPo.ply : "";
     var count = (el.t_reel.checked && ply) ? plyLayerCount(ply) : 0;
     el.fld_treellayers.hidden = count === 0;
     for(var n = 1; n <= 7; n++){
-      el["tLayerRow" + n].hidden = n > count;
+      var nowHidden = n > count;
+      el["tLayerRow" + n].hidden = nowHidden;
+      if(nowHidden) releaseTaskLayerRow(n);
     }
   }
   el.t_reel.addEventListener("change", function(){
@@ -6395,13 +6441,78 @@
   // one until it's actually saved — so this stays gated to an EXISTING PO (state.editingPoId set);
   // checking the box (or trying to pick a reel) on a new PO just asks for a save first.
   var poLayerReservedSku = {}; // n -> sku currently held Reserved for this PO's row n (see openPoModal)
+  // A row that drops out of view — Ply lowered to fewer rows, or Reserve Reel unchecked entirely —
+  // used to just hide silently, leaving whatever it had reserved stuck in the Reserved bucket
+  // forever (nothing else in the app remembers "row 6 held sku X" once row 6 isn't rendered).
+  // That's exactly the ghost-reservation bug reported against a live PO: reels the 5-row form no
+  // longer shows, still counted Reserved on the card and in the Inventory tab. Releasing here the
+  // moment a row goes from visible to hidden closes that leak for anything reserved from now on;
+  // see refreshPoOrphanReels below for reconciling reservations that already leaked before this fix.
+  function releasePoLayerRow(n){
+    var sku = poLayerReservedSku[n];
+    if(!sku) return;
+    poLayerReservedSku[n] = "";
+    if(el["po_layer" + n + "_sku"]) el["po_layer" + n + "_sku"].value = "";
+    refreshPoLayerReelStatus(n);
+    if(!state.editingPoId) return; // defensive: shouldn't happen, a row can't hold a sku without one
+    var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
+    addStatusTransfer(sku, "reserved", "available", 1, "Released — PO Layer row removed (PO " + poTag.poNumber + ")", poTag).then(function(){
+      refreshPoOrphanReels();
+    }).catch(function(err){
+      if(window.console) console.error("PO reel release failed:", err);
+      showBanner(t("layers_err_stock_move_failed"));
+    });
+  }
   function refreshPoLayersVisibility(){
     var ply = el.po_ply.value;
     var count = (el.po_reservereel.checked && ply) ? plyLayerCount(ply) : 0;
     el.fld_poreellayers.hidden = count === 0;
     for(var n = 1; n <= 7; n++){
-      el["poLayerRow" + n].hidden = n > count;
+      var nowHidden = n > count;
+      el["poLayerRow" + n].hidden = nowHidden;
+      if(nowHidden) releasePoLayerRow(n);
     }
+  }
+  // Reels that some earlier session reserved against this PO (visible in reservedBucketsForPo's
+  // per-PO ledger) but that no longer match any of the 7 rows' own current selections — either
+  // leaked before the fix above existed, or reserved from a linked Priority Task's own Reel rows
+  // (which tag the same poId — see reservedReelsSummaryForPo). Surfaced here, admin-only, with a
+  // one-click Release so a PO that's already accumulated stale reservations (like the one reported)
+  // can be cleaned up by hand instead of needing a Firestore console edit.
+  function refreshPoOrphanReels(){
+    var box = el.fld_poorphanreels, list = el.poOrphanReelsList;
+    if(!box || !list) return;
+    if(!state.editingPoId){ box.hidden = true; list.innerHTML = ""; return; }
+    var visibleSkus = {};
+    for(var n = 1; n <= 7; n++){ if(poLayerReservedSku[n]) visibleSkus[poLayerReservedSku[n]] = true; }
+    var map = reservedBucketsForPo(state.editingPoId);
+    var orphanSkus = Object.keys(map).filter(function(sku){ return !visibleSkus[sku]; });
+    list.innerHTML = "";
+    box.hidden = orphanSkus.length === 0;
+    if(!orphanSkus.length) return;
+    orphanSkus.forEach(function(sku){
+      var item = state.invCatalog[sku];
+      var label = item ? layerSkuOptionLabel(item) : sku;
+      var row = document.createElement("div");
+      row.className = "orphanReelRow";
+      var btnHtml = state.isAdminDevice
+        ? '<button type="button" class="orphanReelReleaseBtn">' + esc(t("po_orphanreel_release_btn")) + '</button>' : "";
+      row.innerHTML = '<span>' + esc(label) + " x" + map[sku] + '</span>' + btnHtml;
+      if(state.isAdminDevice){
+        row.querySelector(".orphanReelReleaseBtn").addEventListener("click", function(){
+          var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
+          var btn = this;
+          btn.disabled = true;
+          addStatusTransfer(sku, "reserved", "available", map[sku], "Released — manual cleanup (PO " + poTag.poNumber + ")", poTag)
+            .then(function(){ refreshPoOrphanReels(); })
+            .catch(function(err){
+              btn.disabled = false;
+              showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
+            });
+        });
+      }
+      list.appendChild(row);
+    });
   }
   el.po_ply.addEventListener("change", refreshPoLayersVisibility);
   el.po_reservereel.addEventListener("change", function(){
@@ -6459,15 +6570,17 @@
           : Promise.resolve();
         releaseP.then(function(){
           poLayerReservedSku[n] = "";
-          if(!newSku){ refreshPoLayerReelStatus(n); return; }
+          if(!newSku){ refreshPoLayerReelStatus(n); refreshPoOrphanReels(); return; }
           addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via PO", poTag)
             .then(function(){
               poLayerReservedSku[n] = newSku;
               refreshPoLayerReelStatus(n);
+              refreshPoOrphanReels();
             }).catch(function(err){
               sel.value = "";
               showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
               refreshPoLayerReelStatus(n);
+              refreshPoOrphanReels();
             });
         });
       });
@@ -7091,6 +7204,7 @@
         if(state.purchaseOrders.length && el.poListBody) renderPurchaseOrders();
         if(state.tasks.length && el.taskBoardCols) renderTasks();
       }
+      if(state.editingPoId && el.poModalOverlay && !el.poModalOverlay.hidden) refreshPoOrphanReels();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
 
@@ -11824,6 +11938,7 @@
       refreshPoLayerReelStatus(poPopN);
     }
     refreshPoLayersVisibility();
+    refreshPoOrphanReels();
     PO_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
     el.poDeleteBtn.hidden = !po || readOnly;
     el.poSaveBtn.hidden = readOnly;
@@ -11837,6 +11952,8 @@
     el.poForm.reset();
     poLayerReservedSku = {};
     el.fld_poreellayers.hidden = true;
+    el.fld_poorphanreels.hidden = true;
+    el.poOrphanReelsList.innerHTML = "";
     syncPoDeliveryLabel();
   }
   el.addPoBtn.addEventListener("click", function(){ openPoModal(null); });
@@ -11913,6 +12030,19 @@
           showBanner(t("layers_err_stock_move_failed"));
         });
         poLayerReservedSku[n] = "";
+      });
+      // Also sweep any reservation left in the shared per-PO ledger that none of the 7 rows above
+      // knew about — a ghost from before the row-hide leak fix, or from a linked Task's own Reel
+      // rows — so deleting a PO always fully frees whatever it (or a task tied to it) was holding.
+      var leftoverReserved = reservedBucketsForPo(pendingDeletePo.id);
+      Object.keys(leftoverReserved).forEach(function(sku){
+        var qty = leftoverReserved[sku];
+        if(!qty) return;
+        addStatusTransfer(sku, "reserved", "available", qty, "Released — PO deleted (ledger cleanup)",
+          { poNumber: pendingDeletePo.poNumber, poId: pendingDeletePo.id }).catch(function(err){
+          if(window.console) console.error("PO reel release failed:", err);
+          showBanner(t("layers_err_stock_move_failed"));
+        });
       });
       closePoDeleteConfirm();
       closePoModal();
