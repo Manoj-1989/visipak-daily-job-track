@@ -6493,9 +6493,23 @@
   // (which tag the same poId — see reservedReelsSummaryForPo). Surfaced here, admin-only, with a
   // one-click Release so a PO that's already accumulated stale reservations (like the one reported)
   // can be cleaned up by hand instead of needing a Firestore console edit.
+  // How much of a sku is ACTUALLY sitting in the global Reserved bucket right now — see
+  // computeStatusBucketsMap. reservedBucketsForPo's per-PO figure is a ledger *claim* (net of only
+  // this PO's own tagged transfers); on a long-lived PO that claim can end up larger than what's
+  // truly left in the sku's overall Reserved bucket (some of that history no longer nets out
+  // cleanly against the live statusTransfers feed — e.g. an older correction made outside this
+  // PO's own flow). Releasing must never ask for more than truly exists — that's exactly the
+  // "Only 2 available in that status" rejection reported — so every release below is capped to
+  // this, live, right before it fires.
+  function globalReservedFor(sku){
+    var b = computeStatusBucketsMap()[sku];
+    return b ? (b.reserved || 0) : 0;
+  }
   // sku -> qty for whatever refreshPoOrphanReels most recently found orphaned — read by
   // poOrphanReleaseAllBtn's click handler (below) so "Release All" always acts on the same set the
-  // panel is currently showing, without recomputing it a second time.
+  // panel is currently showing, without recomputing it a second time. Already capped to what's
+  // truly releasable (see globalReservedFor above), so both the number shown and the number an
+  // actual release call asks for always agree — no more "shows x3, only frees 2" mismatch.
   var poOrphanReelsMap = {};
   function refreshPoOrphanReels(){
     var box = el.fld_poorphanreels, list = el.poOrphanReelsList;
@@ -6506,7 +6520,10 @@
     var map = reservedBucketsForPo(state.editingPoId);
     var orphanSkus = Object.keys(map).filter(function(sku){ return !visibleSkus[sku]; });
     poOrphanReelsMap = {};
-    orphanSkus.forEach(function(sku){ poOrphanReelsMap[sku] = map[sku]; });
+    orphanSkus.forEach(function(sku){ poOrphanReelsMap[sku] = Math.min(map[sku], globalReservedFor(sku)); });
+    // A sku whose ledger claim has fully drifted to 0 actually-reserved (nothing left to move) has
+    // nothing left to clean up — drop it rather than show a "Release" that would do nothing.
+    orphanSkus = orphanSkus.filter(function(sku){ return poOrphanReelsMap[sku] > 0; });
     list.innerHTML = "";
     box.hidden = orphanSkus.length === 0;
     // Always come back enabled on a fresh render — a previous "Release All" that partially failed
@@ -6536,14 +6553,18 @@
       row.className = "orphanReelRow";
       var btnHtml = state.isAdminDevice
         ? '<button type="button" class="orphanReelReleaseBtn">' + esc(t("po_orphanreel_release_btn")) + '</button>' : "";
-      row.innerHTML = '<span>' + esc(label) + " x" + map[sku] + '</span>' +
+      row.innerHTML = '<span>' + esc(label) + " x" + poOrphanReelsMap[sku] + '</span>' +
         '<span class="orphanReelRight">' + statusHtml + btnHtml + '</span>';
       if(state.isAdminDevice){
         row.querySelector(".orphanReelReleaseBtn").addEventListener("click", function(){
           var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
           var btn = this;
+          // Recompute the cap fresh, right here — never trust the render-time snapshot for the
+          // actual write, in case something else moved this sku's bucket in the meantime.
+          var qty = Math.min(poOrphanReelsMap[sku] || 0, globalReservedFor(sku));
+          if(qty <= 0){ refreshPoOrphanReels(); return; }
           btn.disabled = true;
-          addStatusTransfer(sku, "reserved", "available", map[sku], "Released — manual cleanup (PO " + poTag.poNumber + ")", poTag)
+          addStatusTransfer(sku, "reserved", "available", qty, "Released — manual cleanup (PO " + poTag.poNumber + ")", poTag)
             .then(function(){ refreshPoOrphanReels(); })
             .catch(function(err){
               btn.disabled = false;
@@ -6570,7 +6591,11 @@
     // Settle every call, then always refresh (picks up however many actually released) and report
     // by name anything that didn't, instead of Promise.all's silent all-or-nothing failure.
     Promise.all(skus.map(function(sku){
-      return addStatusTransfer(sku, "reserved", "available", poOrphanReelsMap[sku],
+      // Same fresh cap as the single-row Release button — never ask for more than this sku's
+      // Reserved bucket truly holds right now.
+      var qty = Math.min(poOrphanReelsMap[sku] || 0, globalReservedFor(sku));
+      if(qty <= 0) return Promise.resolve({ sku: sku, ok: true });
+      return addStatusTransfer(sku, "reserved", "available", qty,
         "Released — manual cleanup, release all (PO " + poTag.poNumber + ")", poTag)
         .then(function(){ return { sku: sku, ok: true }; })
         .catch(function(err){ return { sku: sku, ok: false, err: err }; });
