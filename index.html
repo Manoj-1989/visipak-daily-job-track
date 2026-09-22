@@ -382,6 +382,12 @@
      Task board's Kanban columns — while each individual card's own fields stay stacked
      top-to-bottom exactly as before (unchanged — see buildPoItem). */
   .poList{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;align-items:start;}
+  .orphanReelsHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+  #poOrphanReleaseAllBtn{
+    flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;
+    border:1px solid var(--crit);background:transparent;color:var(--crit);cursor:pointer;
+  }
+  #poOrphanReleaseAllBtn:disabled{opacity:.5;cursor:default;}
   .orphanReelsList{display:flex;flex-direction:column;gap:6px;}
   .orphanReelRow{
     display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -2423,7 +2429,10 @@
         </table>
       </div>
       <div class="span2 qcSpecsBlock" id="fld_poorphanreels" hidden>
-        <span data-i18n="po_orphanreels_heading">Other Reserved Reels (not shown above)</span>
+        <div class="orphanReelsHead">
+          <span data-i18n="po_orphanreels_heading">Other Reserved Reels (not shown above)</span>
+          <button type="button" id="poOrphanReleaseAllBtn" data-i18n="po_orphanreel_releaseall_btn">Release All</button>
+        </div>
         <div id="poOrphanReelsList" class="orphanReelsList"></div>
       </div>
       <label><span data-i18n="form_qty_label">Quantity</span>
@@ -2783,6 +2792,7 @@
       po_err_save_before_reel: "Save this PO first, then reopen it to reserve reels.",
       po_orphanreels_heading: "Other Reserved Reels (not shown above)",
       po_orphanreel_release_btn: "Release",
+      po_orphanreel_releaseall_btn: "Release All",
       po_delivery_label: "Delivery Required At Plant",
       po_delivery_line: "Delivery required at plant: {date}",
       po_overdue_badge: "Overdue", po_status_received: "Received",
@@ -3116,6 +3126,7 @@
       po_err_save_before_reel: "पहले इस PO को सेव करें, फिर रील आरक्षित करने के लिए इसे दोबारा खोलें।",
       po_orphanreels_heading: "अन्य आरक्षित रील्स (ऊपर नहीं दिखाई गईं)",
       po_orphanreel_release_btn: "रिलीज़ करें",
+      po_orphanreel_releaseall_btn: "सभी रिलीज़ करें",
       po_delivery_label: "प्लांट पर डिलीवरी आवश्यक तिथि",
       po_delivery_line: "प्लांट पर डिलीवरी आवश्यक: {date}",
       po_overdue_badge: "विलंबित", po_status_received: "प्राप्त हुआ",
@@ -3449,6 +3460,7 @@
       po_err_save_before_reel: "ముందుగా ఈ POని సేవ్ చేయండి, తర్వాత రీళ్లను రిజర్వ్ చేయడానికి దీన్ని మళ్లీ తెరవండి.",
       po_orphanreels_heading: "ఇతర రిజర్వ్ చేసిన రీళ్లు (పైన చూపబడలేదు)",
       po_orphanreel_release_btn: "విడుదల చేయండి",
+      po_orphanreel_releaseall_btn: "అన్నీ విడుదల చేయండి",
       po_delivery_label: "ప్లాంట్‌కు డెలివరీ అవసరమైన తేదీ",
       po_delivery_line: "ప్లాంట్‌కు డెలివరీ అవసరం: {date}",
       po_overdue_badge: "ఆలస్యమైంది", po_status_received: "అందుకున్నారు",
@@ -4199,6 +4211,7 @@
     poLayersBody: document.getElementById("poLayersBody"),
     fld_poorphanreels: document.getElementById("fld_poorphanreels"),
     poOrphanReelsList: document.getElementById("poOrphanReelsList"),
+    poOrphanReleaseAllBtn: document.getElementById("poOrphanReleaseAllBtn"),
     po_quantity: document.getElementById("po_quantity"),
     po_delivery: document.getElementById("po_delivery"),
     po_deliveryLabel: document.getElementById("po_deliveryLabel"),
@@ -6480,16 +6493,23 @@
   // (which tag the same poId — see reservedReelsSummaryForPo). Surfaced here, admin-only, with a
   // one-click Release so a PO that's already accumulated stale reservations (like the one reported)
   // can be cleaned up by hand instead of needing a Firestore console edit.
+  // sku -> qty for whatever refreshPoOrphanReels most recently found orphaned — read by
+  // poOrphanReleaseAllBtn's click handler (below) so "Release All" always acts on the same set the
+  // panel is currently showing, without recomputing it a second time.
+  var poOrphanReelsMap = {};
   function refreshPoOrphanReels(){
     var box = el.fld_poorphanreels, list = el.poOrphanReelsList;
     if(!box || !list) return;
-    if(!state.editingPoId){ box.hidden = true; list.innerHTML = ""; return; }
+    if(!state.editingPoId){ box.hidden = true; list.innerHTML = ""; poOrphanReelsMap = {}; return; }
     var visibleSkus = {};
     for(var n = 1; n <= 7; n++){ if(poLayerReservedSku[n]) visibleSkus[poLayerReservedSku[n]] = true; }
     var map = reservedBucketsForPo(state.editingPoId);
     var orphanSkus = Object.keys(map).filter(function(sku){ return !visibleSkus[sku]; });
+    poOrphanReelsMap = {};
+    orphanSkus.forEach(function(sku){ poOrphanReelsMap[sku] = map[sku]; });
     list.innerHTML = "";
     box.hidden = orphanSkus.length === 0;
+    if(el.poOrphanReleaseAllBtn) el.poOrphanReleaseAllBtn.hidden = !state.isAdminDevice || orphanSkus.length < 2;
     if(!orphanSkus.length) return;
     orphanSkus.forEach(function(sku){
       var item = state.invCatalog[sku];
@@ -6527,6 +6547,26 @@
       list.appendChild(row);
     });
   }
+  // Releasing one orphan at a time is fine for a stray reel or two, but a PO that's accumulated a
+  // whole page of them (like the one reported, 5 distinct ghosts adding up to 13 units) shouldn't
+  // need 5 separate clicks — one call per sku, fired together (each checks/moves its own sku's
+  // bucket independently, so there's no cross-sku ordering to worry about), then a single refresh.
+  el.poOrphanReleaseAllBtn.addEventListener("click", function(){
+    var skus = Object.keys(poOrphanReelsMap);
+    if(!skus.length || !state.editingPoId) return;
+    var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
+    el.poOrphanReleaseAllBtn.disabled = true;
+    Array.prototype.forEach.call(el.poOrphanReelsList.querySelectorAll(".orphanReelReleaseBtn"), function(btn){ btn.disabled = true; });
+    Promise.all(skus.map(function(sku){
+      return addStatusTransfer(sku, "reserved", "available", poOrphanReelsMap[sku],
+        "Released — manual cleanup, release all (PO " + poTag.poNumber + ")", poTag);
+    })).then(function(){
+      refreshPoOrphanReels();
+    }).catch(function(err){
+      showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
+      refreshPoOrphanReels();
+    });
+  });
   el.po_ply.addEventListener("change", refreshPoLayersVisibility);
   el.po_reservereel.addEventListener("change", function(){
     if(el.po_reservereel.checked && !state.editingPoId){
@@ -11967,6 +12007,7 @@
     el.fld_poreellayers.hidden = true;
     el.fld_poorphanreels.hidden = true;
     el.poOrphanReelsList.innerHTML = "";
+    poOrphanReelsMap = {};
     syncPoDeliveryLabel();
   }
   el.addPoBtn.addEventListener("click", function(){ openPoModal(null); });
