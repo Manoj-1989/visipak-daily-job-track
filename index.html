@@ -6509,7 +6509,14 @@
     orphanSkus.forEach(function(sku){ poOrphanReelsMap[sku] = map[sku]; });
     list.innerHTML = "";
     box.hidden = orphanSkus.length === 0;
-    if(el.poOrphanReleaseAllBtn) el.poOrphanReleaseAllBtn.hidden = !state.isAdminDevice || orphanSkus.length < 2;
+    // Always come back enabled on a fresh render — a previous "Release All" that partially failed
+    // (one sku's write rejected, say) used to leave this stuck disabled forever, with the panel
+    // still showing and no way to retry. See the click handler below for the matching fix on the
+    // write side (allSettled instead of all-or-nothing).
+    if(el.poOrphanReleaseAllBtn){
+      el.poOrphanReleaseAllBtn.hidden = !state.isAdminDevice || orphanSkus.length < 2;
+      el.poOrphanReleaseAllBtn.disabled = false;
+    }
     if(!orphanSkus.length) return;
     orphanSkus.forEach(function(sku){
       var item = state.invCatalog[sku];
@@ -6557,14 +6564,27 @@
     var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
     el.poOrphanReleaseAllBtn.disabled = true;
     Array.prototype.forEach.call(el.poOrphanReelsList.querySelectorAll(".orphanReelReleaseBtn"), function(btn){ btn.disabled = true; });
+    // Each sku's release is independent (its own addStatusTransfer call, checked against its own
+    // bucket) — one failing (a permission rule, a stale qty, whatever) must not stop the others
+    // from going through, and must never leave this button stuck disabled with no way to retry.
+    // Settle every call, then always refresh (picks up however many actually released) and report
+    // by name anything that didn't, instead of Promise.all's silent all-or-nothing failure.
     Promise.all(skus.map(function(sku){
       return addStatusTransfer(sku, "reserved", "available", poOrphanReelsMap[sku],
-        "Released — manual cleanup, release all (PO " + poTag.poNumber + ")", poTag);
-    })).then(function(){
+        "Released — manual cleanup, release all (PO " + poTag.poNumber + ")", poTag)
+        .then(function(){ return { sku: sku, ok: true }; })
+        .catch(function(err){ return { sku: sku, ok: false, err: err }; });
+    })).then(function(results){
       refreshPoOrphanReels();
-    }).catch(function(err){
-      showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
-      refreshPoOrphanReels();
+      var failed = results.filter(function(r){ return !r.ok; });
+      if(failed.length){
+        var item0 = state.invCatalog[failed[0].sku];
+        var label0 = item0 ? layerSkuOptionLabel(item0) : failed[0].sku;
+        var detail = failed[0].err && failed[0].err.message ? failed[0].err.message : t("layers_err_stock_move_failed");
+        showBanner(failed.length === 1
+          ? label0 + ": " + detail
+          : failed.length + " reels could not be released — " + label0 + ": " + detail);
+      }
     });
   });
   el.po_ply.addEventListener("change", refreshPoLayersVisibility);
