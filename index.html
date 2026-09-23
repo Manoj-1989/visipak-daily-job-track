@@ -982,6 +982,7 @@
     <div class="invViewToggle viewToggle" role="tablist">
       <button class="toggleBtn active" data-invview="stock" type="button" data-i18n="inv_view_stock">Stock</button>
       <button class="toggleBtn" data-invview="history" type="button" data-i18n="inv_view_history">Purchase History</button>
+      <button class="toggleBtn" data-invview="rates" type="button" data-i18n="inv_view_rates">Product Rates</button>
     </div>
 
     <div id="invStockSection">
@@ -1083,6 +1084,38 @@
             <tbody id="invLogBody"></tbody>
           </table>
           <div class="logEmpty" id="invLogEmpty" hidden data-i18n="inv_log_empty">No purchases logged yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Rates: a Customer+Product -> Rate/Piece master list, re-importable at any time from
+         an Excel file (Customer name / Product name / Rate per Piece columns — see
+         importProductRatesFromFile below). Stock Summary reads this live to auto-fill Unit Rate and
+         to value its new FG/Dispatch Quantity rows — see the "Stock Summary product-value" section
+         of the script. -->
+    <div id="invRatesSection" hidden>
+      <div class="invLogSection">
+        <div class="invLogHead">
+          <h3 data-i18n="inv_rates_heading">Product Rates</h3>
+          <button class="btn ghost" id="invImportRatesBtn" type="button" hidden data-i18n="btn_import_rates">Import Rates from Excel…</button>
+          <input type="file" accept=".xlsx,.xls" id="invImportRatesFileInput" hidden>
+        </div>
+        <div class="logEmpty" id="invRatesImportStatus" hidden></div>
+        <div class="logControls">
+          <input type="text" id="invRatesSearch" placeholder="Search customer or product…" data-i18n-placeholder="inv_rates_search_placeholder">
+          <button class="btn ghost" id="invRatesExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="inv_rates_th_customer">Customer</th><th data-i18n="inv_rates_th_product">Product</th>
+                <th data-i18n="inv_rates_th_rate">Rate/Piece</th><th data-i18n="inv_rates_th_updated">Last Updated</th>
+              </tr>
+            </thead>
+            <tbody id="invRatesBody"></tbody>
+          </table>
+          <div class="logEmpty" id="invRatesEmpty" hidden data-i18n="inv_rates_empty">No product rates imported yet. Use "Import Rates from Excel…" to load one.</div>
         </div>
       </div>
     </div>
@@ -2288,6 +2321,29 @@
               <td><input type="number" id="f_stockclosingqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
               <td><input type="number" id="f_stockclosingvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
             </tr>
+            <!-- The three rows below are pure auto-calculated read-outs, not part of the manual
+                 Opening/Inward/Outward/Closing ledger above — see refreshStockSummaryProductFields
+                 in the script. FG Quantity is this Customer+Product's live Finished Goods stock;
+                 Dispatch Quantity is shown BOTH all-time and scoped to this entry's own Date, since
+                 both views were asked for. Each Value is that row's Qty times the same Unit Rate. -->
+            <tr class="stockProductRow">
+              <td data-i18n="stock_row_fgqty">FG Quantity</td>
+              <td></td>
+              <td><input type="number" id="f_stockfgqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+              <td><input type="number" id="f_stockfgvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
+            <tr class="stockProductRow">
+              <td data-i18n="stock_row_dispatchall">Dispatch Quantity (All-Time)</td>
+              <td></td>
+              <td><input type="number" id="f_stockdispatchallqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+              <td><input type="number" id="f_stockdispatchallvalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
+            <tr class="stockProductRow">
+              <td data-i18n="stock_row_dispatchdate">Dispatch Quantity (This Date)</td>
+              <td></td>
+              <td><input type="number" id="f_stockdispatchdateqty" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+              <td><input type="number" id="f_stockdispatchdatevalue" readonly placeholder="Auto-calculated" data-i18n-placeholder="stock_auto_placeholder"></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -2600,6 +2656,10 @@
 <!-- pdf.js: renders each page of an uploaded PDF to an image so it can be captured/saved the same
      way a photo is (see capturePdfPages below) instead of relying on each device's own PDF viewer. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- SheetJS (XLSX): parses an uploaded .xlsx/.xls rate-list file client-side, entirely in the
+     browser, so Product Rates can be re-imported by the business itself later without any code
+     changes — see the "Import Product Rates" section of the script below. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
 (function(){
@@ -2831,6 +2891,7 @@
       stock_auto_placeholder: "Auto-calculated",
       stock_row_opening: "Opening Balance", stock_row_inward: "Inward Movement",
       stock_row_outward: "Outward Movement", stock_row_closing: "Closing Balance",
+      stock_row_fgqty: "FG Quantity", stock_row_dispatchall: "Dispatch Quantity (All-Time)", stock_row_dispatchdate: "Dispatch Quantity (This Date)",
       stock_inward_vendor: "Vendor Purchase", stock_inward_production: "Production",
       stock_inward_transfer: "Warehouse Transfer",
       stock_outward_sales: "Customer Sales", stock_outward_consumption: "Internal Consumption",
@@ -2931,7 +2992,16 @@
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
       inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
       inv_empty: "No products yet. Use \"Manage Inventory Items\" to add your first one.",
-      inv_view_stock: "Stock", inv_view_history: "Purchase History",
+      inv_view_stock: "Stock", inv_view_history: "Purchase History", inv_view_rates: "Product Rates",
+      btn_import_rates: "Import Rates from Excel…",
+      inv_rates_heading: "Product Rates", inv_rates_search_placeholder: "Search customer or product…",
+      inv_rates_th_customer: "Customer", inv_rates_th_product: "Product", inv_rates_th_rate: "Rate/Piece", inv_rates_th_updated: "Last Updated",
+      inv_rates_empty: "No product rates imported yet. Use “Import Rates from Excel…” to load one.",
+      inv_rates_err_xlsxlib: "Couldn’t load the Excel import library. Check your connection and try again.",
+      inv_rates_importing: "Importing…", inv_rates_err_parse: "Couldn’t read that file. Make sure it’s a valid Excel file.",
+      inv_rates_err_noheader: "Couldn’t find Customer name/Product name/Rate columns in this file.",
+      inv_rates_err_norows: "No valid rate rows found in this file.",
+      inv_rates_import_done: "Imported {n} product rates.", inv_rates_err_save: "Couldn’t save the imported rates.",
       inv_reels_stock_heading: "Reel Items (GSM / Size / BF)",
       inv_reels_stock_empty: "No reel items yet.",
       inv_other_stock_heading: "Other Items",
@@ -3172,6 +3242,7 @@
       stock_auto_placeholder: "स्वतः गणना",
       stock_row_opening: "प्रारंभिक शेष", stock_row_inward: "आवक",
       stock_row_outward: "जावक", stock_row_closing: "अंतिम शेष",
+      stock_row_fgqty: "एफजी मात्रा", stock_row_dispatchall: "डिस्पैच मात्रा (सभी समय)", stock_row_dispatchdate: "डिस्पैच मात्रा (इस तारीख)",
       stock_inward_vendor: "विक्रेता खरीद", stock_inward_production: "उत्पादन",
       stock_inward_transfer: "गोदाम स्थानांतरण",
       stock_outward_sales: "ग्राहक बिक्री", stock_outward_consumption: "आंतरिक उपयोग",
@@ -3272,7 +3343,16 @@
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
       inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
       inv_empty: "अभी तक कोई प्रोडक्ट नहीं है। पहला आइटम जोड़ने के लिए \"इन्वेंटरी आइटम प्रबंधित करें\" का उपयोग करें।",
-      inv_view_stock: "स्टॉक", inv_view_history: "खरीद इतिहास",
+      inv_view_stock: "स्टॉक", inv_view_history: "खरीद इतिहास", inv_view_rates: "उत्पाद दरें",
+      btn_import_rates: "एक्सेल से दरें आयात करें…",
+      inv_rates_heading: "उत्पाद दरें", inv_rates_search_placeholder: "ग्राहक या उत्पाद खोजें…",
+      inv_rates_th_customer: "ग्राहक", inv_rates_th_product: "उत्पाद", inv_rates_th_rate: "दर/नग", inv_rates_th_updated: "अंतिम अद्यतन",
+      inv_rates_empty: "अभी तक कोई उत्पाद दर आयात नहीं की गई। एक लोड करने के लिए “एक्सेल से दरें आयात करें…” का उपयोग करें।",
+      inv_rates_err_xlsxlib: "एक्सेल आयात लाइब्रेरी लोड नहीं हो सकी। अपना कनेक्शन जांचें और पुनः प्रयास करें।",
+      inv_rates_importing: "आयात हो रहा है…", inv_rates_err_parse: "फ़ाइल नहीं पढ़ी जा सकी। सुनिश्चित करें कि यह एक वैध एक्सेल फ़ाइल है।",
+      inv_rates_err_noheader: "इस फ़ाइल में Customer name/Product name/Rate कॉलम नहीं मिले।",
+      inv_rates_err_norows: "इस फ़ाइल में कोई मान्य दर पंक्ति नहीं मिली।",
+      inv_rates_import_done: "{n} उत्पाद दरें आयात की गईं।", inv_rates_err_save: "आयातित दरें सहेजी नहीं जा सकीं।",
       inv_reels_stock_heading: "रील आइटम (GSM / साइज़ / BF)",
       inv_reels_stock_empty: "अभी तक कोई रील आइटम नहीं है।",
       inv_other_stock_heading: "अन्य आइटम",
@@ -3513,6 +3593,7 @@
       stock_auto_placeholder: "ఆటో-కాలిక్యులేటెడ్",
       stock_row_opening: "ప్రారంభ నిల్వ", stock_row_inward: "ఇన్‌వార్డ్ కదలిక",
       stock_row_outward: "అవుట్‌వార్డ్ కదలిక", stock_row_closing: "ముగింపు నిల్వ",
+      stock_row_fgqty: "FG పరిమాణం", stock_row_dispatchall: "డిస్పాచ్ పరిమాణం (అన్ని సమయాలు)", stock_row_dispatchdate: "డిస్పాచ్ పరిమాణం (ఈ తేదీ)",
       stock_inward_vendor: "వెండర్ కొనుగోలు", stock_inward_production: "ఉత్పత్తి",
       stock_inward_transfer: "గోడౌన్ బదిలీ",
       stock_outward_sales: "కస్టమర్ అమ్మకాలు", stock_outward_consumption: "అంతర్గత వినియోగం",
@@ -3613,7 +3694,16 @@
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
       inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
       inv_empty: "ఇంకా ప్రొడక్ట్‌లు లేవు. మీ మొదటి ఐటమ్‌ను జోడించడానికి \"ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి\" ఉపయోగించండి.",
-      inv_view_stock: "స్టాక్", inv_view_history: "కొనుగోలు చరిత్ర",
+      inv_view_stock: "స్టాక్", inv_view_history: "కొనుగోలు చరిత్ర", inv_view_rates: "ఉత్పత్తి రేట్లు",
+      btn_import_rates: "ఎక్సెల్ నుండి రేట్లు దిగుమతి చేయండి…",
+      inv_rates_heading: "ఉత్పత్తి రేట్లు", inv_rates_search_placeholder: "కస్టమర్ లేదా ఉత్పత్తిని శోధించండి…",
+      inv_rates_th_customer: "కస్టమర్", inv_rates_th_product: "ఉత్పత్తి", inv_rates_th_rate: "రేటు/పీస్", inv_rates_th_updated: "చివరిగా నవీకరించబడింది",
+      inv_rates_empty: "ఇంకా ఉత్పత్తి రేట్లు దిగుమతి చేయలేదు. లోడ్ చేయడానికి “ఎక్సెల్ నుండి రేట్లు దిగుమతి చేయండి…” ఉపయోగించండి.",
+      inv_rates_err_xlsxlib: "ఎక్సెల్ దిగుమతి లైబ్రరీ లోడ్ కాలేదు. మీ కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
+      inv_rates_importing: "దిగుమతి చేస్తోంది…", inv_rates_err_parse: "ఆ ఫైల్ చదవలేకపోయాము. ఇది చెల్లుబాటు అయ్యే ఎక్సెల్ ఫైల్ అని నిర్ధారించుకోండి.",
+      inv_rates_err_noheader: "ఈ ఫైల్‌లో Customer name/Product name/Rate కాలమ్‌లు కనుగొనబడలేదు.",
+      inv_rates_err_norows: "ఈ ఫైల్‌లో చెల్లుబాటు అయ్యే రేటు వరుసలు కనుగొనబడలేదు.",
+      inv_rates_import_done: "{n} ఉత్పత్తి రేట్లు దిగుమతి చేయబడ్డాయి.", inv_rates_err_save: "దిగుమతి చేసిన రేట్లను సేవ్ చేయలేకపోయాము.",
       inv_reels_stock_heading: "రీల్ ఐటమ్‌లు (GSM / సైజ్ / BF)",
       inv_reels_stock_empty: "ఇంకా రీల్ ఐటమ్‌లు లేవు.",
       inv_other_stock_heading: "ఇతర ఐటమ్‌లు",
@@ -3995,14 +4085,16 @@
     db: firestoreDb,
     view: "board",
     appView: "production",  // "production" or "inventory" — see .mainNav / applyAppView
-    invView: "stock",       // "stock" or "history" — Stock/Purchase History sub-tabs inside Inventory
+    invView: "stock",       // "stock", "history" or "rates" — sub-tabs inside Inventory
     invCatalog: {},          // `products` docs keyed by SKU — see subscribeInventory
     invPurchases: [],        // `purchases` (receiving ledger), newest first — see subscribeInventory
     invStatusTransfers: [],  // `statusTransfers` (Available/In Use/Damaged moves) — see subscribeInventory
     invBuds: [],             // `reelBuds` (leftover reel weight recorded at Plant) — see subscribeInventory
+    productRates: [],        // `productRates` (Customer+Product -> Rate/Piece master) — see subscribeInventory
     unsubInvCatalog: null,
     unsubInvPurchases: null,
     unsubInvStatusTransfers: null,
+    unsubProductRates: null,
     trashItems: {},          // `trash` docs keyed by their own doc id — see subscribeTrash/softDeleteDoc
     unsubTrash: null,
     date: todayStr(),
@@ -4112,6 +4204,14 @@
     invLogExportBtn: document.getElementById("invLogExportBtn"),
     invLogBody: document.getElementById("invLogBody"),
     invLogEmpty: document.getElementById("invLogEmpty"),
+    invRatesSection: document.getElementById("invRatesSection"),
+    invImportRatesBtn: document.getElementById("invImportRatesBtn"),
+    invImportRatesFileInput: document.getElementById("invImportRatesFileInput"),
+    invRatesImportStatus: document.getElementById("invRatesImportStatus"),
+    invRatesSearch: document.getElementById("invRatesSearch"),
+    invRatesExportBtn: document.getElementById("invRatesExportBtn"),
+    invRatesBody: document.getElementById("invRatesBody"),
+    invRatesEmpty: document.getElementById("invRatesEmpty"),
     invItemsOverlay: document.getElementById("invItemsOverlay"),
     invItemsSearchInput: document.getElementById("invItemsSearchInput"),
     invItemsList: document.getElementById("invItemsList"),
@@ -4505,6 +4605,12 @@
     f_stockoutwardvalue: document.getElementById("f_stockoutwardvalue"),
     f_stockclosingqty: document.getElementById("f_stockclosingqty"),
     f_stockclosingvalue: document.getElementById("f_stockclosingvalue"),
+    f_stockfgqty: document.getElementById("f_stockfgqty"),
+    f_stockfgvalue: document.getElementById("f_stockfgvalue"),
+    f_stockdispatchallqty: document.getElementById("f_stockdispatchallqty"),
+    f_stockdispatchallvalue: document.getElementById("f_stockdispatchallvalue"),
+    f_stockdispatchdateqty: document.getElementById("f_stockdispatchdateqty"),
+    f_stockdispatchdatevalue: document.getElementById("f_stockdispatchdatevalue"),
     hrManpowerBody: document.getElementById("hrManpowerBody"),
     hrmpTotalOperator: document.getElementById("hrmpTotalOperator"),
     hrmpTotalMh: document.getElementById("hrmpTotalMh"),
@@ -4941,6 +5047,8 @@
     applyCatalogAutofill();
     applyMasterSheetAutofill();
     refreshStockOpeningBalance();
+    refreshStockSummaryProductFields();
+    refreshStockSummaryProductRateAutofill();
     refreshQcStockFields();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
@@ -4958,6 +5066,8 @@
     applyCatalogAutofill();
     applyMasterSheetAutofill();
     refreshStockOpeningBalance();
+    refreshStockSummaryProductFields();
+    refreshStockSummaryProductRateAutofill();
     refreshQcStockFields();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
@@ -6184,7 +6294,7 @@
   }
   el.f_date.addEventListener("change", refreshFgStockFields);
   el.f_jobcard.addEventListener("input", refreshFgStockFields);
-  el.f_date.addEventListener("change", function(){ refreshStockOpeningBalance(); });
+  el.f_date.addEventListener("change", function(){ refreshStockOpeningBalance(); refreshStockSummaryProductFields(); });
 
   // ---------- Stock Summary: Opening/Inward/Outward/Closing ledger ----------
   // A real stock register for one Customer+Product: Opening Balance Qty auto-fills from the most
@@ -6240,6 +6350,9 @@
   }
   // Pure arithmetic on whatever's currently in the four Qty fields plus Unit Rate — safe to always
   // recompute (for both a new and an existing entry) since none of it depends on other records.
+  // Also values the three read-only FG/Dispatch Quantity rows below (see
+  // refreshStockSummaryProductFields, which fills their Qty cells) the same way — Qty times this
+  // same Unit Rate — so a manual Unit Rate edit re-values every row on the table at once.
   function refreshStockSummaryCalc(){
     if(!isStockSummaryStage(el.f_stage.value)) return;
     var rate = el.f_stockrate.value === "" ? null : Number(el.f_stockrate.value);
@@ -6252,10 +6365,105 @@
     var closing = (opening != null ? opening : 0) + inward - outward;
     el.f_stockclosingqty.value = opening != null ? closing : "";
     el.f_stockclosingvalue.value = (rate != null && opening != null) ? (closing * rate) : "";
+    valueStockProductRow(el.f_stockfgqty, el.f_stockfgvalue, rate);
+    valueStockProductRow(el.f_stockdispatchallqty, el.f_stockdispatchallvalue, rate);
+    valueStockProductRow(el.f_stockdispatchdateqty, el.f_stockdispatchdatevalue, rate);
+  }
+  function valueStockProductRow(qtyEl, valueEl, rate){
+    var qty = qtyEl.value === "" ? null : Number(qtyEl.value);
+    valueEl.value = (rate != null && qty != null) ? (qty * rate) : "";
   }
   el.f_stockrate.addEventListener("input", refreshStockSummaryCalc);
   el.f_stockinwardqty.addEventListener("input", refreshStockSummaryCalc);
   el.f_stockoutwardqty.addEventListener("input", refreshStockSummaryCalc);
+
+  // ---------- Stock Summary: FG Quantity / Dispatch Quantity (auto Stock Value) ----------
+  // Three read-only rows added below the manual ledger: FG Quantity is this Customer+Product's live
+  // Finished Goods (FG) stage stock (summed across matching FG entries — consolidateFinishedGoodsEntry
+  // keeps at most one live FG entry per Customer+Product, so in practice this sums exactly that one
+  // row, but summing is what stays correct if that ever changes); Dispatch Quantity is shown BOTH
+  // all-time (every Dispatch-stage entry ever saved for this Customer+Product) AND scoped to this
+  // entry's own Date — both were asked for, so both are kept rather than picking one. Each row's
+  // Value is that row's Qty times the same Unit Rate as the rest of the table (see
+  // refreshStockSummaryCalc/valueStockProductRow above).
+  function computeFgQuantityForProduct(customerName, productName){
+    var custKey = (customerName || "").trim();
+    var prodKey = (productName || "").trim();
+    if(!custKey || !prodKey) return Promise.resolve(0);
+    return state.db.collection("entries")
+      .where("stage", "==", "Finished Goods (FG)")
+      .where("clientName", "==", custKey)
+      .where("productName", "==", prodKey)
+      .get()
+      .then(function(snap){
+        var total = 0;
+        snap.forEach(function(doc){
+          var r = doc.data();
+          total += Number(r.openingStock) || 0;
+        });
+        return total;
+      })
+      .catch(function(){ return 0; });
+  }
+  function computeDispatchQuantityForProduct(customerName, productName, dateOrNull){
+    var custKey = (customerName || "").trim();
+    var prodKey = (productName || "").trim();
+    if(!custKey || !prodKey) return Promise.resolve(0);
+    return state.db.collection("entries")
+      .where("stage", "==", "Dispatch")
+      .where("clientName", "==", custKey)
+      .where("productName", "==", prodKey)
+      .get()
+      .then(function(snap){
+        var total = 0;
+        snap.forEach(function(doc){
+          var r = doc.data();
+          if(dateOrNull && r.date !== dateOrNull) return;
+          total += Number(r.quantity) || 0;
+        });
+        return total;
+      })
+      .catch(function(){ return 0; });
+  }
+  // Same "brand-new entry only" rule as refreshStockOpeningBalance — an existing entry's FG/Dispatch
+  // Quantity fields show whatever they were saved with (see openModal's population below).
+  var stockProductRequestToken = 0;
+  function refreshStockSummaryProductFields(){
+    if(state.editingId) return;
+    if(!isStockSummaryStage(el.f_stage.value)){
+      el.f_stockfgqty.value = "";
+      el.f_stockdispatchallqty.value = "";
+      el.f_stockdispatchdateqty.value = "";
+      refreshStockSummaryCalc();
+      return;
+    }
+    var myToken = ++stockProductRequestToken;
+    var customerName = el.f_clientname.value, productName = el.f_product.value, targetDate = el.f_date.value;
+    Promise.all([
+      computeFgQuantityForProduct(customerName, productName),
+      computeDispatchQuantityForProduct(customerName, productName, null),
+      targetDate ? computeDispatchQuantityForProduct(customerName, productName, targetDate) : Promise.resolve(0)
+    ]).then(function(results){
+      if(myToken !== stockProductRequestToken) return; // superseded by a newer request
+      el.f_stockfgqty.value = results[0];
+      el.f_stockdispatchallqty.value = results[1];
+      el.f_stockdispatchdateqty.value = targetDate ? results[2] : 0;
+      refreshStockSummaryCalc();
+    });
+  }
+  // Unit Rate auto-fills from the imported Product Rates master (see findProductRate) whenever
+  // Customer/Product changes on a brand-new Stock Summary entry — but stays freely editable
+  // afterward (per the user's explicit choice: auto-fill, don't lock it). No match found leaves
+  // whatever Unit Rate already holds untouched, rather than blanking out a manually-typed rate.
+  function refreshStockSummaryProductRateAutofill(){
+    if(state.editingId) return;
+    if(!isStockSummaryStage(el.f_stage.value)) return;
+    var rate = findProductRate(el.f_clientname.value, el.f_product.value);
+    if(rate && rate.ratePerPiece != null){
+      el.f_stockrate.value = rate.ratePerPiece;
+      refreshStockSummaryCalc();
+    }
+  }
 
   // Job Card No is required everywhere it's shown (every stage but HR_Man Power/Stock Summary) —
   // EXCEPT while a job is freshly sitting in QC with no Next Stage chosen yet. A "Promote to QC"
@@ -6477,6 +6685,8 @@
     refreshQcStockFields();
     refreshPlantStockFields();
     refreshStockOpeningBalance();
+    refreshStockSummaryProductFields();
+    refreshStockSummaryProductRateAutofill();
     refreshStockSummaryCalc();
   }
   el.f_stage.addEventListener("change", function(){
@@ -7136,6 +7346,7 @@
     el.navDailyReportLink.hidden = !canSeeInventory;
     el.manageInventoryItemsBtn.hidden = !state.isAdminDevice;
     el.recycleBinBtn.hidden = !state.isAdminDevice;
+    if(el.invImportRatesBtn) el.invImportRatesBtn.hidden = !state.isAdminDevice;
     if(!canSeeInventory && (state.appView === "inventory" || state.appView === "dailyreport")){
       // Access was just revoked (a different, non-inventory device logged in on this browser) —
       // fall back to Production rather than leaving an inaccessible screen showing.
@@ -7612,8 +7823,11 @@
   });
   function applyInvView(){
     var isHistory = state.invView === "history";
-    el.invStockSection.hidden = isHistory;
+    var isRates = state.invView === "rates";
+    el.invStockSection.hidden = isHistory || isRates;
     el.invHistorySection.hidden = !isHistory;
+    el.invRatesSection.hidden = !isRates;
+    if(isRates) renderProductRates();
   }
 
   // ---------- Top-level app nav (Production / Inventory) ----------
@@ -7661,6 +7875,7 @@
     if(state.unsubInvPurchases) state.unsubInvPurchases();
     if(state.unsubInvStatusTransfers) state.unsubInvStatusTransfers();
     if(state.unsubInvBuds) state.unsubInvBuds();
+    if(state.unsubProductRates) state.unsubProductRates();
     state.unsubInvCatalog = state.db.collection("products").onSnapshot(function(snap){
       var map = {};
       snap.forEach(function(doc){ map[doc.id] = Object.assign({ sku: doc.id }, doc.data()); });
@@ -7718,7 +7933,171 @@
         if(el.taskModalOverlay && !el.taskModalOverlay.hidden) refreshTaskLayerReelStatus(budRefreshN);
       }
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
+    // productRates: a Customer+Product -> Rate/Piece master list, imported from Excel on the
+    // Inventory tab's "Product Rates" sub-tab (see importProductRatesFromFile) — Stock Summary reads
+    // this live via findProductRate() to auto-fill Unit Rate and value its FG/Dispatch Quantity rows.
+    state.unsubProductRates = state.db.collection("productRates").onSnapshot(function(snap){
+      state.productRates = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      if(state.appView === "inventory") renderProductRates();
+      // A rate landing/changing while Stock Summary's Add Entry modal happens to be open should
+      // re-autofill Unit Rate for a brand-new (not-yet-edited) entry the same way a fresh
+      // Customer/Product pick would — see refreshStockSummaryProductRateAutofill.
+      if(el.modalOverlay && !el.modalOverlay.hidden && !state.editingId && isStockSummaryStage(el.f_stage.value)){
+        refreshStockSummaryProductRateAutofill();
+      }
+    }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
+
+  // ---------- Product Rates (Customer + Product -> Rate/Piece, imported from Excel) ----------
+  // A flat rate master the business hands over as a spreadsheet and re-uploads whenever prices
+  // change — see importProductRatesFromFile. Doc id is a normalized composite key so a re-import
+  // naturally corrects/replaces the matching row instead of piling up duplicates.
+  function productRateDocId(customerName, productName){
+    return normalizeKey(customerName) + "::" + normalizeKey(productName);
+  }
+  // Normalized-key lookup — deliberately does NOT go through the Customer/Product catalog's own
+  // canonical-name matching (findCanonicalCustomer/findCanonicalProduct), because the rate file's
+  // own Customer/Product spellings don't line up with that catalog's (e.g. "Pidilite unit-1" vs
+  // the catalog's "PIDILITE -1") — this matches directly against whatever Stock Summary's own
+  // Customer Name/Product Name fields currently hold.
+  function findProductRate(customerName, productName){
+    var id = productRateDocId(customerName, productName);
+    for(var i = 0; i < state.productRates.length; i++){
+      if(state.productRates[i].id === id) return state.productRates[i];
+    }
+    return null;
+  }
+  function getFilteredProductRates(){
+    var q = normalizeKey(el.invRatesSearch ? el.invRatesSearch.value : "");
+    var rows = state.productRates.slice().sort(function(a, b){
+      var ac = (a.customerName || ""), bc = (b.customerName || "");
+      if(ac !== bc) return ac < bc ? -1 : 1;
+      return (a.productName || "") < (b.productName || "") ? -1 : 1;
+    });
+    if(!q) return rows;
+    return rows.filter(function(r){
+      return normalizeKey(r.customerName).indexOf(q) !== -1 || normalizeKey(r.productName).indexOf(q) !== -1;
+    });
+  }
+  function renderProductRates(){
+    if(!el.invRatesBody) return;
+    var rows = getFilteredProductRates();
+    el.invRatesEmpty.hidden = rows.length !== 0;
+    el.invRatesBody.innerHTML = rows.map(function(r){
+      return "<tr>" +
+        "<td>" + esc(r.customerName || "") + "</td>" +
+        "<td>" + esc(r.productName || "") + "</td>" +
+        '<td class="num">' + esc(r.ratePerPiece != null ? r.ratePerPiece : "") + "</td>" +
+        "<td>" + esc(fmtDateTime(r.updatedAt)) + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+  if(el.invRatesSearch) el.invRatesSearch.addEventListener("input", renderProductRates);
+  if(el.invRatesExportBtn) el.invRatesExportBtn.addEventListener("click", function(){
+    var rows = getFilteredProductRates();
+    var lines = [[t("inv_rates_th_customer"), t("inv_rates_th_product"), t("inv_rates_th_rate"), t("inv_rates_th_updated")].map(csvEscape).join(",")];
+    rows.forEach(function(r){
+      lines.push([r.customerName || "", r.productName || "", r.ratePerPiece != null ? r.ratePerPiece : "", fmtDateTime(r.updatedAt)].map(csvEscape).join(","));
+    });
+    downloadCsv("product-rates.csv", lines.join("\n"));
+  });
+
+  // Parses an uploaded Excel file entirely client-side (SheetJS), dynamically locating the header
+  // row (looking for "Customer name"/"Product name" cells rather than assuming a fixed row number,
+  // since the source files seen so far have a blank row before the header) so the business can
+  // hand over a differently-laid-out file later without needing a code change. Writes each row to
+  // `productRates` (one .set() per row, keyed by productRateDocId so a re-import corrects existing
+  // rows in place rather than duplicating them).
+  function findRateHeaderRow(sheetRows){
+    for(var i = 0; i < sheetRows.length; i++){
+      var row = sheetRows[i] || [];
+      var hasCustomer = false, hasProduct = false, hasRate = false;
+      for(var c = 0; c < row.length; c++){
+        var cell = normalizeKey(row[c] != null ? String(row[c]) : "");
+        if(cell.indexOf("customer") !== -1) hasCustomer = true;
+        if(cell.indexOf("product") !== -1) hasProduct = true;
+        if(cell.indexOf("rate") !== -1) hasRate = true;
+      }
+      if(hasCustomer && hasProduct && hasRate) return i;
+    }
+    return -1;
+  }
+  function importProductRatesFromFile(file){
+    if(!window.XLSX){
+      el.invRatesImportStatus.hidden = false;
+      el.invRatesImportStatus.textContent = t("inv_rates_err_xlsxlib");
+      return;
+    }
+    el.invRatesImportStatus.hidden = false;
+    el.invRatesImportStatus.textContent = t("inv_rates_importing");
+    var reader = new FileReader();
+    reader.onerror = function(){
+      el.invRatesImportStatus.textContent = t("attach_err_upload");
+    };
+    reader.onload = function(){
+      var parsed;
+      try {
+        var wb = XLSX.read(new Uint8Array(reader.result), { type: "array" });
+        var sheetName = wb.SheetNames[0];
+        var sheet = wb.Sheets[sheetName];
+        parsed = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      } catch(e){
+        el.invRatesImportStatus.textContent = t("inv_rates_err_parse");
+        return;
+      }
+      var headerRow = findRateHeaderRow(parsed);
+      if(headerRow === -1){
+        el.invRatesImportStatus.textContent = t("inv_rates_err_noheader");
+        return;
+      }
+      var header = parsed[headerRow];
+      var custCol = -1, prodCol = -1, rateCol = -1;
+      for(var c = 0; c < header.length; c++){
+        var cell = normalizeKey(header[c] != null ? String(header[c]) : "");
+        if(custCol === -1 && cell.indexOf("customer") !== -1) custCol = c;
+        if(prodCol === -1 && cell.indexOf("product") !== -1) prodCol = c;
+        if(rateCol === -1 && cell.indexOf("rate") !== -1) rateCol = c;
+      }
+      var rows = [];
+      for(var r = headerRow + 1; r < parsed.length; r++){
+        var dataRow = parsed[r] || [];
+        var customerName = String(dataRow[custCol] != null ? dataRow[custCol] : "").trim();
+        var productName = String(dataRow[prodCol] != null ? dataRow[prodCol] : "").trim();
+        var rateRaw = dataRow[rateCol];
+        if(!customerName || !productName || rateRaw === "" || rateRaw == null) continue;
+        var rate = Number(rateRaw);
+        if(isNaN(rate)) continue;
+        rows.push({ customerName: customerName, productName: productName, ratePerPiece: rate });
+      }
+      if(!rows.length){
+        el.invRatesImportStatus.textContent = t("inv_rates_err_norows");
+        return;
+      }
+      var now = Date.now();
+      Promise.all(rows.map(function(row){
+        return state.db.doc("productRates/" + productRateDocId(row.customerName, row.productName)).set({
+          customerName: row.customerName,
+          productName: row.productName,
+          ratePerPiece: row.ratePerPiece,
+          updatedAt: now,
+          updatedBy: deviceSupervisorName || ""
+        });
+      })).then(function(){
+        el.invRatesImportStatus.textContent = tf("inv_rates_import_done", { n: rows.length });
+      }).catch(function(err){
+        el.invRatesImportStatus.textContent = t("inv_rates_err_save") + " " + (err && err.message ? err.message : "");
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  if(el.invImportRatesBtn) el.invImportRatesBtn.addEventListener("click", function(){
+    el.invImportRatesFileInput.click();
+  });
+  if(el.invImportRatesFileInput) el.invImportRatesFileInput.addEventListener("change", function(){
+    var file = el.invImportRatesFileInput.files && el.invImportRatesFileInput.files[0];
+    el.invImportRatesFileInput.value = "";
+    if(file) importProductRatesFromFile(file);
+  });
 
   // Receive-only means total stock is just every purchase's qty summed per SKU — no running
   // balance field, no need to walk newest-to-oldest looking for the latest one.
@@ -8043,6 +8422,8 @@
     if(po.quantity != null && !el.f_qty.readOnly) el.f_qty.value = po.quantity;
     applyMasterSheetAutofill();
     refreshStockOpeningBalance();
+    refreshStockSummaryProductFields();
+    refreshStockSummaryProductRateAutofill();
     refreshQcStockFields();
     refreshPlantStockFields();
     refreshRtdFgStockFields();
@@ -10665,6 +11046,18 @@
       html: function(e){ return esc(e.stockClosingQty != null ? e.stockClosingQty : ""); }, csv: function(e){ return e.stockClosingQty != null ? e.stockClosingQty : ""; } },
     stockClosingValue: { header: function(){ return t("stock_row_closing") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
       html: function(e){ return esc(e.stockClosingValue != null ? e.stockClosingValue : ""); }, csv: function(e){ return e.stockClosingValue != null ? e.stockClosingValue : ""; } },
+    stockFgQty: { header: function(){ return t("stock_row_fgqty") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockFgQty != null ? e.stockFgQty : ""); }, csv: function(e){ return e.stockFgQty != null ? e.stockFgQty : ""; } },
+    stockFgValue: { header: function(){ return t("stock_row_fgqty") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockFgValue != null ? e.stockFgValue : ""); }, csv: function(e){ return e.stockFgValue != null ? e.stockFgValue : ""; } },
+    stockDispatchAllQty: { header: function(){ return t("stock_row_dispatchall") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockDispatchAllQty != null ? e.stockDispatchAllQty : ""); }, csv: function(e){ return e.stockDispatchAllQty != null ? e.stockDispatchAllQty : ""; } },
+    stockDispatchAllValue: { header: function(){ return t("stock_row_dispatchall") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockDispatchAllValue != null ? e.stockDispatchAllValue : ""); }, csv: function(e){ return e.stockDispatchAllValue != null ? e.stockDispatchAllValue : ""; } },
+    stockDispatchDateQty: { header: function(){ return t("stock_row_dispatchdate") + " (" + t("stock_th_qty") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockDispatchDateQty != null ? e.stockDispatchDateQty : ""); }, csv: function(e){ return e.stockDispatchDateQty != null ? e.stockDispatchDateQty : ""; } },
+    stockDispatchDateValue: { header: function(){ return t("stock_row_dispatchdate") + " (" + t("stock_th_value") + ")"; }, cellClass: "num",
+      html: function(e){ return esc(e.stockDispatchDateValue != null ? e.stockDispatchDateValue : ""); }, csv: function(e){ return e.stockDispatchDateValue != null ? e.stockDispatchDateValue : ""; } },
     updatedBy: { header: function(){ return t("th_updatedby"); },
       html: function(e){ return esc(e.updatedBy || ""); }, csv: function(e){ return e.updatedBy || ""; } },
     status: { header: function(){ return t("th_status"); },
@@ -10778,7 +11171,9 @@
     if(stockSummary) keys.push("stockRate", "stockOpeningQty", "stockOpeningValue",
       "stockInwardReason", "stockInwardQty", "stockInwardValue",
       "stockOutwardReason", "stockOutwardQty", "stockOutwardValue",
-      "stockClosingQty", "stockClosingValue");
+      "stockClosingQty", "stockClosingValue",
+      "stockFgQty", "stockFgValue", "stockDispatchAllQty", "stockDispatchAllValue",
+      "stockDispatchDateQty", "stockDispatchDateValue");
     keys.push("updatedBy");
     if(!special) keys.push("status");
     // Next Stage follows Status everywhere except Ready to Dispatch — see stageHasNextStage above.
@@ -11704,6 +12099,12 @@
     el.f_stockinwardqty.value = entry && entry.stockInwardQty != null ? entry.stockInwardQty : "";
     el.f_stockoutwardreason.value = entry ? (entry.stockOutwardReason || "") : "";
     el.f_stockoutwardqty.value = entry && entry.stockOutwardQty != null ? entry.stockOutwardQty : "";
+    // FG Quantity/Dispatch Quantity (both variants) follow the exact same "freeze on an existing
+    // entry, live-recompute for a brand-new one" rule as Opening Balance above — see
+    // refreshStockSummaryProductFields's own state.editingId guard.
+    el.f_stockfgqty.value = entry && entry.stockFgQty != null ? entry.stockFgQty : "";
+    el.f_stockdispatchallqty.value = entry && entry.stockDispatchAllQty != null ? entry.stockDispatchAllQty : "";
+    el.f_stockdispatchdateqty.value = entry && entry.stockDispatchDateQty != null ? entry.stockDispatchDateQty : "";
     // Apply the promote-from-Task prefill (see openModal's own comment above) now — after every
     // field above has already been reset to its normal new-entry blank state, and before
     // updateFormFieldsForStage syncs per-stage visibility off whatever these fields now hold.
@@ -12086,6 +12487,14 @@
       stockOutwardValue: isStockSummary ? (el.f_stockoutwardvalue.value === "" ? null : Number(el.f_stockoutwardvalue.value)) : null,
       stockClosingQty: isStockSummary ? (el.f_stockclosingqty.value === "" ? null : Number(el.f_stockclosingqty.value)) : null,
       stockClosingValue: isStockSummary ? (el.f_stockclosingvalue.value === "" ? null : Number(el.f_stockclosingvalue.value)) : null,
+      // FG Quantity / Dispatch Quantity (all-time + this-date) — see refreshStockSummaryProductFields
+      // above the modal code. Same "snapshot whatever the auto-calc is showing right now" pattern.
+      stockFgQty: isStockSummary ? (el.f_stockfgqty.value === "" ? null : Number(el.f_stockfgqty.value)) : null,
+      stockFgValue: isStockSummary ? (el.f_stockfgvalue.value === "" ? null : Number(el.f_stockfgvalue.value)) : null,
+      stockDispatchAllQty: isStockSummary ? (el.f_stockdispatchallqty.value === "" ? null : Number(el.f_stockdispatchallqty.value)) : null,
+      stockDispatchAllValue: isStockSummary ? (el.f_stockdispatchallvalue.value === "" ? null : Number(el.f_stockdispatchallvalue.value)) : null,
+      stockDispatchDateQty: isStockSummary ? (el.f_stockdispatchdateqty.value === "" ? null : Number(el.f_stockdispatchdateqty.value)) : null,
+      stockDispatchDateValue: isStockSummary ? (el.f_stockdispatchdatevalue.value === "" ? null : Number(el.f_stockdispatchdatevalue.value)) : null,
       qcBoardGsmClient: hasQcSpecs ? el.f_qc_boardgsm_client.value.trim() : "",
       qcBoardGsmVisipak: hasQcSpecs ? el.f_qc_boardgsm_visipak.value.trim() : "",
       qcBoardGsmPass: hasQcSpecs ? el.f_qc_boardgsm_pass.checked : null,
