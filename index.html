@@ -1110,7 +1110,7 @@
             <thead>
               <tr>
                 <th data-i18n="inv_rates_th_customer">Customer</th><th data-i18n="inv_rates_th_product">Product</th>
-                <th data-i18n="inv_rates_th_rate">Rate/Piece</th><th data-i18n="inv_rates_th_updated">Last Updated</th>
+                <th data-i18n="inv_rates_th_rate">Rate/Piece</th><th data-i18n="inv_rates_th_updated">Last Updated</th><th></th>
               </tr>
             </thead>
             <tbody id="invRatesBody"></tbody>
@@ -1133,6 +1133,11 @@
         <div class="statTile"><span class="statLabel" data-i18n="dr_stat_received">Received</span><span class="statValue" id="drStatReceived">0</span></div>
         <div class="statTile"><span class="statLabel" data-i18n="dr_stat_consumed">Consumed / Shipped</span><span class="statValue" id="drStatConsumed">0</span></div>
         <div class="statTile"><span class="statLabel" data-i18n="dr_stat_closing">Closing</span><span class="statValue" id="drStatClosing">0</span></div>
+        <!-- Total value of everything Dispatched (to customers, from the Production side's own
+             Dispatch stage — a different ledger than the Opening/Received/Consumed/Closing tiles
+             above, which are this Inventory tab's own receive-only stock) on the selected day, at
+             each product's imported rate — see computeDispatchValueForDate/refreshDispatchValueSection. -->
+        <div class="statTile"><span class="statLabel" data-i18n="dr_stat_dispatchvalue">Dispatch Value</span><span class="statValue" id="drStatDispatchValue">₹0.00</span></div>
       </div>
       <label class="field"><span data-i18n="dr_date_label">Day</span>
         <span class="dateFieldWrap">
@@ -1162,6 +1167,30 @@
           <tfoot id="drFoot" hidden></tfoot>
         </table>
         <div class="logEmpty" id="drEmpty" hidden data-i18n="dr_empty">No items yet. Use "Manage Inventory Items" to add your first one.</div>
+      </div>
+    </div>
+
+    <!-- Dispatch Value: what was actually dispatched to customers on this same day (Production's
+         Dispatch stage, not this Inventory tab's own receive-only ledger above), valued at each
+         product's imported rate (see Inventory > Product Rates). Customer+Product rows, one per
+         combination dispatched that day. -->
+    <div class="invLogSection">
+      <div class="invLogHead">
+        <h3 data-i18n="dr_dispatch_heading">Dispatch Value</h3>
+        <button class="btn ghost" id="drDispatchExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="inv_rates_th_customer">Customer</th><th data-i18n="inv_rates_th_product">Product</th>
+              <th data-i18n="dr_dispatch_th_qty">Qty Dispatched</th><th data-i18n="inv_rates_th_rate">Rate/Piece</th><th data-i18n="stock_th_value">Value</th>
+            </tr>
+          </thead>
+          <tbody id="drDispatchBody"></tbody>
+          <tfoot id="drDispatchFoot" hidden></tfoot>
+        </table>
+        <div class="logEmpty" id="drDispatchEmpty" hidden data-i18n="dr_dispatch_empty">Nothing dispatched on this day.</div>
       </div>
     </div>
   </main>
@@ -1498,6 +1527,7 @@
         <option value="tasks" data-i18n="trash_type_tasks">Task</option>
         <option value="purchaseOrders" data-i18n="trash_type_purchaseOrders">Purchase Order</option>
         <option value="supervisors" data-i18n="trash_type_supervisors">User</option>
+        <option value="productRates" data-i18n="trash_type_productRates">Product Rate</option>
       </select>
     </div>
     <div class="tableWrap">
@@ -2981,6 +3011,9 @@
       nav_production: "Production", nav_inventory: "Inventory", nav_dailyreport: "Daily Report",
       dr_heading: "Daily Inventory Report", dr_date_label: "Day", dr_today_btn: "Today",
       dr_stat_opening: "Opening", dr_stat_received: "Received", dr_stat_consumed: "Consumed / Shipped", dr_stat_closing: "Closing",
+      dr_stat_dispatchvalue: "Dispatch Value",
+      dr_dispatch_heading: "Dispatch Value", dr_dispatch_th_qty: "Qty Dispatched",
+      dr_dispatch_empty: "Nothing dispatched on this day.",
       dr_th_opening: "Opening", dr_th_received: "Received", dr_th_consumed: "Consumed/Shipped", dr_th_closing: "Closing",
       dr_empty: "No items yet. Use \"Manage Inventory Items\" to add your first one.",
       inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_value: "Inventory Value", inv_stat_reorder: "Items to Reorder",
@@ -2998,10 +3031,12 @@
       inv_rates_th_customer: "Customer", inv_rates_th_product: "Product", inv_rates_th_rate: "Rate/Piece", inv_rates_th_updated: "Last Updated",
       inv_rates_empty: "No product rates imported yet. Use “Import Rates from Excel…” to load one.",
       inv_rates_err_xlsxlib: "Couldn’t load the Excel import library. Check your connection and try again.",
-      inv_rates_importing: "Importing…", inv_rates_err_parse: "Couldn’t read that file. Make sure it’s a valid Excel file.",
+      inv_rates_importing: "Importing…", inv_rates_importing_progress: "Importing… {done}/{total}",
+      inv_rates_err_parse: "Couldn’t read that file. Make sure it’s a valid Excel file.",
       inv_rates_err_noheader: "Couldn’t find Customer name/Product name/Rate columns in this file.",
       inv_rates_err_norows: "No valid rate rows found in this file.",
       inv_rates_import_done: "Imported {n} product rates.", inv_rates_err_save: "Couldn’t save the imported rates.",
+      inv_rates_edit_prompt: "New Rate/Piece for {customer} — {product}:", inv_rates_err_invalid_rate: "Enter a valid rate.",
       inv_reels_stock_heading: "Reel Items (GSM / Size / BF)",
       inv_reels_stock_empty: "No reel items yet.",
       inv_other_stock_heading: "Other Items",
@@ -3082,7 +3117,7 @@
       trash_desc: "Anything deleted anywhere in the app — Inventory Items, Purchases, Job Cards, Tasks, or Users — lands here first. Restore it any time within 45 days of deletion; after that (or if you delete it forever yourself) it's gone for good.",
       trash_search_placeholder: "Search deleted items…",
       trash_type_products: "Inventory Item", trash_type_purchases: "Purchase", trash_type_entries: "Job Card",
-      trash_type_tasks: "Task", trash_type_supervisors: "User",
+      trash_type_tasks: "Task", trash_type_supervisors: "User", trash_type_productRates: "Product Rate",
       trash_th_type: "Type", trash_th_item: "Item", trash_th_deletedby: "Deleted By",
       trash_th_deletedat: "Deleted On", trash_th_expires: "Expires In",
       trash_empty: "Recycle Bin is empty.", trash_restore_action: "Restore", trash_delete_forever_action: "Delete Forever",
@@ -3332,6 +3367,9 @@
       nav_production: "प्रोडक्शन", nav_inventory: "इन्वेंटरी", nav_dailyreport: "डेली रिपोर्ट",
       dr_heading: "डेली इन्वेंटरी रिपोर्ट", dr_date_label: "दिन", dr_today_btn: "आज",
       dr_stat_opening: "ओपनिंग", dr_stat_received: "प्राप्त", dr_stat_consumed: "उपयोग / भेजा गया", dr_stat_closing: "क्लोजिंग",
+      dr_stat_dispatchvalue: "डिस्पैच मूल्य",
+      dr_dispatch_heading: "डिस्पैच मूल्य", dr_dispatch_th_qty: "डिस्पैच मात्रा",
+      dr_dispatch_empty: "इस दिन कुछ भी डिस्पैच नहीं हुआ।",
       dr_th_opening: "ओपनिंग", dr_th_received: "प्राप्त", dr_th_consumed: "उपयोग/भेजा गया", dr_th_closing: "क्लोजिंग",
       dr_empty: "अभी तक कोई आइटम नहीं है। पहला आइटम जोड़ने के लिए \"Manage Inventory Items\" का उपयोग करें।",
       inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_value: "इन्वेंटरी मूल्य", inv_stat_reorder: "रीऑर्डर करने योग्य आइटम",
@@ -3349,10 +3387,12 @@
       inv_rates_th_customer: "ग्राहक", inv_rates_th_product: "उत्पाद", inv_rates_th_rate: "दर/नग", inv_rates_th_updated: "अंतिम अद्यतन",
       inv_rates_empty: "अभी तक कोई उत्पाद दर आयात नहीं की गई। एक लोड करने के लिए “एक्सेल से दरें आयात करें…” का उपयोग करें।",
       inv_rates_err_xlsxlib: "एक्सेल आयात लाइब्रेरी लोड नहीं हो सकी। अपना कनेक्शन जांचें और पुनः प्रयास करें।",
-      inv_rates_importing: "आयात हो रहा है…", inv_rates_err_parse: "फ़ाइल नहीं पढ़ी जा सकी। सुनिश्चित करें कि यह एक वैध एक्सेल फ़ाइल है।",
+      inv_rates_importing: "आयात हो रहा है…", inv_rates_importing_progress: "आयात हो रहा है… {done}/{total}",
+      inv_rates_err_parse: "फ़ाइल नहीं पढ़ी जा सकी। सुनिश्चित करें कि यह एक वैध एक्सेल फ़ाइल है।",
       inv_rates_err_noheader: "इस फ़ाइल में Customer name/Product name/Rate कॉलम नहीं मिले।",
       inv_rates_err_norows: "इस फ़ाइल में कोई मान्य दर पंक्ति नहीं मिली।",
       inv_rates_import_done: "{n} उत्पाद दरें आयात की गईं।", inv_rates_err_save: "आयातित दरें सहेजी नहीं जा सकीं।",
+      inv_rates_edit_prompt: "{customer} — {product} के लिए नई दर/नग:", inv_rates_err_invalid_rate: "एक मान्य दर दर्ज करें।",
       inv_reels_stock_heading: "रील आइटम (GSM / साइज़ / BF)",
       inv_reels_stock_empty: "अभी तक कोई रील आइटम नहीं है।",
       inv_other_stock_heading: "अन्य आइटम",
@@ -3433,7 +3473,7 @@
       trash_desc: "ऐप में कहीं भी हटाई गई कोई भी चीज़ — इन्वेंटरी आइटम, खरीद, जॉब कार्ड, कार्य, या उपयोगकर्ता — यहां पहले आती है। हटाने के 45 दिनों के भीतर कभी भी इसे पुनर्स्थापित करें; उसके बाद (या यदि आप इसे स्वयं हमेशा के लिए हटा देते हैं) यह हमेशा के लिए चला जाता है।",
       trash_search_placeholder: "हटाए गए आइटम खोजें…",
       trash_type_products: "इन्वेंटरी आइटम", trash_type_purchases: "खरीद", trash_type_entries: "जॉब कार्ड",
-      trash_type_tasks: "कार्य", trash_type_supervisors: "उपयोगकर्ता",
+      trash_type_tasks: "कार्य", trash_type_supervisors: "उपयोगकर्ता", trash_type_productRates: "उत्पाद दर",
       trash_th_type: "प्रकार", trash_th_item: "आइटम", trash_th_deletedby: "हटाया गया",
       trash_th_deletedat: "हटाने की तारीख", trash_th_expires: "समाप्ति",
       trash_empty: "रीसायकल बिन खाली है।", trash_restore_action: "पुनर्स्थापित करें", trash_delete_forever_action: "स्थायी रूप से हटाएं",
@@ -3683,6 +3723,9 @@
       nav_production: "ప్రొడక్షన్", nav_inventory: "ఇన్వెంటరీ", nav_dailyreport: "డైలీ రిపోర్ట్",
       dr_heading: "డైలీ ఇన్వెంటరీ రిపోర్ట్", dr_date_label: "రోజు", dr_today_btn: "ఈరోజు",
       dr_stat_opening: "ఓపెనింగ్", dr_stat_received: "అందుకున్నవి", dr_stat_consumed: "వాడినవి / పంపినవి", dr_stat_closing: "క్లోజింగ్",
+      dr_stat_dispatchvalue: "డిస్పాచ్ విలువ",
+      dr_dispatch_heading: "డిస్పాచ్ విలువ", dr_dispatch_th_qty: "డిస్పాచ్ చేసిన పరిమాణం",
+      dr_dispatch_empty: "ఈ రోజు ఏమీ డిస్పాచ్ చేయలేదు.",
       dr_th_opening: "ఓపెనింగ్", dr_th_received: "అందుకున్నవి", dr_th_consumed: "వాడినవి/పంపినవి", dr_th_closing: "క్లోజింగ్",
       dr_empty: "ఇంకా ఐటమ్‌లు లేవు. మొదటి ఐటమ్ జోడించడానికి \"Manage Inventory Items\" ఉపయోగించండి.",
       inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_value: "ఇన్వెంటరీ విలువ", inv_stat_reorder: "రీఆర్డర్ చేయవలసిన ఐటమ్‌లు",
@@ -3700,10 +3743,12 @@
       inv_rates_th_customer: "కస్టమర్", inv_rates_th_product: "ఉత్పత్తి", inv_rates_th_rate: "రేటు/పీస్", inv_rates_th_updated: "చివరిగా నవీకరించబడింది",
       inv_rates_empty: "ఇంకా ఉత్పత్తి రేట్లు దిగుమతి చేయలేదు. లోడ్ చేయడానికి “ఎక్సెల్ నుండి రేట్లు దిగుమతి చేయండి…” ఉపయోగించండి.",
       inv_rates_err_xlsxlib: "ఎక్సెల్ దిగుమతి లైబ్రరీ లోడ్ కాలేదు. మీ కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
-      inv_rates_importing: "దిగుమతి చేస్తోంది…", inv_rates_err_parse: "ఆ ఫైల్ చదవలేకపోయాము. ఇది చెల్లుబాటు అయ్యే ఎక్సెల్ ఫైల్ అని నిర్ధారించుకోండి.",
+      inv_rates_importing: "దిగుమతి చేస్తోంది…", inv_rates_importing_progress: "దిగుమతి చేస్తోంది… {done}/{total}",
+      inv_rates_err_parse: "ఆ ఫైల్ చదవలేకపోయాము. ఇది చెల్లుబాటు అయ్యే ఎక్సెల్ ఫైల్ అని నిర్ధారించుకోండి.",
       inv_rates_err_noheader: "ఈ ఫైల్‌లో Customer name/Product name/Rate కాలమ్‌లు కనుగొనబడలేదు.",
       inv_rates_err_norows: "ఈ ఫైల్‌లో చెల్లుబాటు అయ్యే రేటు వరుసలు కనుగొనబడలేదు.",
       inv_rates_import_done: "{n} ఉత్పత్తి రేట్లు దిగుమతి చేయబడ్డాయి.", inv_rates_err_save: "దిగుమతి చేసిన రేట్లను సేవ్ చేయలేకపోయాము.",
+      inv_rates_edit_prompt: "{customer} — {product} కోసం కొత్త రేటు/పీస్:", inv_rates_err_invalid_rate: "సరైన రేటును నమోదు చేయండి.",
       inv_reels_stock_heading: "రీల్ ఐటమ్‌లు (GSM / సైజ్ / BF)",
       inv_reels_stock_empty: "ఇంకా రీల్ ఐటమ్‌లు లేవు.",
       inv_other_stock_heading: "ఇతర ఐటమ్‌లు",
@@ -3784,7 +3829,7 @@
       trash_desc: "యాప్‌లో ఎక్కడైనా తొలగించినది — ఇన్వెంటరీ ఐటమ్‌లు, కొనుగోళ్లు, జాబ్ కార్డులు, టాస్క్‌లు లేదా యూజర్లు — ఇక్కడ ముందుగా వస్తుంది. తొలగించిన 45 రోజుల్లోపు ఎప్పుడైనా దీన్ని పునరుద్ధరించండి; ఆ తర్వాత (లేదా మీరే శాశ్వతంగా తొలగిస్తే) అది శాశ్వతంగా పోతుంది.",
       trash_search_placeholder: "తొలగించిన ఐటమ్‌లను వెతకండి…",
       trash_type_products: "ఇన్వెంటరీ ఐటమ్", trash_type_purchases: "కొనుగోలు", trash_type_entries: "జాబ్ కార్డు",
-      trash_type_tasks: "టాస్క్", trash_type_supervisors: "యూజర్",
+      trash_type_tasks: "టాస్క్", trash_type_supervisors: "యూజర్", trash_type_productRates: "ఉత్పత్తి రేటు",
       trash_th_type: "రకం", trash_th_item: "ఐటమ్", trash_th_deletedby: "తొలగించినవారు",
       trash_th_deletedat: "తొలగించిన తేదీ", trash_th_expires: "గడువు",
       trash_empty: "రీసైకిల్ బిన్ ఖాళీగా ఉంది.", trash_restore_action: "పునరుద్ధరించు", trash_delete_forever_action: "శాశ్వతంగా తొలగించు",
@@ -3988,6 +4033,9 @@
           (d.customerName ? " · " + d.customerName : "");
       case "supervisors":
         return (d.name || item.docId) + (d.role ? " · " + d.role : "");
+      case "productRates":
+        return (d.customerName || "") + (d.productName ? " · " + d.productName : "") +
+          (d.ratePerPiece != null ? " · " + d.ratePerPiece : "");
       default:
         return item.docId;
     }
@@ -4091,6 +4139,7 @@
     invStatusTransfers: [],  // `statusTransfers` (Available/In Use/Damaged moves) — see subscribeInventory
     invBuds: [],             // `reelBuds` (leftover reel weight recorded at Plant) — see subscribeInventory
     productRates: [],        // `productRates` (Customer+Product -> Rate/Piece master) — see subscribeInventory
+    lastDispatchValueRows: [], // Daily Report's Dispatch Value rows, kept for its CSV export button
     unsubInvCatalog: null,
     unsubInvPurchases: null,
     unsubInvStatusTransfers: null,
@@ -4174,6 +4223,11 @@
     drBody: document.getElementById("drBody"),
     drFoot: document.getElementById("drFoot"),
     drEmpty: document.getElementById("drEmpty"),
+    drStatDispatchValue: document.getElementById("drStatDispatchValue"),
+    drDispatchBody: document.getElementById("drDispatchBody"),
+    drDispatchFoot: document.getElementById("drDispatchFoot"),
+    drDispatchEmpty: document.getElementById("drDispatchEmpty"),
+    drDispatchExportBtn: document.getElementById("drDispatchExportBtn"),
     inventoryView: document.getElementById("inventoryView"),
     invStockSection: document.getElementById("invStockSection"),
     invHistorySection: document.getElementById("invHistorySection"),
@@ -7945,6 +7999,9 @@
       if(el.modalOverlay && !el.modalOverlay.hidden && !state.editingId && isStockSummaryStage(el.f_stage.value)){
         refreshStockSummaryProductRateAutofill();
       }
+      // A rate landing/changing should also re-value the Daily Report's Dispatch Value section if
+      // it's the visible screen right now — same live-recompute reasoning as above.
+      if(state.appView === "dailyreport") refreshDispatchValueSection();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
 
@@ -7983,14 +8040,52 @@
     if(!el.invRatesBody) return;
     var rows = getFilteredProductRates();
     el.invRatesEmpty.hidden = rows.length !== 0;
-    el.invRatesBody.innerHTML = rows.map(function(r){
-      return "<tr>" +
+    el.invRatesBody.innerHTML = "";
+    rows.forEach(function(r){
+      var tr = document.createElement("tr");
+      tr.innerHTML =
         "<td>" + esc(r.customerName || "") + "</td>" +
         "<td>" + esc(r.productName || "") + "</td>" +
         '<td class="num">' + esc(r.ratePerPiece != null ? r.ratePerPiece : "") + "</td>" +
         "<td>" + esc(fmtDateTime(r.updatedAt)) + "</td>" +
-        "</tr>";
-    }).join("");
+        '<td class="invRowActions"></td>';
+      if(state.isAdminDevice) appendProductRateRowActions(tr.querySelector(".invRowActions"), r);
+      el.invRatesBody.appendChild(tr);
+    });
+  }
+  // Edit only touches the Rate itself (Customer/Product form the doc's own identity — see
+  // productRateDocId — so "editing" either of those is really a rename, which re-importing the
+  // corrected Excel row already handles); a plain prompt() mirrors the same lightweight
+  // "+ Add new…" interaction already used elsewhere in this form rather than building a whole new
+  // modal for a single number. Delete goes through the shared Recycle Bin (softDeleteDoc) like every
+  // other delete in the app, so an accidental removal is recoverable, not a confirm-dialog gate.
+  function appendProductRateRowActions(actionsCell, r){
+    var editBtn = document.createElement("button");
+    editBtn.type = "button"; editBtn.className = "btn ghost invSmallBtn"; editBtn.textContent = t("sup_edit");
+    editBtn.addEventListener("click", function(){
+      var next = window.prompt(tf("inv_rates_edit_prompt", { customer: r.customerName || "", product: r.productName || "" }), r.ratePerPiece != null ? r.ratePerPiece : "");
+      if(next == null) return; // cancelled
+      var rate = Number(next);
+      if(next.trim() === "" || isNaN(rate)){ showBanner(t("inv_rates_err_invalid_rate")); return; }
+      editBtn.disabled = true;
+      state.db.doc("productRates/" + r.id).update({
+        ratePerPiece: rate, updatedAt: Date.now(), updatedBy: deviceSupervisorName || ""
+      }).catch(function(){
+        editBtn.disabled = false;
+        showBanner(t("inv_rates_err_save"));
+      });
+    });
+    actionsCell.appendChild(editBtn);
+    var delBtn = document.createElement("button");
+    delBtn.type = "button"; delBtn.className = "btn ghost invSmallBtn"; delBtn.textContent = t("generic_delete");
+    delBtn.addEventListener("click", function(){
+      delBtn.disabled = true;
+      softDeleteDoc("productRates", r.id, omitKeys(r, ["id"])).catch(function(){
+        delBtn.disabled = false;
+        showBanner(t("inv_items_err_remove_failed"));
+      });
+    });
+    actionsCell.appendChild(delBtn);
   }
   if(el.invRatesSearch) el.invRatesSearch.addEventListener("input", renderProductRates);
   if(el.invRatesExportBtn) el.invRatesExportBtn.addEventListener("click", function(){
@@ -8074,19 +8169,42 @@
         return;
       }
       var now = Date.now();
-      Promise.all(rows.map(function(row){
-        return state.db.doc("productRates/" + productRateDocId(row.customerName, row.productName)).set({
-          customerName: row.customerName,
-          productName: row.productName,
-          ratePerPiece: row.ratePerPiece,
-          updatedAt: now,
-          updatedBy: deviceSupervisorName || ""
+      // Batched writes (Firestore's real .batch()/.commit(), one round trip per up-to-450-row
+      // chunk) instead of one .set() promise per row — with 200+ rows, firing that many individual
+      // writes at once was the actual cause of the import feeling like it hung. Firestore caps a
+      // batch at 500 writes; 450 leaves headroom. Chunks commit one after another (not in parallel)
+      // so a slow/offline connection fails predictably on one chunk rather than leaving an unknown
+      // mix of chunks half-applied.
+      var BATCH_CHUNK_SIZE = 450;
+      var chunks = [];
+      for(var i = 0; i < rows.length; i += BATCH_CHUNK_SIZE) chunks.push(rows.slice(i, i + BATCH_CHUNK_SIZE));
+      var committed = 0;
+      function commitNextChunk(chunkIndex){
+        if(chunkIndex >= chunks.length){
+          el.invRatesImportStatus.textContent = tf("inv_rates_import_done", { n: rows.length });
+          return;
+        }
+        var batch = state.db.batch();
+        chunks[chunkIndex].forEach(function(row){
+          batch.set(state.db.doc("productRates/" + productRateDocId(row.customerName, row.productName)), {
+            customerName: row.customerName,
+            productName: row.productName,
+            ratePerPiece: row.ratePerPiece,
+            updatedAt: now,
+            updatedBy: deviceSupervisorName || ""
+          });
         });
-      })).then(function(){
-        el.invRatesImportStatus.textContent = tf("inv_rates_import_done", { n: rows.length });
-      }).catch(function(err){
-        el.invRatesImportStatus.textContent = t("inv_rates_err_save") + " " + (err && err.message ? err.message : "");
-      });
+        if(chunks.length > 1){
+          el.invRatesImportStatus.textContent = tf("inv_rates_importing_progress", { done: committed, total: rows.length });
+        }
+        batch.commit().then(function(){
+          committed += chunks[chunkIndex].length;
+          commitNextChunk(chunkIndex + 1);
+        }).catch(function(err){
+          el.invRatesImportStatus.textContent = t("inv_rates_err_save") + " " + (err && err.message ? err.message : "");
+        });
+      }
+      commitNextChunk(0);
     };
     reader.readAsArrayBuffer(file);
   }
@@ -9238,6 +9356,7 @@
     el.drStatReceived.textContent = totals.received.toLocaleString();
     el.drStatConsumed.textContent = totals.consumed.toLocaleString();
     el.drStatClosing.textContent = totals.closing.toLocaleString();
+    refreshDispatchValueSection();
   }
   function buildDailyReportCsv(rows, dateStr){
     var header = ["Date", "Item", "Category", "Unit", "Opening", "Received", "Consumed/Shipped", "Closing", "Status"];
@@ -9251,6 +9370,89 @@
     });
     return lines.join("\r\n");
   }
+  // ---------- Daily Report: Dispatch Value ----------
+  // Separate from the per-SKU Opening/Received/Consumed/Closing report above (this Inventory tab's
+  // own receive-only ledger) — this reads the PRODUCTION side's Dispatch stage `entries` for the
+  // same selected day, groups by Customer+Product, and values each group at its imported rate (see
+  // findProductRate). An async Firestore query (like computeDispatchQuantityForProduct), not a
+  // locally-subscribed array, since Dispatch entries for an arbitrary past day aren't kept in memory.
+  function computeDispatchValueForDate(dateStr){
+    if(!dateStr) return Promise.resolve([]);
+    return state.db.collection("entries")
+      .where("stage", "==", "Dispatch")
+      .where("date", "==", dateStr)
+      .get()
+      .then(function(snap){
+        var groups = {}; // keyed by Customer+Product, same composite key as productRateDocId
+        snap.forEach(function(doc){
+          var e = doc.data();
+          var customerName = e.clientName || "", productName = e.productName || "";
+          var key = productRateDocId(customerName, productName);
+          if(!groups[key]) groups[key] = { customerName: customerName, productName: productName, qty: 0 };
+          groups[key].qty += Number(e.quantity) || 0;
+        });
+        return Object.keys(groups).map(function(key){
+          var g = groups[key];
+          var rateDoc = findProductRate(g.customerName, g.productName);
+          var rate = rateDoc && rateDoc.ratePerPiece != null ? rateDoc.ratePerPiece : null;
+          return {
+            customerName: g.customerName, productName: g.productName, qty: g.qty,
+            rate: rate, value: rate != null ? g.qty * rate : null
+          };
+        }).sort(function(a, b){
+          return (a.customerName + a.productName).localeCompare(b.customerName + b.productName);
+        });
+      })
+      .catch(function(){ return []; });
+  }
+  var dispatchValueRequestToken = 0;
+  function refreshDispatchValueSection(){
+    if(!el.drDispatchBody) return;
+    var dateStr = el.drDateInput.value || todayStr();
+    var myToken = ++dispatchValueRequestToken;
+    computeDispatchValueForDate(dateStr).then(function(rows){
+      if(myToken !== dispatchValueRequestToken) return; // superseded by a newer request
+      state.lastDispatchValueRows = rows; // kept for the CSV export button below
+      el.drDispatchEmpty.hidden = rows.length !== 0;
+      el.drDispatchBody.innerHTML = "";
+      var total = 0;
+      rows.forEach(function(r){
+        if(r.value != null) total += r.value;
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>" + esc(r.customerName) + "</td>" +
+          "<td>" + esc(r.productName) + "</td>" +
+          '<td class="num">' + r.qty.toLocaleString() + "</td>" +
+          '<td class="num">' + esc(r.rate != null ? r.rate : "—") + "</td>" +
+          '<td class="num">' + (r.value != null ? esc(formatInr(r.value)) : "—") + "</td>";
+        el.drDispatchBody.appendChild(tr);
+      });
+      el.drDispatchFoot.innerHTML = "";
+      el.drDispatchFoot.hidden = rows.length === 0;
+      if(rows.length){
+        var totalTr = document.createElement("tr");
+        totalTr.innerHTML =
+          '<td colspan="4">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
+          '<td class="num">' + esc(formatInr(total)) + "</td>";
+        el.drDispatchFoot.appendChild(totalTr);
+      }
+      el.drStatDispatchValue.textContent = formatInr(total);
+    });
+  }
+  function buildDispatchValueCsv(rows, dateStr){
+    var header = ["Date", "Customer", "Product", "Qty Dispatched", "Rate/Piece", "Value"];
+    var lines = [header.map(csvEscape).join(",")];
+    rows.forEach(function(r){
+      lines.push([dateStr, r.customerName, r.productName, r.qty, r.rate != null ? r.rate : "", r.value != null ? r.value : ""].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  el.drDispatchExportBtn.addEventListener("click", function(){
+    var rows = state.lastDispatchValueRows || [];
+    if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    downloadCsv("visipak-dispatch-value-" + (el.drDateInput.value || todayStr()) + ".csv", buildDispatchValueCsv(rows, el.drDateInput.value || todayStr()));
+  });
+
   var syncDrDateDisplay = bindDateDisplay(el.drDateInput, el.drDateInputLabel);
   el.drDateInput.value = todayStr();
   syncDrDateDisplay();
