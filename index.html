@@ -300,6 +300,12 @@
   .capChip.good{background:var(--good-soft);color:var(--good);}
   .capChip.warn{background:var(--warn-soft);color:var(--warn);}
   .capChip.crit{background:var(--crit-soft);color:var(--crit);}
+  .stageColHeadRight{display:flex;align-items:center;gap:6px;flex:none;}
+  .stageExportBtn{
+    flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    border-radius:6px;font-size:12px;line-height:1;padding:4px 6px;cursor:pointer;
+  }
+  .stageExportBtn:hover{color:var(--accent);border-color:var(--accent);}
   .stageColBody{padding:10px;display:flex;flex-direction:row;gap:8px;overflow-x:auto;}
   .stageColBody .card{flex:0 0 260px;}
   /* ---------- Priority Task board (Kanban-style: one column per stage, side by side, like a
@@ -373,6 +379,9 @@
   .taskItem.priority-medium{border-left-color:var(--warn);}
   .taskItem.priority-low{border-left-color:var(--good);}
   .taskItem.done{opacity:.6;}
+  .taskPromoteBtn{
+    flex:none;align-self:center;font-size:11px;padding:5px 9px;white-space:nowrap;
+  }
   /* ---------- Purchase Orders (PO) board — not grouped into per-stage Kanban columns like
      Priority Tasks above (a PO has no "stage"), so it reuses .taskItem's card look directly
      (background/border/padding) rather than duplicating it, plus its own overdue/received
@@ -551,6 +560,18 @@
   .passFailToggle.holdToggle input:not(:checked) ~ .pfTrack{background:var(--good);}
   .passFailToggle.holdToggle .pfLabel{color:var(--good);}
   .passFailToggle.holdToggle input:checked ~ .pfLabel{color:var(--crit);}
+  /* Read-only PO reference panel shown under a picked PO Number field (see renderPoDetailsPanel) —
+     the PO's own Customer/Product Code/Material Description/Ply/Quantity/Delivery + live Reserved
+     Reels, purely informational (this form's own fields are still edited independently). */
+  .poDetailsPanel{
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;font-size:12.5px;color:var(--ink-soft);
+  }
+  .poDetailsRow{display:flex;flex-wrap:wrap;gap:4px 18px;}
+  .poDetailsPanel .poDetailsItem b{color:var(--ink);font-weight:600;}
+  /* A plain block below the flex row (not a flex item itself) — always its own full-width line,
+     regardless of how much room the row above happens to leave, with no flex-wrap ambiguity. */
+  .poDetailsPanel .poDetailsReels{display:block;padding-top:6px;margin-top:6px;border-top:1px dashed var(--line);}
   /* QC's Client Specs vs Visipak Specs comparison table — spans the full form width. */
   .qcSpecsBlock{grid-column:1 / -1;}
   .qcSpecsHead{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
@@ -1689,6 +1710,18 @@
         <input type="number" id="invStatusQtyInput" min="0" step="1">
       </label>
     </div>
+    <!-- Only meaningful (and only shown) when moving stock OUT OF Available — the normal case
+         reduces Available by this qty, same as any transfer. Checking this instead means "this qty
+         was never really in Available to begin with" (e.g. correcting a bucket, such as Reserved,
+         that drifted negative from historical drift) — Available is left exactly as it reads now,
+         and the qty is recorded as newly-accounted-for stock straight into the target bucket. See
+         addStockNeutralCorrection in the script below. -->
+    <div class="supAddRow" style="grid-template-columns:1fr;" id="invStatusKeepAvailableRow" hidden>
+      <label class="invStatusNoPoCheck">
+        <input type="checkbox" id="invStatusKeepAvailableCheck">
+        <span data-i18n="inv_status_keep_available_label">Don't reduce Available — record as newly found stock instead</span>
+      </label>
+    </div>
     <!-- Only meaningful (and only shown) when moving stock TO Reserved — ties the held stock to the
          specific Purchase Order it's being set aside for. Read-only: click/focus opens the PO
          picker (openPoPicker below) so the value always points at a real, tracked PO instead of
@@ -1847,6 +1880,11 @@
       <label id="fld_ponumber"><span data-i18n="form_ponumber_label">PO Number</span>
         <input type="text" id="f_ponumber" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
       </label>
+      <!-- Read-only reference panel showing the picked PO's own details (Customer/Product
+           Code/Material Description/Ply/Quantity/Delivery + its live Reserved Reels) — see
+           renderPoDetailsPanel. Purely informational; this entry's own Customer/Product/etc. fields
+           above are unaffected and still edited independently. -->
+      <div class="formGridItem span2 poDetailsPanel" id="entryPoDetails" hidden></div>
       <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <!-- Positioned right after Job Card No (rather than after Quantity, where it used to sit) so
            it reads the same way on every stage that shows it — TYPE_STAGES above lists which. -->
@@ -1935,16 +1973,16 @@
              weight of the physical reel used, which varies reel to reel even for the same SKU. -->
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_status">Status</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_status">Status</th></tr>
           </thead>
           <tbody id="layersBody">
-            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td><input type="text" id="f_layer1_reelweight"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td></tr>
-            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td><input type="text" id="f_layer2_reelweight"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td></tr>
-            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td><input type="text" id="f_layer3_reelweight"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td></tr>
-            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td><input type="text" id="f_layer4_reelweight"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td></tr>
-            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td><input type="text" id="f_layer5_reelweight"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td></tr>
-            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td><input type="text" id="f_layer6_reelweight"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td></tr>
-            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td></tr>
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td class="mono" id="f_layer1_available"></td><td><input type="text" id="f_layer1_reelweight"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td class="mono" id="f_layer2_available"></td><td><input type="text" id="f_layer2_reelweight"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td class="mono" id="f_layer3_available"></td><td><input type="text" id="f_layer3_reelweight"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td class="mono" id="f_layer4_available"></td><td><input type="text" id="f_layer4_reelweight"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td class="mono" id="f_layer5_available"></td><td><input type="text" id="f_layer5_reelweight"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td class="mono" id="f_layer6_available"></td><td><input type="text" id="f_layer6_reelweight"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td class="mono" id="f_layer7_available"></td><td><input type="text" id="f_layer7_reelweight"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -2340,6 +2378,9 @@
       <label><span data-i18n="task_ponumber_label">PO Number</span>
         <input type="text" id="t_ponumber" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
       </label>
+      <!-- Read-only reference panel showing the picked PO's own details — see renderPoDetailsPanel
+           (same panel/markup as the main entry form's own PO Number field). -->
+      <div class="formGridItem span2 poDetailsPanel" id="taskPoDetails" hidden></div>
       <!-- Reel: reveals the Layer-row reel picker below (only meaningful once a PO with a Ply set
            is chosen above) — same idea as Plant's own Layers table, but for reserving reels against
            this task's PO ahead of production rather than consuming them into a job card. -->
@@ -2360,16 +2401,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_status">Status</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th></tr>
           </thead>
           <tbody id="taskLayersBody">
-            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td><span class="capChip" id="t_layer1_status" hidden></span></td></tr>
-            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td><span class="capChip" id="t_layer2_status" hidden></span></td></tr>
-            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td><span class="capChip" id="t_layer3_status" hidden></span></td></tr>
-            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td><span class="capChip" id="t_layer4_status" hidden></span></td></tr>
-            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td><span class="capChip" id="t_layer5_status" hidden></span></td></tr>
-            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td><span class="capChip" id="t_layer6_status" hidden></span></td></tr>
-            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td><span class="capChip" id="t_layer7_status" hidden></span></td></tr>
+            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td></tr>
+            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td></tr>
+            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td></tr>
+            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td></tr>
+            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td></tr>
+            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td></tr>
+            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -2470,16 +2511,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_status">Status</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th></tr>
           </thead>
           <tbody id="poLayersBody">
-            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td><span class="capChip" id="po_layer1_status" hidden></span></td></tr>
-            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td><span class="capChip" id="po_layer2_status" hidden></span></td></tr>
-            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td><span class="capChip" id="po_layer3_status" hidden></span></td></tr>
-            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td><span class="capChip" id="po_layer4_status" hidden></span></td></tr>
-            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td><span class="capChip" id="po_layer5_status" hidden></span></td></tr>
-            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td><span class="capChip" id="po_layer6_status" hidden></span></td></tr>
-            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td><span class="capChip" id="po_layer7_status" hidden></span></td></tr>
+            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td class="mono" id="po_layer1_available"></td><td><span class="capChip" id="po_layer1_status" hidden></span></td></tr>
+            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td class="mono" id="po_layer2_available"></td><td><span class="capChip" id="po_layer2_status" hidden></span></td></tr>
+            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td class="mono" id="po_layer3_available"></td><td><span class="capChip" id="po_layer3_status" hidden></span></td></tr>
+            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td class="mono" id="po_layer4_available"></td><td><span class="capChip" id="po_layer4_status" hidden></span></td></tr>
+            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td class="mono" id="po_layer5_available"></td><td><span class="capChip" id="po_layer5_status" hidden></span></td></tr>
+            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td class="mono" id="po_layer6_available"></td><td><span class="capChip" id="po_layer6_status" hidden></span></td></tr>
+            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td class="mono" id="po_layer7_available"></td><td><span class="capChip" id="po_layer7_status" hidden></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -2725,7 +2766,7 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
-      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_reelweight: "Reel Weight", layers_th_status: "Status",
+      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_status: "Status",
       layers_reelstatus_available: "Available", layers_reelstatus_low: "Low Stock", layers_reelstatus_out: "Out of Stock",
       layers_row_label_n: "Layer {n}", layers_item_select: "— select reel —",
       layers_err_stock_move_failed: "Saved, but couldn't update Inventory stock for a Layer's reel — check Inventory > Update Status.",
@@ -2807,7 +2848,7 @@
       form_readonly_suffix: ". Switch this device's stage access (top right, \"Change\") to edit it.",
       form_qcspecs_readonly_note: "The QC Check / Specifications / Hold section below is managed by the QC team and is read-only on this device.",
       form_normalfields_readonly_note: "This entry's other fields belong to that stage's own team and are read-only on this device — only the QC Check / Specifications / Hold section below is editable here.",
-      banner_no_rows_export: "No rows to export.", banner_save_failed_prefix: "Save failed:",
+      banner_no_rows_export: "No rows to export.", stage_export_csv_title: "Export this stage's data as CSV", banner_save_failed_prefix: "Save failed:",
       banner_live_updates_stopped_prefix: "Live updates stopped:",
       banner_log_updates_stopped_prefix: "Log updates stopped:",
       banner_moved: "Job Card {jc} completed at {from} — moved to {to}.",
@@ -2832,6 +2873,7 @@
       task_err_po_ply_required: "Pick a PO with its Ply set first — that's what decides how many Layer rows to show.",
       task_err_po_required_for_reel: "Select a PO Number above before reserving a reel.",
       task_reservedreels_label: "Reserved Reels",
+      task_promote_action: "Promote to QC", task_promote_title: "Start a new QC entry pre-filled from this task's Client/Product/Type/Quantity/PO — nothing is saved until you review and save the new entry yourself.",
       banner_task_save_failed_prefix: "Couldn't save task:",
       banner_task_delete_failed_prefix: "Couldn't delete task:",
       banner_task_reorder_failed_prefix: "Couldn't save new order:",
@@ -2974,6 +3016,7 @@
       inv_status_qty_label: "Quantity",
       inv_status_po_label: "PO", inv_status_po_placeholder: "Click to select a PO",
       inv_status_no_po_label: "Manual correction — not tied to a specific PO",
+      inv_status_keep_available_label: "Don't reduce Available — record as newly found stock instead",
       inv_status_note_label: "Note (optional)",
       inv_status_note_placeholder: "e.g. checked out for Job Card #.., dropped and cracked…",
       inv_status_confirm: "Save",
@@ -3064,7 +3107,7 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
-      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_reelweight: "रील वज़न", layers_th_status: "स्थिति",
+      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_status: "स्थिति",
       layers_reelstatus_available: "उपलब्ध", layers_reelstatus_low: "कम स्टॉक", layers_reelstatus_out: "स्टॉक खत्म",
       layers_row_label_n: "लेयर {n}", layers_item_select: "— रील चुनें —",
       layers_err_stock_move_failed: "सेव हो गया, लेकिन लेयर की रील के लिए इन्वेंटरी स्टॉक अपडेट नहीं हो सका — इन्वेंटरी > स्थिति अपडेट करें में देखें।",
@@ -3146,7 +3189,7 @@
       form_readonly_suffix: "। इसे बदलने के लिए ऊपर दाईं ओर \"बदलें\" से डिवाइस की स्टेज एक्सेस बदलें।",
       form_qcspecs_readonly_note: "नीचे दिया गया QC Check / स्पेसिफिकेशन / होल्ड सेक्शन QC टीम द्वारा प्रबंधित होता है और इस डिवाइस पर केवल देखने के लिए है।",
       form_normalfields_readonly_note: "इस एंट्री के अन्य फ़ील्ड उस स्टेज की अपनी टीम के हैं और इस डिवाइस पर केवल देखने के लिए हैं — यहाँ केवल नीचे दिया गया QC Check / स्पेसिफिकेशन / होल्ड सेक्शन संपादित किया जा सकता है।",
-      banner_no_rows_export: "एक्सपोर्ट के लिए कोई पंक्ति नहीं।", banner_save_failed_prefix: "सेव विफल:",
+      banner_no_rows_export: "एक्सपोर्ट के लिए कोई पंक्ति नहीं।", stage_export_csv_title: "इस स्टेज का डेटा CSV के रूप में एक्सपोर्ट करें", banner_save_failed_prefix: "सेव विफल:",
       banner_live_updates_stopped_prefix: "लाइव अपडेट रुक गए:",
       banner_log_updates_stopped_prefix: "लॉग अपडेट रुक गए:",
       banner_moved: "जॉब कार्ड {jc} {from} पर पूर्ण हुआ — {to} में भेजा गया।",
@@ -3171,6 +3214,7 @@
       task_err_po_ply_required: "पहले एक ऐसा PO चुनें जिसमें प्लाई सेट हो — इसी से तय होता है कि कितनी लेयर पंक्तियाँ दिखानी हैं।",
       task_err_po_required_for_reel: "रील आरक्षित करने से पहले ऊपर PO नंबर चुनें।",
       task_reservedreels_label: "आरक्षित रील",
+      task_promote_action: "QC में भेजें", task_promote_title: "इस टास्क के ग्राहक/प्रोडक्ट/टाइप/मात्रा/PO से पहले से भरा हुआ एक नया QC एंट्री शुरू करें — जब तक आप समीक्षा कर के खुद सेव नहीं करते, कुछ भी सेव नहीं होगा।",
       banner_task_save_failed_prefix: "कार्य सेव नहीं हो सका:",
       banner_task_delete_failed_prefix: "कार्य हटाया नहीं जा सका:",
       banner_task_reorder_failed_prefix: "नया क्रम सेव नहीं हो सका:",
@@ -3313,6 +3357,7 @@
       inv_status_qty_label: "मात्रा",
       inv_status_po_label: "PO", inv_status_po_placeholder: "PO चुनने के लिए क्लिक करें",
       inv_status_no_po_label: "मैन्युअल सुधार — किसी विशेष PO से जुड़ा नहीं",
+      inv_status_keep_available_label: "Available कम न करें — इसके बजाय नया मिला स्टॉक दर्ज करें",
       inv_status_note_label: "नोट (वैकल्पिक)",
       inv_status_note_placeholder: "जैसे, जॉब कार्ड #.. के लिए निकाला गया, गिरकर टूट गया…",
       inv_status_confirm: "सेव करें",
@@ -3403,7 +3448,7 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
-      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_reelweight: "రీల్ బరువు", layers_th_status: "స్థితి",
+      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_status: "స్థితి",
       layers_reelstatus_available: "అందుబాటులో", layers_reelstatus_low: "తక్కువ స్టాక్", layers_reelstatus_out: "స్టాక్ లేదు",
       layers_row_label_n: "లేయర్ {n}", layers_item_select: "— రీల్‌ను ఎంచుకోండి —",
       layers_err_stock_move_failed: "సేవ్ అయ్యింది, కానీ లేయర్ రీల్ కోసం ఇన్వెంటరీ స్టాక్‌ను అప్‌డేట్ చేయలేకపోయాము — ఇన్వెంటరీ > స్థితిని అప్‌డేట్ చేయండి చూడండి.",
@@ -3485,7 +3530,7 @@
       form_readonly_suffix: "। దీన్ని సవరించడానికి పైన కుడివైపున \"మార్చండి\" ద్వారా పరికర దశ యాక్సెస్‌ను మార్చండి.",
       form_qcspecs_readonly_note: "దిగువ ఉన్న QC Check / స్పెసిఫికేషన్ల / హోల్డ్ విభాగం QC టీమ్ నిర్వహిస్తుంది మరియు ఈ పరికరంలో ఇది వీక్షణ మాత్రమే.",
       form_normalfields_readonly_note: "ఈ ఎంట్రీలోని మిగతా ఫీల్డ్‌లు ఆ దశకు చెందిన సొంత టీమ్‌వి మరియు ఈ పరికరంలో వీక్షణ మాత్రమే — ఇక్కడ దిగువ ఉన్న QC Check / స్పెసిఫికేషన్ల / హోల్డ్ విభాగం మాత్రమే సవరించవచ్చు.",
-      banner_no_rows_export: "ఎగుమతి చేయడానికి వరుసలు లేవు.", banner_save_failed_prefix: "సేవ్ విఫలమైంది:",
+      banner_no_rows_export: "ఎగుమతి చేయడానికి వరుసలు లేవు.", stage_export_csv_title: "ఈ దశ డేటాను CSV గా ఎగుమతి చేయండి", banner_save_failed_prefix: "సేవ్ విఫలమైంది:",
       banner_live_updates_stopped_prefix: "లైవ్ అప్‌డేట్లు ఆగిపోయాయి:",
       banner_log_updates_stopped_prefix: "లాగ్ అప్‌డేట్లు ఆగిపోయాయి:",
       banner_moved: "జాబ్ కార్డ్ {jc} {from} వద్ద పూర్తయింది — {to}కి తరలించబడింది.",
@@ -3510,6 +3555,7 @@
       task_err_po_ply_required: "ముందుగా ప్లై సెట్ చేసిన PO ఎంచుకోండి — ఎన్ని లేయర్ వరుసలు చూపించాలో ఇదే నిర్ణయిస్తుంది.",
       task_err_po_required_for_reel: "రీల్‌ను రిజర్వ్ చేయడానికి ముందు పైన PO నంబర్ ఎంచుకోండి.",
       task_reservedreels_label: "రిజర్వ్ చేసిన రీళ్లు",
+      task_promote_action: "QCకి పంపు", task_promote_title: "ఈ టాస్క్ యొక్క క్లయింట్/ప్రొడక్ట్/టైప్/క్వాంటిటీ/PO తో ముందుగా నింపిన కొత్త QC ఎంట్రీని ప్రారంభించండి — మీరు సమీక్షించి సేవ్ చేసేంత వరకు ఏమీ సేవ్ కాదు.",
       banner_task_save_failed_prefix: "పని సేవ్ కాలేదు:",
       banner_task_delete_failed_prefix: "పని తొలగించబడలేదు:",
       banner_task_reorder_failed_prefix: "కొత్త క్రమం సేవ్ కాలేదు:",
@@ -3652,6 +3698,7 @@
       inv_status_qty_label: "పరిమాణం",
       inv_status_po_label: "PO", inv_status_po_placeholder: "PO ఎంచుకోవడానికి క్లిక్ చేయండి",
       inv_status_no_po_label: "మాన్యువల్ కరెక్షన్ — ఏ నిర్దిష్ట PO‌కి సంబంధించినది కాదు",
+      inv_status_keep_available_label: "Available తగ్గించవద్దు — బదులుగా కొత్తగా దొరికిన స్టాక్‌గా నమోదు చేయండి",
       inv_status_note_label: "నోట్ (ఐచ్ఛికం)",
       inv_status_note_placeholder: "ఉదా. జాబ్ కార్డ్ #.. కోసం తీసుకున్నారు, పడి పగిలింది…",
       inv_status_confirm: "సేవ్ చేయండి",
@@ -4146,6 +4193,8 @@
     invStatusFromSelect: document.getElementById("invStatusFromSelect"),
     invStatusToSelect: document.getElementById("invStatusToSelect"),
     invStatusQtyInput: document.getElementById("invStatusQtyInput"),
+    invStatusKeepAvailableRow: document.getElementById("invStatusKeepAvailableRow"),
+    invStatusKeepAvailableCheck: document.getElementById("invStatusKeepAvailableCheck"),
     invStatusPoRow: document.getElementById("invStatusPoRow"),
     invStatusNoPoCheck: document.getElementById("invStatusNoPoCheck"),
     invStatusPoField: document.getElementById("invStatusPoField"),
@@ -4261,6 +4310,7 @@
     t_ply: document.getElementById("t_ply"),
     t_quantity: document.getElementById("t_quantity"),
     t_ponumber: document.getElementById("t_ponumber"),
+    taskPoDetails: document.getElementById("taskPoDetails"),
     fld_treel: document.getElementById("fld_treel"),
     t_reel: document.getElementById("t_reel"),
     fld_treellayers: document.getElementById("fld_treellayers"),
@@ -4316,6 +4366,7 @@
     f_product: document.getElementById("f_product"),
     fld_ponumber: document.getElementById("fld_ponumber"),
     f_ponumber: document.getElementById("f_ponumber"),
+    entryPoDetails: document.getElementById("entryPoDetails"),
     f_jobcard: document.getElementById("f_jobcard"),
     f_artworkno: document.getElementById("f_artworkno"),
     fld_artworkno: document.getElementById("fld_artworkno"),
@@ -4451,6 +4502,7 @@
     el["layerRow" + layerN] = document.getElementById("layerRow" + layerN);
     el["layerLabel" + layerN] = document.getElementById("layerLabel" + layerN);
     el["f_layer" + layerN + "_sku"] = document.getElementById("f_layer" + layerN + "_sku");
+    el["f_layer" + layerN + "_available"] = document.getElementById("f_layer" + layerN + "_available");
     el["f_layer" + layerN + "_reelweight"] = document.getElementById("f_layer" + layerN + "_reelweight");
     el["f_layer" + layerN + "_status"] = document.getElementById("f_layer" + layerN + "_status");
   }
@@ -4460,6 +4512,7 @@
     el["tLayerRow" + tLayerN] = document.getElementById("tLayerRow" + tLayerN);
     el["tLayerLabel" + tLayerN] = document.getElementById("tLayerLabel" + tLayerN);
     el["t_layer" + tLayerN + "_sku"] = document.getElementById("t_layer" + tLayerN + "_sku");
+    el["t_layer" + tLayerN + "_available"] = document.getElementById("t_layer" + tLayerN + "_available");
     el["t_layer" + tLayerN + "_status"] = document.getElementById("t_layer" + tLayerN + "_status");
   }
   // Same trick again, this time for the PO form's own Reserve Reel picker (see fld_poreellayers).
@@ -4467,6 +4520,7 @@
     el["poLayerRow" + poLayerN] = document.getElementById("poLayerRow" + poLayerN);
     el["poLayerLabel" + poLayerN] = document.getElementById("poLayerLabel" + poLayerN);
     el["po_layer" + poLayerN + "_sku"] = document.getElementById("po_layer" + poLayerN + "_sku");
+    el["po_layer" + poLayerN + "_available"] = document.getElementById("po_layer" + poLayerN + "_available");
     el["po_layer" + poLayerN + "_status"] = document.getElementById("po_layer" + poLayerN + "_status");
   }
   var lastUpdatedBy = "";
@@ -6364,12 +6418,14 @@
   // there's nothing to report stock status on.
   function refreshLayerReelStatus(n){
     var chip = el["f_layer" + n + "_status"];
+    var availCell = el["f_layer" + n + "_available"];
     if(!chip) return;
     var skuEl = el["f_layer" + n + "_sku"];
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
     if(!item){
       chip.hidden = true;
+      if(availCell) availCell.textContent = "";
       return;
     }
     var qty = availableFor(sku);
@@ -6378,6 +6434,7 @@
     chip.className = "capChip " + cls;
     chip.textContent = label;
     chip.hidden = false;
+    if(availCell) availCell.textContent = qty.toLocaleString();
   }
   for(var layerAutofillN = 1; layerAutofillN <= 7; layerAutofillN++){
     (function(n){
@@ -6398,6 +6455,7 @@
     openPoPicker(function(po){
       entrySelectedPo = po;
       el.f_ponumber.value = po.poNumber || "";
+      renderPoDetailsPanel(el.entryPoDetails, po);
     });
   });
 
@@ -6428,6 +6486,7 @@
       }
       taskSelectedPo = { id: po.id, poNumber: po.poNumber || "", ply: po.ply || "" };
       el.t_ponumber.value = po.poNumber || "";
+      renderPoDetailsPanel(el.taskPoDetails, po);
       refreshTaskLayersVisibility();
     });
   });
@@ -6470,12 +6529,14 @@
   });
   function refreshTaskLayerReelStatus(n){
     var chip = el["t_layer" + n + "_status"];
+    var availCell = el["t_layer" + n + "_available"];
     if(!chip) return;
     var skuEl = el["t_layer" + n + "_sku"];
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
     if(!item){
       chip.hidden = true;
+      if(availCell) availCell.textContent = "";
       return;
     }
     var qty = availableFor(sku);
@@ -6484,6 +6545,7 @@
     chip.className = "capChip " + cls;
     chip.textContent = label;
     chip.hidden = false;
+    if(availCell) availCell.textContent = qty.toLocaleString();
   }
   // taskLayerReservedSku[n] tracks which sku (if any) row n currently HOLDS a live Reserved
   // transfer for, independent of state.editingTaskId — reset in openTaskModal/closeTaskModal so a
@@ -6740,12 +6802,14 @@
   });
   function refreshPoLayerReelStatus(n){
     var chip = el["po_layer" + n + "_status"];
+    var availCell = el["po_layer" + n + "_available"];
     if(!chip) return;
     var skuEl = el["po_layer" + n + "_sku"];
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
     if(!item){
       chip.hidden = true;
+      if(availCell) availCell.textContent = "";
       return;
     }
     var qty = availableFor(sku);
@@ -6754,6 +6818,7 @@
     chip.className = "capChip " + cls;
     chip.textContent = label;
     chip.hidden = false;
+    if(availCell) availCell.textContent = qty.toLocaleString();
   }
   for(var poLayerAutofillN = 1; poLayerAutofillN <= 7; poLayerAutofillN++){
     (function(n){
@@ -7515,6 +7580,31 @@
       }
     });
   }
+  // QC -> Plant hand-off's own stock move (see movingQcToPlantReservedLayers above, in the entry
+  // save handler): the reels a linked PO already reserved ahead of time are converted straight from
+  // Reserved to In Use, exactly once, the moment the job actually arrives at Plant — rather than
+  // reconcileLayerReelStatusTransfers's normal Available -> In Use (which has no idea these specific
+  // units were already spoken for) or leaving them stuck in Reserved forever until someone manually
+  // releases them. Tagged with the PO so it shows up in that PO's own ledger/CSV exports like any
+  // other Reserved-bucket move. Best-effort, same as reconcileLayerReelStatusTransfers above: this
+  // runs after the entry has already saved, so a failure (e.g. the reservation was already manually
+  // released in the meantime) only logs/banners rather than undoing the save.
+  function convertPoReservedLayersToInUse(po, jobCardNo){
+    var counts = {};
+    (po.layers || []).forEach(function(l){
+      var sku = l && l.sku;
+      if(sku) counts[sku] = (counts[sku] || 0) + 1;
+    });
+    var extra = { poNumber: po.poNumber, poId: po.id };
+    Object.keys(counts).forEach(function(sku){
+      addStatusTransfer(sku, "reserved", "in_use", counts[sku],
+        "Consumed at Plant hand-off from QC for Job Card " + (jobCardNo || "—") + " (PO " + (po.poNumber || "—") + ")", extra)
+        .catch(function(err){
+          if(window.console) console.error("PO reserved-reel hand-off consume failed:", err);
+          showBanner(t("layers_err_stock_move_failed"));
+        });
+    });
+  }
   function availableFor(sku){
     var b = computeStatusBucketsMap()[sku];
     return b ? b.available : 0;
@@ -7526,6 +7616,10 @@
   // (every Reserve path — the reel row's Reserve button, Update Status moving to Reserved, and a
   // Task's own Reel rows — always does; a manual release elsewhere that isn't tagged just never
   // nets back out of this specific PO's count, the one gap in an otherwise exact per-PO ledger).
+  function findPoById(poId){
+    if(!poId) return null;
+    return state.purchaseOrders.find(function(p){ return p.id === poId; }) || null;
+  }
   function reservedBucketsForPo(poId){
     var map = {};
     if(!poId) return map;
@@ -7555,6 +7649,35 @@
       }
       return label + " x" + map[sku] + statusLabel;
     }).join(", ");
+  }
+  // Read-only reference panel shown under a picked PO Number field (Task and Entry forms both use
+  // this — see #taskPoDetails/#entryPoDetails in the HTML) — the PO's own Customer/Product Code/
+  // Material Description/Ply/Quantity/Delivery plus its live Reserved Reels, so picking a PO
+  // actually surfaces "all the Details Available at the PO board" right where it's picked, instead
+  // of just the bare PO Number. Purely informational: this form's own Customer/Product/Ply/etc.
+  // fields are unrelated and still edited independently, exactly as before.
+  function renderPoDetailsPanel(panelEl, po){
+    if(!panelEl) return;
+    if(!po){ panelEl.hidden = true; panelEl.innerHTML = ""; return; }
+    function item(label, value){
+      if(value === "" || value == null) return "";
+      return '<span class="poDetailsItem"><b>' + esc(label) + ':</b> ' + esc(String(value)) + '</span>';
+    }
+    var parts = [
+      item(t("po_customer_label"), po.customerName),
+      item(t("po_productcode_label"), po.productCode),
+      item(t("po_materialdesc_label"), po.materialDescription),
+      item(t("po_ply_label"), po.ply),
+      item(t("form_qty_label"), po.quantity),
+      item(t("po_delivery_label"), fmtDateForDisplay(po.deliveryRequiredAtPlant))
+    ].filter(Boolean);
+    var reservedLine = po.id ? reservedReelsSummaryForPo(po.id) : "";
+    var html = '<div class="poDetailsRow">' + parts.join("") + '</div>';
+    if(reservedLine){
+      html += '<div class="poDetailsReels"><b>' + esc(t("task_reservedreels_label")) + ':</b> ' + esc(reservedLine) + '</div>';
+    }
+    panelEl.innerHTML = html;
+    panelEl.hidden = false;
   }
   // Deleting a purchase, or editing one down to a smaller Quantity Received, both reduce that SKU's
   // total purchased qty (to 0 for a delete, to whatever the edited value is otherwise). If some of
@@ -7776,6 +7899,39 @@
       date: state.date, shift: state.shift || "", createdAt: Date.now()
     }, extra || {});
     return state.db.collection("statusTransfers").add(payload);
+  }
+  // A ledger correction for when the thing that's actually wrong is a BUCKET TOTAL itself (e.g. a
+  // Reserved bucket that read -3 from historical drift) rather than a real movement of already-
+  // counted stock. addStatusTransfer always moves existing units between buckets — it can't put
+  // units into a bucket without taking them from another, so fixing a negative bucket that way
+  // necessarily changes whichever bucket you draw from (normally Available). This instead records
+  // `qty` as newly-accounted-for stock — a zero-cost purchases row, so Available briefly gains qty —
+  // and moves that exact same qty straight into `toStatus` in the same breath, netting Available
+  // back to unchanged. The deliberate trade-off: this sku's total recorded stock goes up by qty,
+  // because the correction is modeled as "we found qty more units than the system ever logged, and
+  // they were already sitting in this status" — the honest alternative to silently reducing whatever
+  // bucket happened to be drawn from. Writes the transfer directly (not through addStatusTransfer)
+  // since its qty<=fromQty guard would otherwise race the still-in-flight purchase write above it.
+  function addStockNeutralCorrection(sku, toStatus, qty, note, extra){
+    var item = state.invCatalog[sku];
+    if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
+    qty = Number(qty);
+    if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    var trimmedNote = (note || "").trim() || "Manual stock-count correction";
+    var purchasePayload = {
+      sku: sku, itemName: item.name, qty: qty, weightPerReel: null, weight: null,
+      pricePerUnit: 0, discountPct: 0, gstPct: 0, lineAmount: 0,
+      shade: null, reelNo: null, supplier: "", receivedBy: deviceSupervisorName || "",
+      note: trimmedNote, date: state.date, shift: state.shift || "", createdAt: Date.now()
+    };
+    return state.db.collection("purchases").add(purchasePayload).then(function(){
+      var transferPayload = Object.assign({
+        sku: sku, itemName: item.name, fromStatus: "available", toStatus: toStatus, qty: qty,
+        note: trimmedNote, by: deviceSupervisorName || "",
+        date: state.date, shift: state.shift || "", createdAt: Date.now()
+      }, extra || {});
+      return state.db.collection("statusTransfers").add(transferPayload);
+    });
   }
 
   function renderInventoryCategoryFilterOptions(){
@@ -9498,6 +9654,7 @@
     el.invStatusPoInput.value = "";
     el.invStatusNoteInput.value = "";
     el.invStatusNoPoCheck.checked = false;
+    el.invStatusKeepAvailableCheck.checked = false;
     el.invStatusError.hidden = true;
     refreshInvStatusPoVisibility();
     el.invStatusOverlay.hidden = false;
@@ -9510,10 +9667,16 @@
   // that drifted negative) that isn't actually earmarking stock for any real order — checking it
   // swaps the PO picker for a plain note, and the write below goes untagged (no poId/poNumber),
   // same as any other manual correction in this app.
+  //
+  // The "keep Available unchanged" row is a separate, orthogonal option — relevant any time stock
+  // is moving OUT of Available (whatever it's moving into), not just into Reserved. See
+  // addStockNeutralCorrection below for what checking it actually does.
   function refreshInvStatusPoVisibility(){
+    el.invStatusKeepAvailableRow.hidden = el.invStatusFromSelect.value !== "available";
     el.invStatusPoRow.hidden = el.invStatusToSelect.value !== "reserved";
     el.invStatusPoField.hidden = el.invStatusNoPoCheck.checked;
   }
+  el.invStatusFromSelect.addEventListener("change", refreshInvStatusPoVisibility);
   el.invStatusToSelect.addEventListener("change", refreshInvStatusPoVisibility);
   el.invStatusNoPoCheck.addEventListener("change", function(){
     if(el.invStatusNoPoCheck.checked){ invStatusSelectedPo = null; el.invStatusPoInput.value = ""; }
@@ -9539,10 +9702,14 @@
       el.invStatusError.hidden = false;
       return;
     }
+    var fromStatus = el.invStatusFromSelect.value;
+    var keepAvailable = fromStatus === "available" && el.invStatusKeepAvailableCheck.checked;
+    var extra = taggingPo ? { poNumber: invStatusSelectedPo.poNumber, poId: invStatusSelectedPo.id } : undefined;
     el.invStatusConfirmBtn.disabled = true;
-    addStatusTransfer(invStatusContext.sku, el.invStatusFromSelect.value, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value,
-      taggingPo ? { poNumber: invStatusSelectedPo.poNumber, poId: invStatusSelectedPo.id } : undefined)
-      .then(function(){
+    var writeP = keepAvailable
+      ? addStockNeutralCorrection(invStatusContext.sku, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value, extra)
+      : addStatusTransfer(invStatusContext.sku, fromStatus, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value, extra);
+    writeP.then(function(){
         el.invStatusConfirmBtn.disabled = false;
         el.invStatusOverlay.hidden = true;
         invStatusContext = null;
@@ -9747,14 +9914,30 @@
       var h3 = document.createElement("h3");
       h3.textContent = stage;
       head.appendChild(h3);
+      var headRight = document.createElement("div");
+      headRight.className = "stageColHeadRight";
       // The X/10 capacity chip is a job-card-slots reading that doesn't mean anything for a
       // department's daily entries, so it's skipped for House keeping / HR_Man Power.
       if(!isDept){
         var chip = document.createElement("span");
         chip.className = "capChip " + capacityClass(entries.length);
         chip.textContent = entries.length + "/" + SLOTS;
-        head.appendChild(chip);
+        headRight.appendChild(chip);
       }
+      // A direct per-stage export, right on the board column — no need to switch to the Log tab
+      // and set its Stage filter first just to get one stage's CSV (see exportStageCsv below,
+      // which reuses the exact same row/column logic as the Log tab's own Export button).
+      var stageExportBtn = document.createElement("button");
+      stageExportBtn.type = "button";
+      stageExportBtn.className = "stageExportBtn";
+      stageExportBtn.textContent = "⬇";
+      stageExportBtn.title = t("stage_export_csv_title");
+      stageExportBtn.setAttribute("aria-label", t("stage_export_csv_title"));
+      stageExportBtn.addEventListener("click", function(){
+        exportStageCsv(stage);
+      });
+      headRight.appendChild(stageExportBtn);
+      head.appendChild(headRight);
       col.appendChild(head);
 
       var body = document.createElement("div");
@@ -10345,6 +10528,24 @@
     downloadCsv("visipak-daily-job-track-log.csv", csv);
   });
 
+  // Direct per-stage export from the Board itself (see the stageExportBtn built in renderBoard) —
+  // same row-set and column logic as the Log tab's own Export button above, just pre-scoped to one
+  // stage instead of relying on the Log tab's Stage filter first.
+  function exportStageCsv(stage){
+    var rows = state.logEntries.concat(state.stageHistoryEntries).filter(function(e){
+      return deviceCanViewStage(e.stage) && e.stage === stage;
+    });
+    rows.sort(function(a, b){ return (b.createdAt || 0) - (a.createdAt || 0); });
+    if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    var slug = stage.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if(stage === "HR_Man Power"){
+      downloadCsv("visipak-" + slug + ".csv", buildHRManpowerCsv(rows));
+      return;
+    }
+    var columnKeys = stageLogColumnKeys(stage);
+    downloadCsv("visipak-" + slug + ".csv", buildCsv(rows, columnKeys));
+  }
+
   // ---------- QC Master Sheet export ----------
   // Admin-only CSV of every Customer+Product's Master Sheet record — the practical stand-in for
   // "Excel file" (a .csv opens natively in Excel, same approach as every other export in this app;
@@ -10931,7 +11132,13 @@
   }
 
   // ---------- Modal ----------
-  function openModal(entry){
+  // prefill (optional, only meaningful when entry is null — a brand-new record): pre-populates a
+  // handful of fields from elsewhere rather than starting fully blank. Used by "Promote to QC" on
+  // a Priority Task card (see promoteTaskToEntry) to carry that Task's own Client/Product/Type/
+  // Quantity/PO straight into a fresh QC entry — nothing is saved here, this only fills the form;
+  // the user still reviews (fills in Job Card No) and clicks Save themselves, so every existing
+  // validation/default in the normal save path still applies untouched.
+  function openModal(entry, prefill){
     state.editingId = entry ? entry.id : null;
     // Snapshot of whatever this entry's Layers looked like BEFORE this edit — read back on save by
     // reconcileLayerReelStatusTransfers so only the reel(s) that actually changed get moved between
@@ -10940,7 +11147,9 @@
     editingOriginalLayers = entry ? (entry.layers || null) : null;
     var deviceLocked = state.deviceStages !== "ALL";
     var allowedStages = deviceLocked ? state.deviceStages : STAGES;
-    var targetStage = entry ? entry.stage : (deviceLocked ? allowedStages[0] : STAGES[0]);
+    var targetStage = entry ? entry.stage
+      : (prefill && prefill.stage && allowedStages.indexOf(prefill.stage) !== -1) ? prefill.stage
+      : (deviceLocked ? allowedStages[0] : STAGES[0]);
     // The Specifications/Pass-Fail table is QC's own checklist wherever it appears (QC or Plant),
     // so it's gated on QC stage access rather than on the entry's own stage — a device can end up
     // able to edit one half of a Plant entry but not the other (see deviceHasQcAccess above).
@@ -10967,6 +11176,7 @@
     el.f_stage.disabled = deviceLocked && allowedStages.length <= 1;
     entrySelectedPo = (entry && entry.poNumber) ? { id: entry.poId, poNumber: entry.poNumber } : null;
     el.f_ponumber.value = entry ? (entry.poNumber || "") : "";
+    renderPoDetailsPanel(el.entryPoDetails, entrySelectedPo ? findPoById(entrySelectedPo.id) : null);
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
     el.f_artworkno.value = entry ? (entry.artworkNo||"") : "";
     el.artworkCheckNoDisplay.textContent = (entry && entry.artworkNo) ? entry.artworkNo : "—";
@@ -11075,6 +11285,22 @@
     el.f_stockinwardqty.value = entry && entry.stockInwardQty != null ? entry.stockInwardQty : "";
     el.f_stockoutwardreason.value = entry ? (entry.stockOutwardReason || "") : "";
     el.f_stockoutwardqty.value = entry && entry.stockOutwardQty != null ? entry.stockOutwardQty : "";
+    // Apply the promote-from-Task prefill (see openModal's own comment above) now — after every
+    // field above has already been reset to its normal new-entry blank state, and before
+    // updateFormFieldsForStage syncs per-stage visibility off whatever these fields now hold.
+    if(!entry && prefill){
+      if(prefill.clientName) setClientNameField(prefill.clientName);
+      if(prefill.productName) setProductField(prefill.productName);
+      lastClientNameValue = el.f_clientname.value;
+      lastProductValue = el.f_product.value;
+      if(prefill.type) el.f_type.value = prefill.type;
+      if(prefill.quantity != null) el.f_qty.value = prefill.quantity;
+      if(prefill.poId || prefill.poNumber){
+        entrySelectedPo = { id: prefill.poId || null, poNumber: prefill.poNumber || "" };
+        el.f_ponumber.value = prefill.poNumber || "";
+        renderPoDetailsPanel(el.entryPoDetails, findPoById(prefill.poId));
+      }
+    }
     updateFormFieldsForStage(targetStage);
 
     NORMAL_FORM_FIELDS.forEach(function(f){ f.disabled = !canEditNormal; });
@@ -11124,6 +11350,7 @@
     state.editingId = null;
     el.entryForm.reset();
     entrySelectedPo = null;
+    renderPoDetailsPanel(el.entryPoDetails, null);
     syncFDateLabel();
   }
   // Cancel/Escape/overlay-click all abandon the edit rather than save it, so any brand-new
@@ -11272,6 +11499,17 @@
     // since refreshQcBalanceQty's own formula already folds in the "no FG stock at all" case by
     // just equalling the full Quantity, so there's no separate fallback needed here.
     var movingQcToPlant = isQC && movedTo === "Plant";
+    // QC -> Plant also auto-populates Ply and, when the linked PO actually reserved reels ahead of
+    // time, the Layers table itself — QC's own form never even shows Ply/Layers (PLY_EXCLUDED_STAGES),
+    // so without this a Plant entry arriving from a promoted/PO-linked Task always opened blank,
+    // even though the reels for it were already picked out and sitting in Reserved. Only fires on
+    // this one hand-off save (isQC && movedTo==="Plant" — never true again once the doc is at Plant),
+    // so it can't double-apply on a later ordinary Plant save. See convertPoReservedLayersToInUse
+    // below (called after the save succeeds) for the matching Reserved -> In Use stock move.
+    var movingQcToPlantLinkedPo = movingQcToPlant ? findPoById(entrySelectedPo ? entrySelectedPo.id : null) : null;
+    var movingQcToPlantReservedLayers = (movingQcToPlantLinkedPo && movingQcToPlantLinkedPo.reserveReel && (movingQcToPlantLinkedPo.layers || []).some(function(l){ return l && l.sku; }))
+      ? movingQcToPlantLinkedPo.layers
+      : null;
     var qcBalanceQtyRequiredNum = (isQC && el.f_qcbalanceqty.value !== "") ? Number(el.f_qcbalanceqty.value) : 0;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
@@ -11329,8 +11567,15 @@
         : (movingPlantForward && plantBalanceQtyRequiredNum > 0) ? plantBalanceQtyRequiredNum
         : movingQcToPlant ? qcBalanceQtyRequiredNum
         : (el.f_qty.value === "" ? null : Number(el.f_qty.value)),
-      ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
-      layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
+      // See movingQcToPlantLinkedPo/movingQcToPlantReservedLayers above: QC's own form never
+      // collects Ply/Layers at all (stageHasPly/stageHasLayers are both false for QC), so without
+      // this carry-over a Plant entry arriving from QC always started blank even when its PO had
+      // already reserved reels for it ahead of time.
+      ply: stageHasPly(chosenStage) ? el.f_ply.value
+        : (movingQcToPlantLinkedPo && movingQcToPlantLinkedPo.ply) ? movingQcToPlantLinkedPo.ply : "",
+      layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value))
+        : movingQcToPlantReservedLayers ? movingQcToPlantReservedLayers.map(function(l){ return { sku: l.sku || "", reelWeight: "" }; })
+        : null,
       type: hasType ? el.f_type.value : "",
       // Start Time / End Time / Run Time (Hrs) / Man Power are each stage's OWN department entering
       // its own figures — they must never carry forward onto the next stage's record when a job
@@ -11536,6 +11781,12 @@
       // since that's the only stage whose form even collects `payload.layers` in the first place.
       if(stageHasLayers(chosenStage)){
         reconcileLayerReelStatusTransfers(originalLayersForReconcile, payload.layers, jobCardNoForReconcile);
+      }
+      // QC -> Plant hand-off: convert exactly the reels this PO already had Reserved into In Use
+      // (see convertPoReservedLayersToInUse's own comment) — only ever fires on this one save, since
+      // movingQcToPlant can't be true again once the doc is already at Plant.
+      if(movingQcToPlantReservedLayers && movingQcToPlantLinkedPo){
+        convertPoReservedLayersToInUse(movingQcToPlantLinkedPo, jobCardNoForReconcile);
       }
       // Archive chosenStage's own snapshot (see stageHistorySnapshot's own comment above) now that
       // the main save is safely through — entryId is only known for certain at this point (a
@@ -11817,6 +12068,14 @@
     // checkbox is disabled, so the only thing a non-admin device can do with a task is open it
     // (read-only — see openTaskModal) to read its full details.
     var canEdit = state.isAdminDevice;
+    // "Promote to QC": a shortcut that opens a brand-new QC entry pre-filled from this task's own
+    // Client/Product/Type/Quantity/PO (see openModal's prefill parameter) — NOT a save, nothing is
+    // written here; the user still reviews (fills in Job Card No) and saves it themselves, so every
+    // existing validation/default in the normal Add Entry path still applies untouched. Gated on
+    // this device actually being able to work in QC at all, same permission as adding a QC entry
+    // any other way — not on canEdit/isAdminDevice, since Store/QC staff (not just Admin) are
+    // exactly who'd use this to start a job card from a planned task.
+    var canPromote = deviceCanViewStage("QC");
     item.innerHTML =
       (canEdit ? '<span class="taskDragHandle" title="' + esc(t("task_drag_handle_title")) + '">⠿</span>' : '<span class="taskDragHandleSpacer"></span>') +
       '<input type="checkbox" class="taskCheck"' + (isTaskDone(task) ? " checked" : "") + (canEdit ? "" : " disabled") + '>' +
@@ -11829,7 +12088,8 @@
         '<div class="taskSub taskMeta"' + (metaBits.length ? "" : " hidden") + '></div>' +
         (reservedLine ? '<div class="taskNotes">' + esc(t("task_reservedreels_label")) + ": " + esc(reservedLine) + '</div>' : "") +
         (task.notes ? '<div class="taskNotes">' + esc(task.notes) + '</div>' : "") +
-      '</div>';
+      '</div>' +
+      (canPromote ? '<button type="button" class="btn ghost taskPromoteBtn" title="' + esc(t("task_promote_title")) + '">' + esc(t("task_promote_action")) + '</button>' : "");
     var metaEl = item.querySelector(".taskMeta");
     metaEl.textContent = metaBits.join(" · ");
     if(canEdit){
@@ -11843,6 +12103,20 @@
       attachTaskDragHandlers(item.querySelector(".taskDragHandle"), item, columnBodyEl);
     }
     item.querySelector(".taskBody").addEventListener("click", function(){ openTaskModal(task); });
+    if(canPromote){
+      item.querySelector(".taskPromoteBtn").addEventListener("click", function(ev){
+        ev.stopPropagation();
+        openModal(null, {
+          stage: "QC",
+          clientName: task.clientName,
+          productName: task.productName,
+          type: task.type,
+          quantity: task.quantity,
+          poId: task.poId,
+          poNumber: task.poNumber
+        });
+      });
+    }
 
     // Required Stock Qty only means anything alongside its own Quantity target — an
     // opening-stock lookup with no target quantity has nothing to subtract from. It's fetched
@@ -12065,6 +12339,7 @@
     var linkedPo = (task && task.poId) ? state.purchaseOrders.find(function(p){ return p.id === task.poId; }) : null;
     taskSelectedPo = (task && task.poNumber) ? { id: task.poId, poNumber: task.poNumber, ply: linkedPo ? (linkedPo.ply || "") : "" } : null;
     el.t_ponumber.value = task ? (task.poNumber || "") : "";
+    renderPoDetailsPanel(el.taskPoDetails, linkedPo);
     el.t_reel.checked = !!(task && task.reel);
     renderLayerSkuOptions();
     taskLayerReservedSku = {};
@@ -12093,6 +12368,7 @@
     taskSelectedPo = null;
     taskLayerReservedSku = {};
     el.fld_treellayers.hidden = true;
+    renderPoDetailsPanel(el.taskPoDetails, null);
     syncTDateLabel();
   }
   el.addTaskBtn.addEventListener("click", function(){ openTaskModal(null); });
