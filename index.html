@@ -572,6 +572,14 @@
   /* A plain block below the flex row (not a flex item itself) — always its own full-width line,
      regardless of how much room the row above happens to leave, with no flex-wrap ambiguity. */
   .poDetailsPanel .poDetailsReels{display:block;padding-top:6px;margin-top:6px;border-top:1px dashed var(--line);}
+  /* Delete/clear button on each Layer row (Plant Entry / Priority Task / PO Reserve Reel tables) —
+     releases whatever that row currently holds (see the click handlers) so it can be replaced with
+     another reel, without needing to open the dropdown and hunt for "— select reel —". */
+  .layerDeleteBtn{
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+    border-radius:6px;font-size:12px;line-height:1;padding:4px 7px;cursor:pointer;
+  }
+  .layerDeleteBtn:hover{color:var(--crit);border-color:var(--crit);}
   /* QC's Client Specs vs Visipak Specs comparison table — spans the full form width. */
   .qcSpecsBlock{grid-column:1 / -1;}
   .qcSpecsHead{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
@@ -1868,23 +1876,28 @@
            list is how a brand-new customer/product still gets entered manually (see
            handleClientNameChange/handleProductChange) — everything else about saving/learning a
            new entry into the shared catalog (upsertCatalogEntry) is unchanged. -->
+      <!-- PO Number: moved to the very start of the stage's own fields (ahead of Customer Name) —
+           same click-to-open-PO-Board picker as Inventory's Reserve/Update Status PO field (see
+           openPoPicker). Picking a PO here now actively autofills Customer Name/Product Name/Ply/
+           Quantity below (see applyPoAutofillToEntry) rather than just tagging the entry, so it
+           needs to come FIRST in the form — pick the PO, then watch the rest of the form fill in,
+           instead of typing everything by hand and only tagging the PO as an afterthought at the
+           end. Still shown on every stage that shows Job Card No (see fld_ponumber.hidden above). -->
+      <label id="fld_ponumber"><span data-i18n="form_ponumber_label">PO Number</span>
+        <input type="text" id="f_ponumber" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
+      </label>
+      <!-- Read-only reference panel showing the picked PO's own details (Customer/Product
+           Code/Material Description/Ply/Quantity/Delivery + its live Reserved Reels) — see
+           renderPoDetailsPanel. The fields below are actively autofilled from the same PO (see
+           applyPoAutofillToEntry) but stay freely editable afterward — this panel is just the PO's
+           own record for reference alongside whatever ends up on this entry. -->
+      <div class="formGridItem span2 poDetailsPanel" id="entryPoDetails" hidden></div>
       <label id="fld_clientname"><span data-i18n="form_clientname_label">Customer Name</span>
         <select id="f_clientname"></select>
       </label>
       <label id="fld_product"><span data-i18n="form_product_label">Product Name</span>
         <select id="f_product"></select>
       </label>
-      <!-- PO Number: same click-to-open-PO-Board picker as Inventory's Reserve/Update Status PO
-           field (see openPoPicker) — shown on every stage that shows Job Card No, right before it,
-           so a job card can optionally be tied back to the Purchase Order it's being run for. -->
-      <label id="fld_ponumber"><span data-i18n="form_ponumber_label">PO Number</span>
-        <input type="text" id="f_ponumber" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
-      </label>
-      <!-- Read-only reference panel showing the picked PO's own details (Customer/Product
-           Code/Material Description/Ply/Quantity/Delivery + its live Reserved Reels) — see
-           renderPoDetailsPanel. Purely informational; this entry's own Customer/Product/etc. fields
-           above are unaffected and still edited independently. -->
-      <div class="formGridItem span2 poDetailsPanel" id="entryPoDetails" hidden></div>
       <label id="fld_jobcard"><span data-i18n="form_jobcard_label">Job Card No</span> <input type="text" id="f_jobcard" required placeholder="e.g. JC-2031" data-i18n-placeholder="form_jobcard_placeholder"></label>
       <!-- Positioned right after Job Card No (rather than after Quantity, where it used to sit) so
            it reads the same way on every stage that shows it — TYPE_STAGES above lists which. -->
@@ -1973,16 +1986,16 @@
              weight of the physical reel used, which varies reel to reel even for the same SKU. -->
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_status">Status</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="layersBody">
-            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td class="mono" id="f_layer1_available"></td><td><input type="text" id="f_layer1_reelweight"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td></tr>
-            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td class="mono" id="f_layer2_available"></td><td><input type="text" id="f_layer2_reelweight"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td></tr>
-            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td class="mono" id="f_layer3_available"></td><td><input type="text" id="f_layer3_reelweight"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td></tr>
-            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td class="mono" id="f_layer4_available"></td><td><input type="text" id="f_layer4_reelweight"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td></tr>
-            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td class="mono" id="f_layer5_available"></td><td><input type="text" id="f_layer5_reelweight"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td></tr>
-            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td class="mono" id="f_layer6_available"></td><td><input type="text" id="f_layer6_reelweight"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td></tr>
-            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td class="mono" id="f_layer7_available"></td><td><input type="text" id="f_layer7_reelweight"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td></tr>
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td class="mono" id="f_layer1_available"></td><td><input type="text" id="f_layer1_reelweight"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td class="mono" id="f_layer2_available"></td><td><input type="text" id="f_layer2_reelweight"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td class="mono" id="f_layer3_available"></td><td><input type="text" id="f_layer3_reelweight"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td class="mono" id="f_layer4_available"></td><td><input type="text" id="f_layer4_reelweight"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td class="mono" id="f_layer5_available"></td><td><input type="text" id="f_layer5_reelweight"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td class="mono" id="f_layer6_available"></td><td><input type="text" id="f_layer6_reelweight"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td class="mono" id="f_layer7_available"></td><td><input type="text" id="f_layer7_reelweight"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2346,6 +2359,19 @@
       <label class="span2"><span data-i18n="task_title_label">Task</span>
         <input type="text" id="t_title" required placeholder="e.g. Prepare dispatch schedule" data-i18n-placeholder="task_title_placeholder">
       </label>
+      <!-- PO Number: moved ahead of Customer Name/Product Name/Type/Ply/Quantity — picking a PO here
+           now actively autofills all of those below (see applyPoAutofillToTask) rather than just
+           tagging the task, so it needs to come FIRST: pick the PO, watch the rest of the form fill
+           in, instead of typing everything by hand first. Picking a PO here is also what tells the
+           Reel checkbox below how many Layer rows to show (that PO's own Ply field — see
+           refreshTaskLayersVisibility). -->
+      <label><span data-i18n="task_ponumber_label">PO Number</span>
+        <input type="text" id="t_ponumber" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
+      </label>
+      <!-- Read-only reference panel showing the picked PO's own details — see renderPoDetailsPanel
+           (same panel/markup as the main entry form's own PO Number field). The fields below are
+           actively autofilled from the same PO but stay freely editable afterward. -->
+      <div class="formGridItem span2 poDetailsPanel" id="taskPoDetails" hidden></div>
       <label><span data-i18n="form_clientname_label">Customer Name</span>
         <select id="t_clientname" required></select>
       </label>
@@ -2371,16 +2397,6 @@
       <label><span data-i18n="form_qty_label">Quantity</span>
         <input type="number" id="t_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
       </label>
-      <!-- PO Number: this task's priority is driven off a Purchase Order's own selection — the same
-           click-to-open-PO-Board picker as everywhere else (see openPoPicker). Picking a PO here is
-           also what tells the Reel checkbox below how many Layer rows to show (that PO's own Ply
-           field — see refreshTaskLayersVisibility). -->
-      <label><span data-i18n="task_ponumber_label">PO Number</span>
-        <input type="text" id="t_ponumber" placeholder="Click to select a PO" data-i18n-placeholder="inv_status_po_placeholder" readonly>
-      </label>
-      <!-- Read-only reference panel showing the picked PO's own details — see renderPoDetailsPanel
-           (same panel/markup as the main entry form's own PO Number field). -->
-      <div class="formGridItem span2 poDetailsPanel" id="taskPoDetails" hidden></div>
       <!-- Reel: reveals the Layer-row reel picker below (only meaningful once a PO with a Ply set
            is chosen above) — same idea as Plant's own Layers table, but for reserving reels against
            this task's PO ahead of production rather than consuming them into a job card. -->
@@ -2401,16 +2417,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="taskLayersBody">
-            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td></tr>
-            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td></tr>
-            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td></tr>
-            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td></tr>
-            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td></tr>
-            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td></tr>
-            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td></tr>
+            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2511,16 +2527,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="poLayersBody">
-            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td class="mono" id="po_layer1_available"></td><td><span class="capChip" id="po_layer1_status" hidden></span></td></tr>
-            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td class="mono" id="po_layer2_available"></td><td><span class="capChip" id="po_layer2_status" hidden></span></td></tr>
-            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td class="mono" id="po_layer3_available"></td><td><span class="capChip" id="po_layer3_status" hidden></span></td></tr>
-            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td class="mono" id="po_layer4_available"></td><td><span class="capChip" id="po_layer4_status" hidden></span></td></tr>
-            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td class="mono" id="po_layer5_available"></td><td><span class="capChip" id="po_layer5_status" hidden></span></td></tr>
-            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td class="mono" id="po_layer6_available"></td><td><span class="capChip" id="po_layer6_status" hidden></span></td></tr>
-            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td class="mono" id="po_layer7_available"></td><td><span class="capChip" id="po_layer7_status" hidden></span></td></tr>
+            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td class="mono" id="po_layer1_available"></td><td><span class="capChip" id="po_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td class="mono" id="po_layer2_available"></td><td><span class="capChip" id="po_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td class="mono" id="po_layer3_available"></td><td><span class="capChip" id="po_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td class="mono" id="po_layer4_available"></td><td><span class="capChip" id="po_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td class="mono" id="po_layer5_available"></td><td><span class="capChip" id="po_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td class="mono" id="po_layer6_available"></td><td><span class="capChip" id="po_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td class="mono" id="po_layer7_available"></td><td><span class="capChip" id="po_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2766,7 +2782,7 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
-      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_status: "Status",
+      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_status: "Status", layers_delete_title: "Delete this reel",
       layers_reelstatus_available: "Available", layers_reelstatus_low: "Low Stock", layers_reelstatus_out: "Out of Stock",
       layers_row_label_n: "Layer {n}", layers_item_select: "— select reel —",
       layers_err_stock_move_failed: "Saved, but couldn't update Inventory stock for a Layer's reel — check Inventory > Update Status.",
@@ -3107,7 +3123,7 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
-      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_status: "स्थिति",
+      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_status: "स्थिति", layers_delete_title: "यह रील हटाएं",
       layers_reelstatus_available: "उपलब्ध", layers_reelstatus_low: "कम स्टॉक", layers_reelstatus_out: "स्टॉक खत्म",
       layers_row_label_n: "लेयर {n}", layers_item_select: "— रील चुनें —",
       layers_err_stock_move_failed: "सेव हो गया, लेकिन लेयर की रील के लिए इन्वेंटरी स्टॉक अपडेट नहीं हो सका — इन्वेंटरी > स्थिति अपडेट करें में देखें।",
@@ -3448,7 +3464,7 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
-      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_status: "స్థితి",
+      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_status: "స్థితి", layers_delete_title: "ఈ రీల్‌ను తొలగించండి",
       layers_reelstatus_available: "అందుబాటులో", layers_reelstatus_low: "తక్కువ స్టాక్", layers_reelstatus_out: "స్టాక్ లేదు",
       layers_row_label_n: "లేయర్ {n}", layers_item_select: "— రీల్‌ను ఎంచుకోండి —",
       layers_err_stock_move_failed: "సేవ్ అయ్యింది, కానీ లేయర్ రీల్ కోసం ఇన్వెంటరీ స్టాక్‌ను అప్‌డేట్ చేయలేకపోయాము — ఇన్వెంటరీ > స్థితిని అప్‌డేట్ చేయండి చూడండి.",
@@ -4505,6 +4521,7 @@
     el["f_layer" + layerN + "_available"] = document.getElementById("f_layer" + layerN + "_available");
     el["f_layer" + layerN + "_reelweight"] = document.getElementById("f_layer" + layerN + "_reelweight");
     el["f_layer" + layerN + "_status"] = document.getElementById("f_layer" + layerN + "_status");
+    el["f_layer" + layerN + "_delete"] = document.getElementById("f_layer" + layerN + "_delete");
   }
   // Same 7-always-in-the-DOM trick as the Plant Layers table above, for the Priority Task's own
   // Reel-checkbox reservation picker (see fld_treellayers/refreshTaskLayersVisibility below).
@@ -4514,6 +4531,7 @@
     el["t_layer" + tLayerN + "_sku"] = document.getElementById("t_layer" + tLayerN + "_sku");
     el["t_layer" + tLayerN + "_available"] = document.getElementById("t_layer" + tLayerN + "_available");
     el["t_layer" + tLayerN + "_status"] = document.getElementById("t_layer" + tLayerN + "_status");
+    el["t_layer" + tLayerN + "_delete"] = document.getElementById("t_layer" + tLayerN + "_delete");
   }
   // Same trick again, this time for the PO form's own Reserve Reel picker (see fld_poreellayers).
   for(var poLayerN = 1; poLayerN <= 7; poLayerN++){
@@ -4522,6 +4540,7 @@
     el["po_layer" + poLayerN + "_sku"] = document.getElementById("po_layer" + poLayerN + "_sku");
     el["po_layer" + poLayerN + "_available"] = document.getElementById("po_layer" + poLayerN + "_available");
     el["po_layer" + poLayerN + "_status"] = document.getElementById("po_layer" + poLayerN + "_status");
+    el["po_layer" + poLayerN + "_delete"] = document.getElementById("po_layer" + poLayerN + "_delete");
   }
   var lastUpdatedBy = "";
   // See openModal's own comment on why this is snapshotted, and the submit handler's call to
@@ -6186,6 +6205,25 @@
   el.f_stockinwardqty.addEventListener("input", refreshStockSummaryCalc);
   el.f_stockoutwardqty.addEventListener("input", refreshStockSummaryCalc);
 
+  // Job Card No is required everywhere it's shown (every stage but HR_Man Power/Stock Summary) —
+  // EXCEPT while a job is freshly sitting in QC with no Next Stage chosen yet. A "Promote to QC"
+  // card (see promoteTaskToEntry) deliberately leaves Job Card No blank — the request was that QC
+  // assigns it themselves once they've actually looked at the job, not at the moment it's promoted
+  // off the Priority Board — so QC can save a bare record while it's still being worked. The moment
+  // QC actually advances it on (Next Stage picked), Job Card No becomes required again, since
+  // Plant genuinely needs it. Re-run on both a stage change AND a Next Stage change (see the
+  // f_nextstage listener below) — required has to be correct the instant Save is clicked, since the
+  // browser's own native validation runs before any of this file's JS gets a chance to.
+  function refreshJobCardRequired(){
+    var stage = el.f_stage.value;
+    var hr = isHRManpowerStage(stage);
+    var stockSummary = isStockSummaryStage(stage);
+    var qc = isQCStage(stage);
+    var qcStayingPut = qc && !el.f_nextstage.value;
+    el.f_jobcard.required = !(hr || stockSummary || qcStayingPut);
+  }
+  el.f_nextstage.addEventListener("change", refreshJobCardRequired);
+
   function updateFormFieldsForStage(stage){
     var dispatch = isDispatchStage(stage);
     var readyToDispatch = isReadyToDispatchStage(stage);
@@ -6328,7 +6366,7 @@
     el.fld_product.hidden = hr;
     el.fld_ponumber.hidden = hr || stockSummary;
     el.fld_jobcard.hidden = hr || stockSummary;
-    el.f_jobcard.required = !(hr || stockSummary);
+    refreshJobCardRequired();
     el.fld_hrmanpower.hidden = !hr;
     el.fld_stockrate.hidden = !stockSummary;
     el.fld_stocksummary.hidden = !stockSummary;
@@ -6441,6 +6479,23 @@
       el["f_layer" + n + "_sku"].addEventListener("change", function(){
         refreshLayerReelStatus(n);
       });
+      // Delete clears this row's reel (and its Reel Weight, if any) so it can be replaced with
+      // another one — same "blank selection" the dropdown's own "— select reel —" option produces,
+      // just one click instead of opening the dropdown. Nothing to release here: the Entry form's
+      // own Layers table only ever moves Inventory stock at SAVE time (see
+      // reconcileLayerReelStatusTransfers), by diffing this row's sku against whatever it held
+      // before — an unsaved delete like this is exactly the kind of change that diff already covers.
+      var delBtn = el["f_layer" + n + "_delete"];
+      if(delBtn){
+        delBtn.addEventListener("click", function(){
+          var sel = el["f_layer" + n + "_sku"];
+          if(!sel || !sel.value) return;
+          sel.value = "";
+          var rw = el["f_layer" + n + "_reelweight"];
+          if(rw) rw.value = "";
+          refreshLayerReelStatus(n);
+        });
+      }
     })(layerAutofillN);
   }
 
@@ -6456,6 +6511,7 @@
       entrySelectedPo = po;
       el.f_ponumber.value = po.poNumber || "";
       renderPoDetailsPanel(el.entryPoDetails, po);
+      applyPoAutofillToEntry(po);
     });
   });
 
@@ -6488,6 +6544,7 @@
       el.t_ponumber.value = po.poNumber || "";
       renderPoDetailsPanel(el.taskPoDetails, po);
       refreshTaskLayersVisibility();
+      applyPoAutofillToTask(po);
     });
   });
   // Same leak the PO's own picker had (see releasePoLayerRow above): a row that drops out of view
@@ -6593,6 +6650,15 @@
             });
         });
       });
+      // Delete releases whatever this row currently holds Reserved (same move as picking back to
+      // "— select reel —") so the freed unit shows up in Inventory's Available count right away and
+      // the row is ready to be replaced with another reel.
+      var tDelBtn = el["t_layer" + n + "_delete"];
+      if(tDelBtn){
+        tDelBtn.addEventListener("click", function(){
+          releaseTaskLayerRow(n);
+        });
+      }
     })(tLayerAutofillN);
   }
 
@@ -6859,6 +6925,15 @@
             });
         });
       });
+      // Delete releases whatever this row currently holds Reserved against this PO, same as
+      // releasePoLayerRow's own use when a row drops out of view — frees it straight back to
+      // Available and leaves the row ready for another reel to be picked.
+      var poDelBtn = el["po_layer" + n + "_delete"];
+      if(poDelBtn){
+        poDelBtn.addEventListener("click", function(){
+          releasePoLayerRow(n);
+        });
+      }
     })(poLayerAutofillN);
   }
 
@@ -7552,7 +7627,15 @@
   // Best-effort: this runs after the entry itself has already saved successfully, so a transfer
   // failing (e.g. someone else already manually moved that stock in the meantime) only logs and
   // shows a banner rather than undoing the save.
-  function reconcileLayerReelStatusTransfers(oldLayers, newLayers, jobCardNo){
+  // `po` (optional): the PO currently linked on this Entry's own PO Number field (see
+  // linkedPoForEntryLayers in the submit handler below) — when picking a PO on the Entry form
+  // mirrors that PO's already-Reserved reels straight into these Layer rows (applyPoAutofillToEntry),
+  // a newly-consumed sku here is often stock the PO already holds in Reserved, not fresh stock
+  // sitting in Available. Consuming those units draws from the PO's own Reserved bucket first (up to
+  // however many it actually reserved of that sku), tagged to the PO like any other Reserved-bucket
+  // move, and only spills over to Available for whatever's left — e.g. more rows of that sku than
+  // the PO itself reserved, or a sku the PO never reserved at all.
+  function reconcileLayerReelStatusTransfers(oldLayers, newLayers, jobCardNo, po){
     function skuCounts(layers){
       var counts = {};
       (layers || []).forEach(function(l){
@@ -7563,6 +7646,8 @@
     }
     var oldCounts = skuCounts(oldLayers);
     var newCounts = skuCounts(newLayers);
+    var poReservedCounts = (po && po.reserveReel) ? skuCounts(po.layers) : {};
+    var poTag = po ? { poNumber: po.poNumber, poId: po.id } : undefined;
     var allSkus = {};
     Object.keys(oldCounts).forEach(function(s){ allSkus[s] = true; });
     Object.keys(newCounts).forEach(function(s){ allSkus[s] = true; });
@@ -7571,8 +7656,17 @@
       var newN = newCounts[sku] || 0;
       if(newN > oldN){
         var toConsume = newN - oldN;
-        addStatusTransfer(sku, "available", "in_use", toConsume, "Consumed by Plant Layers for Job Card " + (jobCardNo || "—"))
-          .catch(function(err){ if(window.console) console.error("Layer stock consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
+        var fromReserved = Math.min(toConsume, poReservedCounts[sku] || 0);
+        var fromAvailable = toConsume - fromReserved;
+        if(fromReserved > 0){
+          addStatusTransfer(sku, "reserved", "in_use", fromReserved,
+            "Consumed by Plant Layers for Job Card " + (jobCardNo || "—") + (poTag && poTag.poNumber ? " (PO " + poTag.poNumber + ")" : ""), poTag)
+            .catch(function(err){ if(window.console) console.error("Layer stock consume (reserved) failed:", err); showBanner(t("layers_err_stock_move_failed")); });
+        }
+        if(fromAvailable > 0){
+          addStatusTransfer(sku, "available", "in_use", fromAvailable, "Consumed by Plant Layers for Job Card " + (jobCardNo || "—"))
+            .catch(function(err){ if(window.console) console.error("Layer stock consume failed:", err); showBanner(t("layers_err_stock_move_failed")); });
+        }
       } else if(oldN > newN){
         var toRelease = oldN - newN;
         addStatusTransfer(sku, "in_use", "available", toRelease, "Released — Layer changed on Job Card " + (jobCardNo || "—"))
@@ -7678,6 +7772,80 @@
     }
     panelEl.innerHTML = html;
     panelEl.hidden = false;
+  }
+  // Picking a PO on the Entry form now autofills every field that PO already carries — Customer
+  // Name/Product/Ply/Quantity — instead of leaving the operator to retype what's already sitting on
+  // the PO board. Mirrors setClientNameField/setProductField's own "readonly value + backing var"
+  // pattern (see lastClientNameValue/lastProductValue below) so the usual dependent recalcs
+  // (applyMasterSheetAutofill/refreshStockOpeningBalance/refreshQcStockFields/etc) still fire
+  // exactly as if the operator had picked these values by hand.
+  function applyPoAutofillToEntry(po){
+    if(!po) return;
+    if(po.customerName) setClientNameField(po.customerName);
+    if(po.productCode) setProductField(po.productCode);
+    lastClientNameValue = el.f_clientname.value;
+    lastProductValue = el.f_product.value;
+    if(stageHasPly(el.f_stage.value) && po.ply){
+      el.f_ply.value = po.ply;
+      updateLayersVisibility();
+    }
+    if(po.quantity != null && !el.f_qty.readOnly) el.f_qty.value = po.quantity;
+    applyMasterSheetAutofill();
+    refreshStockOpeningBalance();
+    refreshQcStockFields();
+    refreshPlantStockFields();
+    refreshRtdFgStockFields();
+    // Mirror the PO's own already-reserved reels straight into this Plant entry's Layers table —
+    // see reconcileLayerReelStatusTransfers's own `po` argument for how these get drawn from
+    // Reserved (not Available) at save time instead of double-counting them. A PO with nothing
+    // reserved yet is left alone here — "select it manually" is the expected flow for that case.
+    if(stageHasLayers(el.f_stage.value) && po.reserveReel && po.ply){
+      var reservedLayers = po.layers || [];
+      var hasAnyReserved = reservedLayers.some(function(l){ return l && l.sku; });
+      if(hasAnyReserved){
+        var count = plyLayerCount(po.ply);
+        for(var n = 1; n <= count; n++){
+          var sku = (reservedLayers[n - 1] && reservedLayers[n - 1].sku) || "";
+          var sel = el["f_layer" + n + "_sku"];
+          if(sel && sku && state.invCatalog[sku]){
+            sel.value = sku;
+            refreshLayerReelStatus(n);
+          }
+        }
+      }
+    }
+  }
+  // Same autofill for the Priority Task modal — Customer Name/Product/Quantity, plus mirroring the
+  // PO's own reserved reels into the Task's Layer rows. Unlike the Entry form's Layers (which only
+  // move stock at save time), the Task's own Layer rows reserve live on pick (see the
+  // tLayerAutofillN change handlers above) — so mirroring here sets each row's dropdown AND its
+  // taskLayerReservedSku[n] bookkeeping directly, WITHOUT calling addStatusTransfer, since the PO
+  // itself already holds that unit Reserved. Swapping a mirrored row to a different reel later still
+  // works correctly through the existing change handler: releasing "reserved" -> "available" is
+  // exactly the right move whether this row's reservation came from the PO or from a live pick.
+  function applyPoAutofillToTask(po){
+    if(!po) return;
+    if(po.customerName) setTaskClientNameField(po.customerName);
+    if(po.productCode) setTaskProductField(po.productCode);
+    lastTaskClientNameValue = el.t_clientname.value;
+    lastTaskProductValue = el.t_product.value;
+    if(po.quantity != null) el.t_quantity.value = po.quantity;
+    var reservedLayers = po.layers || [];
+    var hasAnyReserved = po.reserveReel && reservedLayers.some(function(l){ return l && l.sku; });
+    if(hasAnyReserved && po.ply){
+      el.t_reel.checked = true;
+      refreshTaskLayersVisibility();
+      var count = plyLayerCount(po.ply);
+      for(var n = 1; n <= count; n++){
+        var sku = (reservedLayers[n - 1] && reservedLayers[n - 1].sku) || "";
+        var sel = el["t_layer" + n + "_sku"];
+        if(sel && sku && state.invCatalog[sku]){
+          sel.value = sku;
+          taskLayerReservedSku[n] = sku;
+          refreshTaskLayerReelStatus(n);
+        }
+      }
+    }
   }
   // Deleting a purchase, or editing one down to a smaller Quantity Received, both reduce that SKU's
   // total purchased qty (to 0 for a delete, to whatever the edited value is otherwise). If some of
@@ -11510,6 +11678,11 @@
     var movingQcToPlantReservedLayers = (movingQcToPlantLinkedPo && movingQcToPlantLinkedPo.reserveReel && (movingQcToPlantLinkedPo.layers || []).some(function(l){ return l && l.sku; }))
       ? movingQcToPlantLinkedPo.layers
       : null;
+    // A PO linked directly on a Plant entry's own PO Number field (not arriving via the QC hand-off
+    // above) — read by reconcileLayerReelStatusTransfers below so a Layer row picking one of THIS
+    // PO's own already-Reserved reels (whether mirrored in by applyPoAutofillToEntry or picked by
+    // hand) draws from Reserved instead of double-counting it out of Available.
+    var linkedPoForEntryLayers = (stageHasLayers(chosenStage) && entrySelectedPo) ? findPoById(entrySelectedPo.id) : null;
     var qcBalanceQtyRequiredNum = (isQC && el.f_qcbalanceqty.value !== "") ? Number(el.f_qcbalanceqty.value) : 0;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
@@ -11780,7 +11953,7 @@
       // Inventory stock — only while this save's own open form is Plant itself (stageHasLayers),
       // since that's the only stage whose form even collects `payload.layers` in the first place.
       if(stageHasLayers(chosenStage)){
-        reconcileLayerReelStatusTransfers(originalLayersForReconcile, payload.layers, jobCardNoForReconcile);
+        reconcileLayerReelStatusTransfers(originalLayersForReconcile, payload.layers, jobCardNoForReconcile, linkedPoForEntryLayers);
       }
       // QC -> Plant hand-off: convert exactly the reels this PO already had Reserved into In Use
       // (see convertPoReservedLayersToInUse's own comment) — only ever fires on this one save, since
@@ -12815,3 +12988,4 @@
 </script>
 </body>
 </html>
+
