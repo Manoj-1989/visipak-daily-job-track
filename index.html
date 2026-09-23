@@ -6491,6 +6491,16 @@
   for(var layerAutofillN = 1; layerAutofillN <= 7; layerAutofillN++){
     (function(n){
       el["f_layer" + n + "_sku"].addEventListener("change", function(){
+        var sel = el["f_layer" + n + "_sku"];
+        var rw = el["f_layer" + n + "_reelweight"];
+        // Picking a reel by hand fills in its Reel Weight from Inventory's own receiving data (see
+        // latestReelWeightForSku) — a mirrored pick (applyPoAutofillToEntry setting .value directly,
+        // no change event) already carries the PO's own recorded weight for that specific reel and
+        // is left alone. A sku with no receiving history yet leaves the field as-is.
+        if(rw && sel.value){
+          var known = latestReelWeightForSku(sel.value);
+          if(known !== "") rw.value = known;
+        }
         refreshLayerReelStatus(n);
       });
       // Delete clears this row's reel (and its Reel Weight, if any) so it can be replaced with
@@ -6930,6 +6940,14 @@
           addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via PO", poTag)
             .then(function(){
               poLayerReservedSku[n] = newSku;
+              // Picking a reel by hand fills in its Reel Weight from Inventory's own receiving data
+              // (see latestReelWeightForSku) — a sku with no receiving history yet leaves the field
+              // as-is for the person to type in.
+              var rw = el["po_layer" + n + "_reelweight"];
+              if(rw){
+                var known = latestReelWeightForSku(newSku);
+                if(known !== "") rw.value = known;
+              }
               refreshPoLayerReelStatus(n);
               refreshPoOrphanReels();
             }).catch(function(err){
@@ -7692,6 +7710,19 @@
   function availableFor(sku){
     var b = computeStatusBucketsMap()[sku];
     return b ? b.available : 0;
+  }
+  // Reel Weight autofill: when a Layer row's Reel Item is picked by hand (PO / QC / Plant — see the
+  // sku change handlers below), the Reel Weight field fills in from Inventory's own receiving data
+  // for that item instead of being retyped every time. There's no single "weight per reel" stored on
+  // the catalog item itself — each receiving lot (purchase) records its own weightPerReel, since
+  // different batches of the same reel can weigh slightly differently — so this reads the MOST
+  // RECENT lot's figure (state.invPurchases is kept newest-first, see subscribeInventory), the same
+  // number the Inventory tab's own Reels view would show first for this item. Returns "" (leave the
+  // field as-is) when this sku has no receiving history with a weight on file yet.
+  function latestReelWeightForSku(sku){
+    if(!sku) return "";
+    var p = state.invPurchases.find(function(p){ return p.sku === sku && p.weightPerReel != null; });
+    return p ? p.weightPerReel : "";
   }
   // Which reels are currently held Reserved against one specific PO — read by both the PO card
   // (buildPoItem) and a linked Priority Task's own card (buildTaskItem), per the request that a
