@@ -1029,6 +1029,7 @@
                 <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
                 <th data-i18n="inv_items_unit">Unit</th>
                 <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_reserved">Reserved</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+                <th data-i18n="inv_th_budsavailable">Buds Available</th><th data-i18n="inv_th_budweight">Bud Weight</th>
                 <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
                 <th data-i18n="inv_th_status">Status</th><th></th>
               </tr>
@@ -1050,6 +1051,7 @@
                 <th data-i18n="inv_extract_th_gsm">GSM</th><th data-i18n="inv_extract_th_size">Size</th><th data-i18n="inv_extract_th_bf">BF</th><th data-i18n="inv_items_shade">Shade</th>
                 <th data-i18n="inv_items_unit">Unit</th>
                 <th data-i18n="inv_th_available">Available</th><th data-i18n="inv_th_reserved">Reserved</th><th data-i18n="inv_th_inuse">In Use</th><th data-i18n="inv_th_damaged">Damaged</th>
+                <th data-i18n="inv_th_budsavailable">Buds Available</th><th data-i18n="inv_th_budweight">Bud Weight</th>
                 <th data-i18n="inv_th_price">Price/Unit</th><th data-i18n="inv_th_value">Value</th><th data-i18n="inv_th_reorder">Reorder Point</th>
                 <th data-i18n="inv_th_status">Status</th><th></th>
               </tr>
@@ -1986,16 +1988,16 @@
              weight of the physical reel used, which varies reel to reel even for the same SKU. -->
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="layersBody">
-            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td><input type="text" id="f_layer1_reelweight"></td><td class="mono" id="f_layer1_available"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td><input type="text" id="f_layer2_reelweight"></td><td class="mono" id="f_layer2_available"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td><input type="text" id="f_layer3_reelweight"></td><td class="mono" id="f_layer3_available"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td><input type="text" id="f_layer4_reelweight"></td><td class="mono" id="f_layer4_available"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td><input type="text" id="f_layer5_reelweight"></td><td class="mono" id="f_layer5_available"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td><input type="text" id="f_layer6_reelweight"></td><td class="mono" id="f_layer6_available"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td class="mono" id="f_layer7_available"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td><input type="text" id="f_layer1_reelweight"></td><td><input type="text" id="f_layer1_budweight"></td><td class="mono" id="f_layer1_budcount"></td><td class="mono" id="f_layer1_available"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td><input type="text" id="f_layer2_reelweight"></td><td><input type="text" id="f_layer2_budweight"></td><td class="mono" id="f_layer2_budcount"></td><td class="mono" id="f_layer2_available"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td><input type="text" id="f_layer3_reelweight"></td><td><input type="text" id="f_layer3_budweight"></td><td class="mono" id="f_layer3_budcount"></td><td class="mono" id="f_layer3_available"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td><input type="text" id="f_layer4_reelweight"></td><td><input type="text" id="f_layer4_budweight"></td><td class="mono" id="f_layer4_budcount"></td><td class="mono" id="f_layer4_available"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td><input type="text" id="f_layer5_reelweight"></td><td><input type="text" id="f_layer5_budweight"></td><td class="mono" id="f_layer5_budcount"></td><td class="mono" id="f_layer5_available"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td><input type="text" id="f_layer6_reelweight"></td><td><input type="text" id="f_layer6_budweight"></td><td class="mono" id="f_layer6_budcount"></td><td class="mono" id="f_layer6_available"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_budweight"></td><td class="mono" id="f_layer7_budcount"></td><td class="mono" id="f_layer7_available"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2417,16 +2419,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="taskLayersBody">
-            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td><input type="text" id="t_layer1_reelweight"></td><td class="mono" id="t_layer1_budweight"></td><td class="mono" id="t_layer1_budcount"></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td><input type="text" id="t_layer2_reelweight"></td><td class="mono" id="t_layer2_budweight"></td><td class="mono" id="t_layer2_budcount"></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td><input type="text" id="t_layer3_reelweight"></td><td class="mono" id="t_layer3_budweight"></td><td class="mono" id="t_layer3_budcount"></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td><input type="text" id="t_layer4_reelweight"></td><td class="mono" id="t_layer4_budweight"></td><td class="mono" id="t_layer4_budcount"></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td><input type="text" id="t_layer5_reelweight"></td><td class="mono" id="t_layer5_budweight"></td><td class="mono" id="t_layer5_budcount"></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td><input type="text" id="t_layer6_reelweight"></td><td class="mono" id="t_layer6_budweight"></td><td class="mono" id="t_layer6_budcount"></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td><input type="text" id="t_layer7_reelweight"></td><td class="mono" id="t_layer7_budweight"></td><td class="mono" id="t_layer7_budcount"></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2527,16 +2529,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="poLayersBody">
-            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td><input type="text" id="po_layer1_reelweight"></td><td class="mono" id="po_layer1_available"></td><td><span class="capChip" id="po_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td><input type="text" id="po_layer2_reelweight"></td><td class="mono" id="po_layer2_available"></td><td><span class="capChip" id="po_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td><input type="text" id="po_layer3_reelweight"></td><td class="mono" id="po_layer3_available"></td><td><span class="capChip" id="po_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td><input type="text" id="po_layer4_reelweight"></td><td class="mono" id="po_layer4_available"></td><td><span class="capChip" id="po_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td><input type="text" id="po_layer5_reelweight"></td><td class="mono" id="po_layer5_available"></td><td><span class="capChip" id="po_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td><input type="text" id="po_layer6_reelweight"></td><td class="mono" id="po_layer6_available"></td><td><span class="capChip" id="po_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td><input type="text" id="po_layer7_reelweight"></td><td class="mono" id="po_layer7_available"></td><td><span class="capChip" id="po_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td><input type="text" id="po_layer1_reelweight"></td><td class="mono" id="po_layer1_budweight"></td><td class="mono" id="po_layer1_budcount"></td><td class="mono" id="po_layer1_available"></td><td><span class="capChip" id="po_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td><input type="text" id="po_layer2_reelweight"></td><td class="mono" id="po_layer2_budweight"></td><td class="mono" id="po_layer2_budcount"></td><td class="mono" id="po_layer2_available"></td><td><span class="capChip" id="po_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td><input type="text" id="po_layer3_reelweight"></td><td class="mono" id="po_layer3_budweight"></td><td class="mono" id="po_layer3_budcount"></td><td class="mono" id="po_layer3_available"></td><td><span class="capChip" id="po_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td><input type="text" id="po_layer4_reelweight"></td><td class="mono" id="po_layer4_budweight"></td><td class="mono" id="po_layer4_budcount"></td><td class="mono" id="po_layer4_available"></td><td><span class="capChip" id="po_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td><input type="text" id="po_layer5_reelweight"></td><td class="mono" id="po_layer5_budweight"></td><td class="mono" id="po_layer5_budcount"></td><td class="mono" id="po_layer5_available"></td><td><span class="capChip" id="po_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td><input type="text" id="po_layer6_reelweight"></td><td class="mono" id="po_layer6_budweight"></td><td class="mono" id="po_layer6_budcount"></td><td class="mono" id="po_layer6_available"></td><td><span class="capChip" id="po_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td><input type="text" id="po_layer7_reelweight"></td><td class="mono" id="po_layer7_budweight"></td><td class="mono" id="po_layer7_budcount"></td><td class="mono" id="po_layer7_available"></td><td><span class="capChip" id="po_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2782,7 +2784,7 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
-      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_status: "Status", layers_delete_title: "Delete this reel",
+      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_budweight: "Buds Weight", layers_th_budcount: "Buds Count", layers_th_status: "Status", layers_delete_title: "Delete this reel",
       layers_reelstatus_available: "Available", layers_reelstatus_low: "Low Stock", layers_reelstatus_out: "Out of Stock",
       layers_row_label_n: "Layer {n}", layers_item_select: "— select reel —",
       layers_err_stock_move_failed: "Saved, but couldn't update Inventory stock for a Layer's reel — check Inventory > Update Status.",
@@ -2924,7 +2926,7 @@
       btn_manage_inventory_items: "Manage Inventory Items",
       inv_search_placeholder: "Search item, SKU, category…",
       inv_th_item: "Item", inv_th_sku: "SKU", inv_th_zone: "Zone", inv_th_category: "Category",
-      inv_th_available: "Available", inv_th_reserved: "Reserved", inv_th_inuse: "In Use", inv_th_damaged: "Damaged",
+      inv_th_available: "Available", inv_th_reserved: "Reserved", inv_th_inuse: "In Use", inv_th_damaged: "Damaged", inv_th_budsavailable: "Buds Available", inv_th_budweight: "Bud Weight",
       inv_th_price: "Price/Unit", inv_th_value: "Value", inv_th_reorder: "Reorder Point", inv_th_status: "Status",
       inv_th_qty: "Qty", inv_th_discount: "Disc %", inv_th_gst: "GST %", inv_th_amount: "Amount",
       inv_th_supplier: "Supplier", inv_th_receivedby: "Received By",
@@ -3123,7 +3125,7 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
-      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_status: "स्थिति", layers_delete_title: "यह रील हटाएं",
+      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_budweight: "बड्स वज़न", layers_th_budcount: "बड्स गिनती", layers_th_status: "स्थिति", layers_delete_title: "यह रील हटाएं",
       layers_reelstatus_available: "उपलब्ध", layers_reelstatus_low: "कम स्टॉक", layers_reelstatus_out: "स्टॉक खत्म",
       layers_row_label_n: "लेयर {n}", layers_item_select: "— रील चुनें —",
       layers_err_stock_move_failed: "सेव हो गया, लेकिन लेयर की रील के लिए इन्वेंटरी स्टॉक अपडेट नहीं हो सका — इन्वेंटरी > स्थिति अपडेट करें में देखें।",
@@ -3265,7 +3267,7 @@
       btn_manage_inventory_items: "इन्वेंटरी आइटम प्रबंधित करें",
       inv_search_placeholder: "आइटम, SKU, श्रेणी खोजें…",
       inv_th_item: "आइटम", inv_th_sku: "SKU", inv_th_zone: "ज़ोन", inv_th_category: "श्रेणी",
-      inv_th_available: "उपलब्ध", inv_th_reserved: "आरक्षित", inv_th_inuse: "उपयोग में", inv_th_damaged: "क्षतिग्रस्त",
+      inv_th_available: "उपलब्ध", inv_th_reserved: "आरक्षित", inv_th_inuse: "उपयोग में", inv_th_damaged: "क्षतिग्रस्त", inv_th_budsavailable: "बड्स उपलब्ध", inv_th_budweight: "बड वज़न",
       inv_th_price: "मूल्य/यूनिट", inv_th_value: "मूल्य", inv_th_reorder: "रीऑर्डर पॉइंट", inv_th_status: "स्थिति",
       inv_th_qty: "मात्रा", inv_th_discount: "छूट %", inv_th_gst: "GST %", inv_th_amount: "राशि",
       inv_th_supplier: "सप्लायर", inv_th_receivedby: "प्राप्तकर्ता",
@@ -3464,7 +3466,7 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
-      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_status: "స్థితి", layers_delete_title: "ఈ రీల్‌ను తొలగించండి",
+      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_budweight: "బడ్స్ బరువు", layers_th_budcount: "బడ్స్ లెక్క", layers_th_status: "స్థితి", layers_delete_title: "ఈ రీల్‌ను తొలగించండి",
       layers_reelstatus_available: "అందుబాటులో", layers_reelstatus_low: "తక్కువ స్టాక్", layers_reelstatus_out: "స్టాక్ లేదు",
       layers_row_label_n: "లేయర్ {n}", layers_item_select: "— రీల్‌ను ఎంచుకోండి —",
       layers_err_stock_move_failed: "సేవ్ అయ్యింది, కానీ లేయర్ రీల్ కోసం ఇన్వెంటరీ స్టాక్‌ను అప్‌డేట్ చేయలేకపోయాము — ఇన్వెంటరీ > స్థితిని అప్‌డేట్ చేయండి చూడండి.",
@@ -3606,7 +3608,7 @@
       btn_manage_inventory_items: "ఇన్వెంటరీ ఐటమ్‌లను నిర్వహించండి",
       inv_search_placeholder: "ఐటమ్, SKU, కేటగిరీ వెతకండి…",
       inv_th_item: "ఐటమ్", inv_th_sku: "SKU", inv_th_zone: "జోన్", inv_th_category: "కేటగిరీ",
-      inv_th_available: "అందుబాటులో", inv_th_reserved: "రిజర్వ్ చేయబడింది", inv_th_inuse: "వాడుకలో", inv_th_damaged: "పాడైనవి",
+      inv_th_available: "అందుబాటులో", inv_th_reserved: "రిజర్వ్ చేయబడింది", inv_th_inuse: "వాడుకలో", inv_th_damaged: "పాడైనవి", inv_th_budsavailable: "బడ్స్ అందుబాటులో", inv_th_budweight: "బడ్ బరువు",
       inv_th_price: "ధర/యూనిట్", inv_th_value: "విలువ", inv_th_reorder: "రీఆర్డర్ పాయింట్", inv_th_status: "స్థితి",
       inv_th_qty: "పరిమాణం", inv_th_discount: "డిస్కౌంట్ %", inv_th_gst: "GST %", inv_th_amount: "మొత్తం",
       inv_th_supplier: "సప్లయర్", inv_th_receivedby: "స్వీకరించినవారు",
@@ -3997,6 +3999,7 @@
     invCatalog: {},          // `products` docs keyed by SKU — see subscribeInventory
     invPurchases: [],        // `purchases` (receiving ledger), newest first — see subscribeInventory
     invStatusTransfers: [],  // `statusTransfers` (Available/In Use/Damaged moves) — see subscribeInventory
+    invBuds: [],             // `reelBuds` (leftover reel weight recorded at Plant) — see subscribeInventory
     unsubInvCatalog: null,
     unsubInvPurchases: null,
     unsubInvStatusTransfers: null,
@@ -4520,6 +4523,11 @@
     el["f_layer" + layerN + "_sku"] = document.getElementById("f_layer" + layerN + "_sku");
     el["f_layer" + layerN + "_available"] = document.getElementById("f_layer" + layerN + "_available");
     el["f_layer" + layerN + "_reelweight"] = document.getElementById("f_layer" + layerN + "_reelweight");
+    // Buds Weight (see refreshLayerReelStatus/computeLayersData): a real editable input, unlike
+    // Buds Count — at Plant it's the operator's own leftover-weight entry, at QC (same shared DOM
+    // field) it's toggled readOnly and shows a live aggregate instead.
+    el["f_layer" + layerN + "_budweight"] = document.getElementById("f_layer" + layerN + "_budweight");
+    el["f_layer" + layerN + "_budcount"] = document.getElementById("f_layer" + layerN + "_budcount");
     el["f_layer" + layerN + "_status"] = document.getElementById("f_layer" + layerN + "_status");
     el["f_layer" + layerN + "_delete"] = document.getElementById("f_layer" + layerN + "_delete");
   }
@@ -4529,6 +4537,9 @@
     el["tLayerRow" + tLayerN] = document.getElementById("tLayerRow" + tLayerN);
     el["tLayerLabel" + tLayerN] = document.getElementById("tLayerLabel" + tLayerN);
     el["t_layer" + tLayerN + "_sku"] = document.getElementById("t_layer" + tLayerN + "_sku");
+    el["t_layer" + tLayerN + "_reelweight"] = document.getElementById("t_layer" + tLayerN + "_reelweight");
+    el["t_layer" + tLayerN + "_budweight"] = document.getElementById("t_layer" + tLayerN + "_budweight");
+    el["t_layer" + tLayerN + "_budcount"] = document.getElementById("t_layer" + tLayerN + "_budcount");
     el["t_layer" + tLayerN + "_available"] = document.getElementById("t_layer" + tLayerN + "_available");
     el["t_layer" + tLayerN + "_status"] = document.getElementById("t_layer" + tLayerN + "_status");
     el["t_layer" + tLayerN + "_delete"] = document.getElementById("t_layer" + tLayerN + "_delete");
@@ -4539,6 +4550,8 @@
     el["poLayerLabel" + poLayerN] = document.getElementById("poLayerLabel" + poLayerN);
     el["po_layer" + poLayerN + "_sku"] = document.getElementById("po_layer" + poLayerN + "_sku");
     el["po_layer" + poLayerN + "_reelweight"] = document.getElementById("po_layer" + poLayerN + "_reelweight");
+    el["po_layer" + poLayerN + "_budweight"] = document.getElementById("po_layer" + poLayerN + "_budweight");
+    el["po_layer" + poLayerN + "_budcount"] = document.getElementById("po_layer" + poLayerN + "_budcount");
     el["po_layer" + poLayerN + "_available"] = document.getElementById("po_layer" + poLayerN + "_available");
     el["po_layer" + poLayerN + "_status"] = document.getElementById("po_layer" + poLayerN + "_status");
     el["po_layer" + poLayerN + "_delete"] = document.getElementById("po_layer" + poLayerN + "_delete");
@@ -4634,7 +4647,7 @@
   // Layer Reel Item/Reel Weight fields belong to Plant's own team, same as its other normal fields
   // (the Status cell next to them is a plain read-only display, not a form control).
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
-    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_sku"], el["f_layer" + layerFieldN + "_reelweight"]);
+    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_sku"], el["f_layer" + layerFieldN + "_reelweight"], el["f_layer" + layerFieldN + "_budweight"]);
   }
   // Every field only QC (or admin) can edit, regardless of which stage the entry itself belongs
   // to: the Specifications table, the Artwork No check, and the Hold switch.
@@ -5666,23 +5679,48 @@
   // what reconcileLayerReelStatusTransfers reads on save to move that reel's stock from Available
   // to In Use; a row left on "— select reel —" just saves an empty sku and never touches inventory
   // stock, same as before this existed.
-  function computeLayersData(count){
+  // `chosenStageForBuds` decides whether this save's own Buds Weight is real operator data (Plant)
+  // or just a live read-only aggregate the shared f_layer field happened to be showing (QC and
+  // anywhere else stageHasLayers allows) — see refreshLayerReelStatus. Only Plant's own figure ever
+  // gets persisted as a genuine bud; every other stage preserves whatever this row's own layer
+  // already had saved (editingOriginalLayers), so QC's live display is never mistaken for new data
+  // and a re-save never silently wipes out a bud Plant already recorded.
+  function computeLayersData(count, chosenStageForBuds){
     var layers = [];
+    var isPlantSave = chosenStageForBuds === "Plant";
     for(var i = 1; i <= count; i++){
+      var origLayer = (editingOriginalLayers && editingOriginalLayers[i - 1]) || null;
+      var budWeight, budRecordId;
+      if(isPlantSave){
+        var bwEl = el["f_layer" + i + "_budweight"];
+        budWeight = bwEl ? bwEl.value.trim() : "";
+        budRecordId = origLayer ? (origLayer.budRecordId || null) : null;
+      } else {
+        budWeight = origLayer ? (origLayer.budWeight || "") : "";
+        budRecordId = origLayer ? (origLayer.budRecordId || null) : null;
+      }
       layers.push({
         sku: el["f_layer" + i + "_sku"] ? el["f_layer" + i + "_sku"].value : "",
-        reelWeight: el["f_layer" + i + "_reelweight"].value.trim()
+        reelWeight: el["f_layer" + i + "_reelweight"].value.trim(),
+        budWeight: budWeight,
+        budRecordId: budRecordId
       });
     }
     return layers;
   }
-  // Same idea as computeLayersData above, for the Priority Task's own Reel-reservation rows — just
-  // the sku (no Reel Weight column there; see fld_treellayers). `count` is the linked PO's own Ply
-  // (plyLayerCount(taskSelectedPo.ply)), not the task's unrelated t_ply field.
+  // Same idea as computeLayersData above, for the Priority Task's own Reel-reservation rows. Reel
+  // Weight (added alongside Buds Weight/Count — see fld_treellayers) is purely informational here,
+  // same as the PO form's own Reel Weight below — Buds Weight/Count are never saved on a Task at
+  // all, just a live display (see refreshTaskLayerReelStatus), so there's nothing to compute for
+  // them here. `count` is the linked PO's own Ply (plyLayerCount(taskSelectedPo.ply)), not the
+  // task's unrelated t_ply field.
   function computeTaskLayersData(count){
     var layers = [];
     for(var i = 1; i <= count; i++){
-      layers.push({ sku: el["t_layer" + i + "_sku"] ? el["t_layer" + i + "_sku"].value : "" });
+      layers.push({
+        sku: el["t_layer" + i + "_sku"] ? el["t_layer" + i + "_sku"].value : "",
+        reelWeight: el["t_layer" + i + "_reelweight"] ? el["t_layer" + i + "_reelweight"].value.trim() : ""
+      });
     }
     return layers;
   }
@@ -6459,6 +6497,10 @@
     el.fld_layers.hidden = count === 0;
     for(var n = 1; n <= 7; n++){
       el["layerRow" + n].hidden = n > count;
+      // Re-evaluates Buds Weight's readOnly-vs-live-aggregate behavior for every visible row —
+      // matters whenever Stage itself changes between QC and Plant on an open entry (rare, but the
+      // Stage dropdown isn't locked), not just on the initial modal-open population.
+      if(n <= count) refreshLayerReelStatus(n);
     }
   }
   el.f_ply.addEventListener("change", updateLayersVisibility);
@@ -6467,14 +6509,30 @@
   // Out of Stock) right next to it, computed from the same Available-bucket ledger the Inventory
   // screen itself reads (computeStatusBucketsMap/availableFor) against the item's catalog reorder
   // point (inventoryStatus). Clearing the dropdown back to "— select reel —" just hides the chip —
-  // there's nothing to report stock status on.
+  // there's nothing to report stock status on. Buds Weight/Count (see computeLayersData/
+  // reconcilePlantBudWeights) share this same refresh: Buds Count is always a plain read-only
+  // aggregate, but Buds Weight is real operator data entry ONLY at Plant — everywhere else (QC
+  // shares this exact DOM field) it's toggled readOnly and just mirrors the live aggregate instead,
+  // the same "informational until Plant" treatment Available already gets.
   function refreshLayerReelStatus(n){
     var chip = el["f_layer" + n + "_status"];
     var availCell = el["f_layer" + n + "_available"];
+    var budWeightEl = el["f_layer" + n + "_budweight"];
+    var budCountCell = el["f_layer" + n + "_budcount"];
     if(!chip) return;
     var skuEl = el["f_layer" + n + "_sku"];
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
+    var isPlantForm = el.f_stage.value === "Plant";
+    if(budWeightEl){
+      budWeightEl.readOnly = !isPlantForm;
+      if(!isPlantForm){
+        budWeightEl.value = item ? String(budsAvailableWeightForSku(sku)) : "";
+      }
+      // At Plant, leave whatever's already in the field alone — either the operator's own typed
+      // entry, or the row's saved value populated when this entry was opened (see openModal).
+    }
+    if(budCountCell) budCountCell.textContent = item ? String(budsAvailableCountForSku(sku)) : "";
     if(!item){
       chip.hidden = true;
       if(availCell) availCell.textContent = "";
@@ -6501,14 +6559,20 @@
           var known = latestReelWeightForSku(sel.value);
           if(known !== "") rw.value = known;
         }
+        // A fresh pick means any Buds Weight already typed here belonged to the OLD reel — clear it
+        // (Plant only; refreshLayerReelStatus below overwrites QC's copy with the new sku's own
+        // aggregate anyway) so it's never mistaken for the newly-picked reel's own leftover weight.
+        var bw = el["f_layer" + n + "_budweight"];
+        if(bw && el.f_stage.value === "Plant") bw.value = "";
         refreshLayerReelStatus(n);
       });
-      // Delete clears this row's reel (and its Reel Weight, if any) so it can be replaced with
-      // another one — same "blank selection" the dropdown's own "— select reel —" option produces,
-      // just one click instead of opening the dropdown. Nothing to release here: the Entry form's
-      // own Layers table only ever moves Inventory stock at SAVE time (see
-      // reconcileLayerReelStatusTransfers), by diffing this row's sku against whatever it held
-      // before — an unsaved delete like this is exactly the kind of change that diff already covers.
+      // Delete clears this row's reel (and its Reel Weight/Buds Weight, if any) so it can be
+      // replaced with another one — same "blank selection" the dropdown's own "— select reel —"
+      // option produces, just one click instead of opening the dropdown. Nothing to release here:
+      // the Entry form's own Layers table only ever moves Inventory stock at SAVE time (see
+      // reconcileLayerReelStatusTransfers/reconcilePlantBudWeights), by diffing this row's sku/
+      // budWeight against whatever it held before — an unsaved delete like this is exactly the kind
+      // of change that diff already covers.
       var delBtn = el["f_layer" + n + "_delete"];
       if(delBtn){
         delBtn.addEventListener("click", function(){
@@ -6517,6 +6581,8 @@
           sel.value = "";
           var rw = el["f_layer" + n + "_reelweight"];
           if(rw) rw.value = "";
+          var bw = el["f_layer" + n + "_budweight"];
+          if(bw && el.f_stage.value === "Plant") bw.value = "";
           refreshLayerReelStatus(n);
         });
       }
@@ -6580,6 +6646,7 @@
     if(!sku) return;
     taskLayerReservedSku[n] = "";
     if(el["t_layer" + n + "_sku"]) el["t_layer" + n + "_sku"].value = "";
+    if(el["t_layer" + n + "_reelweight"]) el["t_layer" + n + "_reelweight"].value = "";
     refreshTaskLayerReelStatus(n);
     var po = taskSelectedPo;
     addStatusTransfer(sku, "reserved", "available", 1, "Released — Priority Task row removed" + (po && po.poNumber ? " (PO " + po.poNumber + ")" : ""),
@@ -6611,10 +6678,18 @@
   function refreshTaskLayerReelStatus(n){
     var chip = el["t_layer" + n + "_status"];
     var availCell = el["t_layer" + n + "_available"];
+    var budWeightCell = el["t_layer" + n + "_budweight"];
+    var budCountCell = el["t_layer" + n + "_budcount"];
     if(!chip) return;
     var skuEl = el["t_layer" + n + "_sku"];
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
+    // Buds Weight/Count are purely informational here (same "travels with the reel, never fed back
+    // into the ledger" treatment as Priority's own Reel Weight) — a live read-only aggregate of buds
+    // already on file for whichever reel spec is picked, so the team sizing this task's reservation
+    // can see there's already spare material sitting around before reserving a brand-new reel.
+    if(budWeightCell) budWeightCell.textContent = item ? budsAvailableWeightForSku(sku).toLocaleString() : "";
+    if(budCountCell) budCountCell.textContent = item ? budsAvailableCountForSku(sku).toLocaleString() : "";
     if(!item){
       chip.hidden = true;
       if(availCell) availCell.textContent = "";
@@ -6656,7 +6731,12 @@
           : Promise.resolve();
         releaseP.then(function(){
           taskLayerReservedSku[n] = "";
-          if(!newSku){ refreshTaskLayerReelStatus(n); return; }
+          if(!newSku){
+            var rwClear = el["t_layer" + n + "_reelweight"];
+            if(rwClear) rwClear.value = "";
+            refreshTaskLayerReelStatus(n);
+            return;
+          }
           if(!po){
             sel.value = "";
             showBanner(t("task_err_po_required_for_reel"));
@@ -6666,6 +6746,14 @@
           addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via Priority Task", { poNumber: po.poNumber, poId: po.id })
             .then(function(){
               taskLayerReservedSku[n] = newSku;
+              // Picking a reel by hand fills in its Reel Weight from Inventory's own receiving data
+              // (see latestReelWeightForSku) — a sku with no receiving history yet leaves the field
+              // as-is for the person to type in.
+              var rw = el["t_layer" + n + "_reelweight"];
+              if(rw){
+                var known = latestReelWeightForSku(newSku);
+                if(known !== "") rw.value = known;
+              }
               refreshTaskLayerReelStatus(n);
             }).catch(function(err){
               sel.value = "";
@@ -6894,10 +6982,17 @@
   function refreshPoLayerReelStatus(n){
     var chip = el["po_layer" + n + "_status"];
     var availCell = el["po_layer" + n + "_available"];
+    var budWeightCell = el["po_layer" + n + "_budweight"];
+    var budCountCell = el["po_layer" + n + "_budcount"];
     if(!chip) return;
     var skuEl = el["po_layer" + n + "_sku"];
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
+    // Buds Weight/Count are purely informational here (same "travels with the reservation, never
+    // fed back into the ledger" treatment as this table's own Reel Weight) — a live read-only
+    // aggregate of buds already on file for whichever reel spec is picked.
+    if(budWeightCell) budWeightCell.textContent = item ? budsAvailableWeightForSku(sku).toLocaleString() : "";
+    if(budCountCell) budCountCell.textContent = item ? budsAvailableCountForSku(sku).toLocaleString() : "";
     if(!item){
       chip.hidden = true;
       if(availCell) availCell.textContent = "";
@@ -7565,6 +7660,7 @@
     if(state.unsubInvCatalog) state.unsubInvCatalog();
     if(state.unsubInvPurchases) state.unsubInvPurchases();
     if(state.unsubInvStatusTransfers) state.unsubInvStatusTransfers();
+    if(state.unsubInvBuds) state.unsubInvBuds();
     state.unsubInvCatalog = state.db.collection("products").onSnapshot(function(snap){
       var map = {};
       snap.forEach(function(doc){ map[doc.id] = Object.assign({ sku: doc.id }, doc.data()); });
@@ -7605,6 +7701,22 @@
         if(state.tasks.length && el.taskBoardCols) renderTasks();
       }
       if(state.editingPoId && el.poModalOverlay && !el.poModalOverlay.hidden) refreshPoOrphanReels();
+    }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
+    // reelBuds: one doc per leftover-material "bud" recorded at Plant (see reconcilePlantBudWeights)
+    // — a reel's own weight minus however much of it actually went into production. Only ever
+    // written from Plant's save; every other Layers table (PO/Priority/QC) just reads this live
+    // aggregate (see budsAvailableCountForSku/budsAvailableWeightForSku) to show what's already
+    // sitting around for a given reel spec before picking a brand-new one.
+    state.unsubInvBuds = state.db.collection("reelBuds").onSnapshot(function(snap){
+      state.invBuds = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+      if(state.appView === "inventory") renderInventory();
+      // Refresh whichever Layers table is currently open so its Buds Weight/Count cells stay live
+      // if a bud gets recorded/voided elsewhere while this modal happens to be open.
+      for(var budRefreshN = 1; budRefreshN <= 7; budRefreshN++){
+        if(el.modalOverlay && !el.modalOverlay.hidden) refreshLayerReelStatus(budRefreshN);
+        if(el.poModalOverlay && !el.poModalOverlay.hidden) refreshPoLayerReelStatus(budRefreshN);
+        if(el.taskModalOverlay && !el.taskModalOverlay.hidden) refreshTaskLayerReelStatus(budRefreshN);
+      }
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
 
@@ -7707,6 +7819,77 @@
       }
     });
   }
+  // Buds ("reelBuds" docs — see subscribeInventory/budsAvailableCountForSku): the leftover weight a
+  // Plant operator records once a reel's actually been used (Reel Weight minus however much of it
+  // went into production — see the feature's own comment in computeLayersData). Only ever called
+  // for a Plant save (see the saveBtn handler), diffed row-by-row against whatever this document's
+  // Layers looked like BEFORE this save, same "only act on what actually changed" pattern as
+  // reconcileLayerReelStatusTransfers just above — so reopening and re-saving an already-recorded
+  // bud unchanged never creates a duplicate. Each row's own `budRecordId` (persisted inside the
+  // layer object itself, patched back after this runs) is the idempotency key: present + weight
+  // unchanged -> leave it alone; present + weight changed -> update that same doc; present + weight
+  // cleared -> void it (never delete, so it can still be traced later); absent + weight typed ->
+  // create a new one and remember its id on the row.
+  function reconcilePlantBudWeights(oldLayers, newLayers, jobCardNo, entryId){
+    if(!entryId) return; // defensive: shouldn't happen, the entry is always saved by this point
+    var maxLen = Math.max((oldLayers || []).length, (newLayers || []).length);
+    var updatedLayers = (newLayers || []).map(function(l){ return Object.assign({}, l); });
+    var changed = false;
+    var promises = [];
+    for(var idx = 0; idx < maxLen; idx++){
+      var oldLayer = (oldLayers && oldLayers[idx]) || null;
+      var newLayer = updatedLayers[idx] || null; // null once a row drops out (Ply reduced)
+      var oldWeight = oldLayer ? (oldLayer.budWeight || "") : "";
+      var newWeight = newLayer ? (newLayer.budWeight || "") : "";
+      var oldBudId = oldLayer ? (oldLayer.budRecordId || null) : null;
+      // A row with no reel picked carries no bud, however its weight field happens to read.
+      if(newLayer && !newLayer.sku) newWeight = "";
+      if(newWeight === oldWeight){
+        if(newLayer && oldBudId) newLayer.budRecordId = oldBudId;
+        continue;
+      }
+      if(newWeight === "" && oldBudId){
+        changed = true;
+        (function(budId){
+          promises.push(state.db.doc("reelBuds/" + budId).update({ status: "voided", updatedAt: Date.now() })
+            .catch(function(err){ if(window.console) console.error("Bud void failed:", err); }));
+        })(oldBudId);
+        if(newLayer) newLayer.budRecordId = null;
+      } else if(newWeight !== "" && oldBudId){
+        var updWeightNum = Number(newWeight);
+        if(!isNaN(updWeightNum)){
+          changed = true;
+          (function(budId, w){
+            promises.push(state.db.doc("reelBuds/" + budId).update({ weight: w, updatedAt: Date.now() })
+              .catch(function(err){ if(window.console) console.error("Bud update failed:", err); }));
+          })(oldBudId, updWeightNum);
+        }
+        if(newLayer) newLayer.budRecordId = oldBudId;
+      } else if(newWeight !== "" && !oldBudId){
+        var newWeightNum = Number(newWeight);
+        if(!isNaN(newWeightNum) && newLayer){
+          changed = true;
+          (function(layerRef, sku, w){
+            promises.push(state.db.collection("reelBuds").add({
+              sku: sku, weight: w, status: "available",
+              jobCardNo: jobCardNo || "", sourceEntryId: entryId, createdAt: Date.now(), updatedAt: Date.now()
+            }).then(function(res){
+              layerRef.budRecordId = res.id;
+            }).catch(function(err){
+              if(window.console) console.error("Bud create failed:", err);
+              showBanner(t("layers_err_stock_move_failed"));
+            }));
+          })(newLayer, newLayer.sku, newWeightNum);
+        }
+      }
+    }
+    if(!changed) return;
+    Promise.all(promises).then(function(){
+      state.db.doc("entries/" + entryId).update({ layers: updatedLayers }).catch(function(err){
+        if(window.console) console.error("Bud id patch-back failed:", err);
+      });
+    });
+  }
   function availableFor(sku){
     var b = computeStatusBucketsMap()[sku];
     return b ? b.available : 0;
@@ -7723,6 +7906,21 @@
     if(!sku) return "";
     var p = state.invPurchases.find(function(p){ return p.sku === sku && p.weightPerReel != null; });
     return p ? p.weightPerReel : "";
+  }
+  // Buds ("reelBuds" docs — see subscribeInventory/reconcilePlantBudWeights): the leftover weight
+  // still sitting on a reel once Plant records how much of it actually went into production. These
+  // two just aggregate whatever's currently on file with status "available" for one sku, so PO/
+  // Priority/QC's Layers tables can show "here's what's already lying around for this reel spec"
+  // the moment that sku is picked — Plant's own row is the only one that ever writes a bud record;
+  // everywhere else just reads this live count/total.
+  function budsAvailableCountForSku(sku){
+    if(!sku) return 0;
+    return state.invBuds.filter(function(b){ return b.sku === sku && b.status === "available"; }).length;
+  }
+  function budsAvailableWeightForSku(sku){
+    if(!sku) return 0;
+    return state.invBuds.filter(function(b){ return b.sku === sku && b.status === "available"; })
+      .reduce(function(sum, b){ return sum + (Number(b.weight) || 0); }, 0);
   }
   // Which reels are currently held Reserved against one specific PO — read by both the PO card
   // (buildPoItem) and a linked Priority Task's own card (buildTaskItem), per the request that a
@@ -7872,13 +8070,16 @@
       refreshTaskLayersVisibility();
       var count = plyLayerCount(po.ply);
       for(var n = 1; n <= count; n++){
-        var sku = (reservedLayers[n - 1] && reservedLayers[n - 1].sku) || "";
+        var layerRow = reservedLayers[n - 1];
+        var sku = (layerRow && layerRow.sku) || "";
         var sel = el["t_layer" + n + "_sku"];
         if(sel && sku && state.invCatalog[sku]){
           sel.value = sku;
           taskLayerReservedSku[n] = sku;
           refreshTaskLayerReelStatus(n);
         }
+        var rwEl = el["t_layer" + n + "_reelweight"];
+        if(rwEl && layerRow && layerRow.reelWeight) rwEl.value = layerRow.reelWeight;
       }
     }
   }
@@ -8307,6 +8508,11 @@
         '<td class="mono">' + (b.reserved || 0).toLocaleString() + "</td>" +
         '<td class="mono">' + b.inUse.toLocaleString() + "</td>" +
         '<td class="mono">' + b.damaged.toLocaleString() + "</td>" +
+        // Buds (see reconcilePlantBudWeights/budsAvailableCountForSku): the leftover weight left
+        // over on a reel once Plant records how much of it actually went into production — only
+        // meaningful for reel/roll-priced items, so an ordinary stock item just shows a dash here.
+        '<td class="mono">' + (isReelUnit(item) ? budsAvailableCountForSku(item.sku).toLocaleString() : "—") + "</td>" +
+        '<td class="mono">' + (isReelUnit(item) ? budsAvailableWeightForSku(item.sku).toLocaleString() : "—") + "</td>" +
         '<td class="mono">' + (item.defaultPrice ? esc(formatInr(item.defaultPrice)) : "—") + "</td>" +
         '<td class="mono">' + esc(formatInr(value)) + "</td>" +
         '<td class="mono">' + (Number(item.reorderPoint) || 0).toLocaleString() + "</td>" +
@@ -8355,10 +8561,14 @@
     // applied — so it always answers "how much of what I'm looking at" rather than a fixed grand
     // total that stops matching the screen the moment someone filters it down.
     function buildTotalsRow(rows){
-      var totals = { available: 0, inUse: 0, damaged: 0, reserved: 0 };
+      var totals = { available: 0, inUse: 0, damaged: 0, reserved: 0, budsCount: 0, budsWeight: 0 };
       rows.forEach(function(item){
         var b = statusMap[item.sku] || { available: 0, inUse: 0, damaged: 0, reserved: 0 };
         totals.available += b.available; totals.inUse += b.inUse; totals.damaged += b.damaged; totals.reserved += (b.reserved || 0);
+        if(isReelUnit(item)){
+          totals.budsCount += budsAvailableCountForSku(item.sku);
+          totals.budsWeight += budsAvailableWeightForSku(item.sku);
+        }
       });
       var tr = document.createElement("tr");
       tr.innerHTML =
@@ -8367,6 +8577,8 @@
         '<td class="num">' + totals.reserved.toLocaleString() + "</td>" +
         '<td class="num">' + totals.inUse.toLocaleString() + "</td>" +
         '<td class="num">' + totals.damaged.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.budsCount.toLocaleString() + "</td>" +
+        '<td class="num">' + totals.budsWeight.toLocaleString() + "</td>" +
         '<td colspan="5"></td>';
       return tr;
     }
@@ -11406,6 +11618,10 @@
       var layerData = (entry && entry.layers && entry.layers[layerPopN - 1]) || null;
       el["f_layer" + layerPopN + "_sku"].value = (layerData && layerData.sku && state.invCatalog[layerData.sku]) ? layerData.sku : "";
       el["f_layer" + layerPopN + "_reelweight"].value = layerData ? (layerData.reelWeight || "") : "";
+      // Buds Weight: only actually matters at Plant (see refreshLayerReelStatus, which overwrites
+      // this with a live aggregate everywhere else) — populated here from whatever this row's saved
+      // layer already recorded, same as Reel Weight above.
+      if(el["f_layer" + layerPopN + "_budweight"]) el["f_layer" + layerPopN + "_budweight"].value = layerData ? (layerData.budWeight || "") : "";
       // Setting a <select>'s .value programmatically doesn't fire "change", so the status chip
       // needs an explicit refresh here (the sku-change listener only covers the user picking one).
       refreshLayerReelStatus(layerPopN);
@@ -11781,7 +11997,7 @@
       // off the open form for both QC and Plant — a job advancing QC -> Plant just carries whatever
       // QC already had picked, same document/fields, no separate carry-over needed.
       ply: stageHasPly(chosenStage) ? el.f_ply.value : "",
-      layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value)) : null,
+      layers: stageHasLayers(chosenStage) ? computeLayersData(plyLayerCount(el.f_ply.value), chosenStage) : null,
       type: hasType ? el.f_type.value : "",
       // Start Time / End Time / Run Time (Hrs) / Man Power are each stage's OWN department entering
       // its own figures — they must never carry forward onto the next stage's record when a job
@@ -11991,6 +12207,12 @@
       // change" on that later save and doesn't move anything a second time.
       if(stageHasLayers(chosenStage)){
         reconcileLayerReelStatusTransfers(originalLayersForReconcile, payload.layers, jobCardNoForReconcile, linkedPoForEntryLayers);
+        // Buds Weight (see computeLayersData) is only ever real operator data at Plant — QC shares
+        // the same field but only shows a live aggregate there, so there's nothing of Plant's own to
+        // reconcile into reelBuds on a QC save.
+        if(chosenStage === "Plant"){
+          reconcilePlantBudWeights(originalLayersForReconcile, payload.layers, jobCardNoForReconcile, logEntryId);
+        }
       }
       // Archive chosenStage's own snapshot (see stageHistorySnapshot's own comment above) now that
       // the main save is safely through — entryId is only known for certain at this point (a
@@ -12501,7 +12723,7 @@
     el.t_type, el.t_ply, el.t_quantity, el.t_ponumber, el.t_reel, el.t_assignto, el.t_notes, el.t_updatedby
   ];
   for(var tLayerFieldN = 1; tLayerFieldN <= 7; tLayerFieldN++){
-    TASK_FORM_FIELDS.push(el["t_layer" + tLayerFieldN + "_sku"]);
+    TASK_FORM_FIELDS.push(el["t_layer" + tLayerFieldN + "_sku"], el["t_layer" + tLayerFieldN + "_reelweight"]);
   }
   function openTaskModal(task){
     // Only the admin device may add/edit/delete/reorder a task (see el.addTaskBtn.hidden in
@@ -12551,6 +12773,7 @@
       var tLayerData = (task && task.layers && task.layers[tPopN - 1]) || null;
       var tSku = (tLayerData && tLayerData.sku && state.invCatalog[tLayerData.sku]) ? tLayerData.sku : "";
       el["t_layer" + tPopN + "_sku"].value = tSku;
+      if(el["t_layer" + tPopN + "_reelweight"]) el["t_layer" + tPopN + "_reelweight"].value = (tLayerData && tLayerData.reelWeight) || "";
       taskLayerReservedSku[tPopN] = tSku;
       refreshTaskLayerReelStatus(tPopN);
     }
