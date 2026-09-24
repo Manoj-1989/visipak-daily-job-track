@@ -415,6 +415,21 @@
   }
   #poOrphanReleaseAllBtn:disabled{opacity:.5;cursor:default;}
   .orphanReelsList{display:flex;flex-direction:column;gap:6px;}
+  /* Multi-product PO form blocks (see #poProductsContainer / renderPoProductBlock). Each block is a
+     visually separate card so it's clear the fields inside it (Material Description/Ply/Reserve
+     Reel/Layers/Quantity) belong to ONE product, distinct from any other product block in the PO. */
+  #poProductsContainer{display:flex;flex-direction:column;gap:12px;}
+  .poProductBlock{
+    border:1px solid var(--line);border-radius:var(--radius);padding:12px;
+    background:var(--surface);display:flex;flex-direction:column;gap:10px;
+  }
+  .poProductBlockHead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .poProductBlockLabel{font-weight:700;font-size:13px;color:var(--ink);}
+  .poRemoveProductBtn{
+    flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;
+    border:1px solid var(--crit);background:transparent;color:var(--crit);cursor:pointer;
+  }
+  .poRemoveProductBtn:disabled{opacity:.5;cursor:default;}
   .orphanReelRow{
     display:flex;align-items:center;justify-content:space-between;gap:8px;
     background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:6px 10px;font-size:12px;
@@ -2630,52 +2645,17 @@
       <label><span data-i18n="po_customer_label">Customer Name</span>
         <input type="text" id="po_customer" required placeholder="e.g. ABC Packaging Pvt Ltd" data-i18n-placeholder="po_customer_placeholder">
       </label>
-      <label><span data-i18n="po_productcode_label">Product/Material Code</span>
-        <input type="text" id="po_productcode" placeholder="e.g. RM-KRAFT-250" data-i18n-placeholder="po_productcode_placeholder">
-      </label>
-      <label class="span2"><span data-i18n="po_materialdesc_label">Material Description</span>
-        <input type="text" id="po_materialdesc" placeholder="e.g. Kraft Paper 250 GSM, 109cm" data-i18n-placeholder="po_materialdesc_placeholder">
-      </label>
-      <!-- Ply drives how many Layer rows the Priority Task's Reel checkbox shows once this PO is
-           picked there (3/5/7 rows — see refreshTaskLayersVisibility in the script), same 3/5/7
-           options as the Plant stage's own Ply field. -->
-      <label><span data-i18n="po_ply_label">Ply</span>
-        <select id="po_ply">
-          <option value="" data-i18n="form_ply_select">— select —</option>
-          <option value="3 Ply">3 Ply</option>
-          <option value="5 Ply">5 Ply</option>
-          <option value="7 Ply">7 Ply</option>
-        </select>
-      </label>
-      <!-- Reserve Reel: reveals the same Layers-style reel picker below, sized to this PO's own Ply
-           (3/5/7 rows), for reserving specific reels directly against this PO from its own form —
-           the same underlying reserve-immediately behavior as the Priority Task's Reel checkbox,
-           just triggered from here instead. Only usable once this PO itself has been saved (the
-           reservation has to tag SOME PO id) — see refreshPoLayersVisibility's guard. -->
-      <div class="formGridItem" id="fld_poreservereel">
-        <span data-i18n="po_reservereel_label">Reserve Reel</span>
-        <label class="passFailToggle">
-          <input type="checkbox" id="po_reservereel">
-          <span class="pfTrack"></span>
-          <span class="pfLabel"></span>
-        </label>
-      </div>
-      <div class="span2 qcSpecsBlock" id="fld_poreellayers" hidden>
-        <span data-i18n="layers_heading">Layers</span>
-        <table class="qcSpecsTable">
-          <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
-          </thead>
-          <tbody id="poLayersBody">
-            <tr id="poLayerRow1"><td id="poLayerLabel1"></td><td><select id="po_layer1_sku"></select></td><td><input type="text" id="po_layer1_reelweight"></td><td class="mono" id="po_layer1_budweight"></td><td class="mono" id="po_layer1_budcount"></td><td class="mono" id="po_layer1_available"></td><td><span class="capChip" id="po_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow2"><td id="poLayerLabel2"></td><td><select id="po_layer2_sku"></select></td><td><input type="text" id="po_layer2_reelweight"></td><td class="mono" id="po_layer2_budweight"></td><td class="mono" id="po_layer2_budcount"></td><td class="mono" id="po_layer2_available"></td><td><span class="capChip" id="po_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow3"><td id="poLayerLabel3"></td><td><select id="po_layer3_sku"></select></td><td><input type="text" id="po_layer3_reelweight"></td><td class="mono" id="po_layer3_budweight"></td><td class="mono" id="po_layer3_budcount"></td><td class="mono" id="po_layer3_available"></td><td><span class="capChip" id="po_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow4"><td id="poLayerLabel4"></td><td><select id="po_layer4_sku"></select></td><td><input type="text" id="po_layer4_reelweight"></td><td class="mono" id="po_layer4_budweight"></td><td class="mono" id="po_layer4_budcount"></td><td class="mono" id="po_layer4_available"></td><td><span class="capChip" id="po_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow5"><td id="poLayerLabel5"></td><td><select id="po_layer5_sku"></select></td><td><input type="text" id="po_layer5_reelweight"></td><td class="mono" id="po_layer5_budweight"></td><td class="mono" id="po_layer5_budcount"></td><td class="mono" id="po_layer5_available"></td><td><span class="capChip" id="po_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow6"><td id="poLayerLabel6"></td><td><select id="po_layer6_sku"></select></td><td><input type="text" id="po_layer6_reelweight"></td><td class="mono" id="po_layer6_budweight"></td><td class="mono" id="po_layer6_budcount"></td><td class="mono" id="po_layer6_available"></td><td><span class="capChip" id="po_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="poLayerRow7"><td id="poLayerLabel7"></td><td><select id="po_layer7_sku"></select></td><td><input type="text" id="po_layer7_reelweight"></td><td class="mono" id="po_layer7_budweight"></td><td class="mono" id="po_layer7_budcount"></td><td class="mono" id="po_layer7_available"></td><td><span class="capChip" id="po_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="po_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-          </tbody>
-        </table>
+      <!-- A PO can cover multiple different products/materials (each with its own Material
+           Description/Ply/Reserve Reel/Layers/Quantity) — see poProducts()/mergePoProductView() and
+           the "PO form: dynamic product blocks" script section. Product blocks are built into
+           #poProductsContainer at openPoModal() time (one per existing product, or one blank one for
+           a brand-new PO) and on "+ Add Product", via renderPoProductBlock()/addPoProductBlock(). -->
+      <div class="span2" id="poProductsWrap">
+        <div class="orphanReelsHead">
+          <span data-i18n="po_products_heading">Products</span>
+          <button type="button" class="btn ghost" id="poAddProductBtn" data-i18n="po_add_product_btn">+ Add Product</button>
+        </div>
+        <div id="poProductsContainer"></div>
       </div>
       <div class="span2 qcSpecsBlock" id="fld_poorphanreels" hidden>
         <div class="orphanReelsHead">
@@ -2684,9 +2664,6 @@
         </div>
         <div id="poOrphanReelsList" class="orphanReelsList"></div>
       </div>
-      <label><span data-i18n="form_qty_label">Quantity</span>
-        <input type="number" id="po_quantity" min="0" step="1" placeholder="500" data-i18n-placeholder="form_qty_placeholder">
-      </label>
       <label><span data-i18n="po_delivery_label">Delivery Required At Plant</span>
         <span class="dateFieldWrap">
           <input type="date" id="po_delivery" required>
@@ -3048,6 +3025,10 @@
       po_orphanreels_heading: "Other Reserved Reels (not shown above)",
       po_orphanreel_release_btn: "Release",
       po_orphanreel_releaseall_btn: "Release All",
+      po_products_heading: "Products", po_add_product_btn: "+ Add Product", po_remove_product_btn: "Remove",
+      po_product_label: "Product {n}", po_products_more: "+{n} more",
+      po_remove_product_confirm: "Remove this product from the PO? Any reels it has reserved will be released back to Available.",
+      po_err_need_one_product: "A PO needs at least one product — add another before removing this one.",
       po_delivery_label: "Delivery Required At Plant",
       po_delivery_line: "Delivery required at plant: {date}",
       po_overdue_badge: "Overdue", po_status_received: "Received",
@@ -3410,6 +3391,10 @@
       po_orphanreels_heading: "अन्य आरक्षित रील्स (ऊपर नहीं दिखाई गईं)",
       po_orphanreel_release_btn: "रिलीज़ करें",
       po_orphanreel_releaseall_btn: "सभी रिलीज़ करें",
+      po_products_heading: "प्रोडक्ट्स", po_add_product_btn: "+ प्रोडक्ट जोड़ें", po_remove_product_btn: "हटाएं",
+      po_product_label: "प्रोडक्ट {n}", po_products_more: "+{n} और",
+      po_remove_product_confirm: "इस प्रोडक्ट को PO से हटाएं? इसकी आरक्षित रील्स उपलब्ध में वापस रिलीज़ हो जाएंगी।",
+      po_err_need_one_product: "PO में कम से कम एक प्रोडक्ट होना चाहिए — इसे हटाने से पहले दूसरा जोड़ें।",
       po_delivery_label: "प्लांट पर डिलीवरी आवश्यक तिथि",
       po_delivery_line: "प्लांट पर डिलीवरी आवश्यक: {date}",
       po_overdue_badge: "विलंबित", po_status_received: "प्राप्त हुआ",
@@ -3772,6 +3757,10 @@
       po_orphanreels_heading: "ఇతర రిజర్వ్ చేసిన రీళ్లు (పైన చూపబడలేదు)",
       po_orphanreel_release_btn: "విడుదల చేయండి",
       po_orphanreel_releaseall_btn: "అన్నీ విడుదల చేయండి",
+      po_products_heading: "ప్రొడక్ట్స్", po_add_product_btn: "+ ప్రొడక్ట్ జోడించండి", po_remove_product_btn: "తొలగించండి",
+      po_product_label: "ప్రొడక్ట్ {n}", po_products_more: "+{n} మరిన్ని",
+      po_remove_product_confirm: "ఈ ప్రొడక్ట్‌ను PO నుండి తొలగించాలా? దీని రిజర్వ్ చేసిన రీళ్లు అందుబాటులోకి విడుదల చేయబడతాయి.",
+      po_err_need_one_product: "PO‌కు కనీసం ఒక ప్రొడక్ట్ ఉండాలి — దీన్ని తొలగించే ముందు మరొకటి జోడించండి.",
       po_delivery_label: "ప్లాంట్‌కు డెలివరీ అవసరమైన తేదీ",
       po_delivery_line: "ప్లాంట్‌కు డెలివరీ అవసరం: {date}",
       po_overdue_badge: "ఆలస్యమైంది", po_status_received: "అందుకున్నారు",
@@ -4584,17 +4573,12 @@
     poModalTitle: document.getElementById("poModalTitle"),
     po_number: document.getElementById("po_number"),
     po_customer: document.getElementById("po_customer"),
-    po_productcode: document.getElementById("po_productcode"),
-    po_materialdesc: document.getElementById("po_materialdesc"),
-    po_ply: document.getElementById("po_ply"),
-    fld_poreservereel: document.getElementById("fld_poreservereel"),
-    po_reservereel: document.getElementById("po_reservereel"),
-    fld_poreellayers: document.getElementById("fld_poreellayers"),
-    poLayersBody: document.getElementById("poLayersBody"),
+    poProductsWrap: document.getElementById("poProductsWrap"),
+    poProductsContainer: document.getElementById("poProductsContainer"),
+    poAddProductBtn: document.getElementById("poAddProductBtn"),
     fld_poorphanreels: document.getElementById("fld_poorphanreels"),
     poOrphanReelsList: document.getElementById("poOrphanReelsList"),
     poOrphanReleaseAllBtn: document.getElementById("poOrphanReleaseAllBtn"),
-    po_quantity: document.getElementById("po_quantity"),
     po_delivery: document.getElementById("po_delivery"),
     po_deliveryLabel: document.getElementById("po_deliveryLabel"),
     po_updatedby: document.getElementById("po_updatedby"),
@@ -4777,18 +4761,10 @@
     el["t_layer" + tLayerN + "_status"] = document.getElementById("t_layer" + tLayerN + "_status");
     el["t_layer" + tLayerN + "_delete"] = document.getElementById("t_layer" + tLayerN + "_delete");
   }
-  // Same trick again, this time for the PO form's own Reserve Reel picker (see fld_poreellayers).
-  for(var poLayerN = 1; poLayerN <= 7; poLayerN++){
-    el["poLayerRow" + poLayerN] = document.getElementById("poLayerRow" + poLayerN);
-    el["poLayerLabel" + poLayerN] = document.getElementById("poLayerLabel" + poLayerN);
-    el["po_layer" + poLayerN + "_sku"] = document.getElementById("po_layer" + poLayerN + "_sku");
-    el["po_layer" + poLayerN + "_reelweight"] = document.getElementById("po_layer" + poLayerN + "_reelweight");
-    el["po_layer" + poLayerN + "_budweight"] = document.getElementById("po_layer" + poLayerN + "_budweight");
-    el["po_layer" + poLayerN + "_budcount"] = document.getElementById("po_layer" + poLayerN + "_budcount");
-    el["po_layer" + poLayerN + "_available"] = document.getElementById("po_layer" + poLayerN + "_available");
-    el["po_layer" + poLayerN + "_status"] = document.getElementById("po_layer" + poLayerN + "_status");
-    el["po_layer" + poLayerN + "_delete"] = document.getElementById("po_layer" + poLayerN + "_delete");
-  }
+  // The PO form's own Reserve Reel picker is now built dynamically per product block (unlimited
+  // products, each with its own 7 layer rows — see #poProductsContainer / renderPoProductBlock /
+  // poFieldId / poLayerFieldId), so there's nothing static to cache into `el` here anymore. Those
+  // dynamic elements are looked up via document.getElementById(...) at the point of use instead.
   var lastUpdatedBy = "";
   // See openModal's own comment on why this is snapshotted, and the submit handler's call to
   // reconcileLayerReelStatusTransfers for how it's used.
@@ -5961,16 +5937,20 @@
     }
     return layers;
   }
-  // Same idea again, for the PO form's own Reserve Reel rows (see fld_poreellayers) — `count` is
-  // this PO's own Ply (plyLayerCount(el.po_ply.value)). Reel Weight is purely informational here
-  // (same as Plant's own f_layer{n}_reelweight) — it doesn't feed the stock ledger, just travels
-  // along with the reservation so whoever picks it up already knows the weight to expect.
-  function computePoLayersData(count){
+  // Same idea again, for a PO product block's own Reserve Reel rows (see poFieldId/poLayerFieldId
+  // and renderPoProductBlock) — `count` is that product's own Ply (plyLayerCount(product.ply)). Reel
+  // Weight is purely informational here (same as Plant's own f_layer{n}_reelweight) — it doesn't
+  // feed the stock ledger, just travels along with the reservation so whoever picks it up already
+  // knows the weight to expect. Looked up via getElementById since these rows are dynamic, not
+  // cached in `el` (there can be any number of product blocks, each with up to 7 rows).
+  function computePoLayersData(productId, count){
     var layers = [];
     for(var i = 1; i <= count; i++){
+      var skuEl = document.getElementById(poLayerFieldId(productId, i, "sku"));
+      var rwEl = document.getElementById(poLayerFieldId(productId, i, "reelweight"));
       layers.push({
-        sku: el["po_layer" + i + "_sku"] ? el["po_layer" + i + "_sku"].value : "",
-        reelWeight: el["po_layer" + i + "_reelweight"] ? el["po_layer" + i + "_reelweight"].value.trim() : ""
+        sku: skuEl ? skuEl.value : "",
+        reelWeight: rwEl ? rwEl.value.trim() : ""
       });
     }
     return layers;
@@ -6926,34 +6906,35 @@
     })(layerAutofillN);
   }
 
-  // PO Number (see fld_ponumber above): same click-to-open-PO-Board picker used by Inventory's
-  // Reserve/Update Status PO field. entrySelectedPo carries the id alongside the number shown in
-  // the readonly input — populated here on pick, and from the entry's own saved poId/poNumber when
-  // openModal below re-opens an existing entry (see the "Layers" comment in openModal for the same
-  // "readonly input, backing var holds the id" pattern used there).
-  var entrySelectedPo = null; // { id, poNumber } — set by the PO picker
+  // PO Number (see fld_ponumber above): opens the PO picker in "product" mode (openPoProductPicker)
+  // — a multi-product PO is picked one product-line at a time, per the confirmed "list each product
+  // as its own line" decision (see poPickerMode/mergePoProductView). entrySelectedPo holds the
+  // MERGED (po, product) view object (id/poNumber/productId/productCode/materialDescription/ply/
+  // quantity/reserveReel/layers) — the exact same flat shape every existing autofill/details
+  // function already expects, so renderPoDetailsPanel/applyPoAutofillToEntry work completely
+  // unchanged; only what's passed to them differs.
+  var entrySelectedPo = null; // merged (po, product) view — set by the PO picker; see mergePoProductView
   el.f_ponumber.addEventListener("click", function(){
     if(el.f_ponumber.disabled) return;
-    openPoPicker(function(po){
-      entrySelectedPo = po;
-      el.f_ponumber.value = po.poNumber || "";
-      renderPoDetailsPanel(el.entryPoDetails, po);
-      applyPoAutofillToEntry(po);
+    openPoProductPicker(function(view, label){
+      entrySelectedPo = view;
+      el.f_ponumber.value = label || (view.poNumber || "");
+      renderPoDetailsPanel(el.entryPoDetails, view);
+      applyPoAutofillToEntry(view);
     });
   });
 
   // ---------- Priority Task: PO Number + Reel-reservation Layers ----------
-  // taskSelectedPo carries { id, poNumber, ply } for whichever PO is currently picked on the open
-  // Task modal — same "readonly input, backing var holds the id" pattern as f_ponumber/entrySelectedPo
-  // above, plus the PO's own Ply (see the new po_ply field) since that's what decides how many
-  // Layer rows (3/5/7) the Reel checkbox below reveals.
+  // taskSelectedPo holds the same merged (po, product) view as entrySelectedPo above — same
+  // "readonly input, backing var holds the id (+productId now)" pattern, plus the product's own Ply
+  // (view.ply) since that's what decides how many Layer rows (3/5/7) the Reel checkbox below reveals.
   var taskSelectedPo = null;
   el.t_ponumber.addEventListener("click", function(){
     if(el.t_ponumber.disabled) return;
-    openPoPicker(function(po){
-      // Swapping to a different PO invalidates whatever this task's rows currently hold Reserved
-      // against the OLD one — release those first, same move as clearing each row by hand.
-      if(!taskSelectedPo || taskSelectedPo.id !== po.id){
+    openPoProductPicker(function(view, label){
+      // Swapping to a different PO/product invalidates whatever this task's rows currently hold
+      // Reserved against the OLD one — release those first, same move as clearing each row by hand.
+      if(!taskSelectedPo || taskSelectedPo.id !== view.id || taskSelectedPo.productId !== view.productId){
         Object.keys(taskLayerReservedSku).forEach(function(n){
           var sku = taskLayerReservedSku[n];
           if(!sku) return;
@@ -6967,11 +6948,11 @@
           refreshTaskLayerReelStatus(Number(n));
         });
       }
-      taskSelectedPo = { id: po.id, poNumber: po.poNumber || "", ply: po.ply || "" };
-      el.t_ponumber.value = po.poNumber || "";
-      renderPoDetailsPanel(el.taskPoDetails, po);
+      taskSelectedPo = view;
+      el.t_ponumber.value = label || (view.poNumber || "");
+      renderPoDetailsPanel(el.taskPoDetails, view);
       refreshTaskLayersVisibility();
-      applyPoAutofillToTask(po);
+      applyPoAutofillToTask(view);
     });
   });
   // Same leak the PO's own picker had (see releasePoLayerRow above): a row that drops out of view
@@ -7111,13 +7092,26 @@
     })(tLayerAutofillN);
   }
 
-  // ---------- PO form: its own "Reserve Reel" Layers picker ----------
-  // Same reserve-immediately picker as the Priority Task's Reel checkbox above, just reachable
-  // directly from the PO's own Add/Edit form instead of routing through a Task. The one real
-  // difference: a reservation has to be tagged to SOME PO id, and a brand-new "Add PO" doesn't have
-  // one until it's actually saved — so this stays gated to an EXISTING PO (state.editingPoId set);
-  // checking the box (or trying to pick a reel) on a new PO just asks for a save first.
-  var poLayerReservedSku = {}; // n -> sku currently held Reserved for this PO's row n (see openPoModal)
+  // ---------- PO form: dynamic per-product "Reserve Reel" Layers pickers ----------
+  // A PO can now cover multiple products (see poProducts()/mergePoProductView() and the helpers near
+  // findPoById), each with its own Material Description/Ply/Reserve Reel/Layers/Quantity — built
+  // dynamically into #poProductsContainer (see renderPoProductBlock/addPoProductBlock below) since
+  // there's no longer a fixed single product to hardcode fields for. Same reserve-immediately picker
+  // as the Priority Task's Reel checkbox above, just keyed by (productId, n) instead of a flat n —
+  // everything else about the reservation behavior (reserve immediately, release on row-hide/delete/
+  // product-remove, orphan reconciliation) is unchanged from the single-product version, just
+  // generalized across however many product blocks are currently open. A reservation still has to be
+  // tagged to SOME PO id, and a brand-new "Add PO" doesn't have one until it's actually saved — so
+  // this stays gated to an EXISTING PO (state.editingPoId set); checking a product's Reserve Reel box
+  // (or trying to pick a reel) on a new PO just asks for a save first.
+  function poFieldId(productId, name){ return "po_prod_" + productId + "_" + name; }
+  function poLayerFieldId(productId, n, suffix){ return "po_prod_" + productId + "_layer" + n + "_" + suffix; }
+  // The ids of every product block currently rendered in #poProductsContainer, in display order —
+  // rebuilt from scratch in openPoModal/closePoModal so a freshly-opened PO always starts from
+  // exactly what's saved (or one blank block for a brand-new PO), never from whatever a previously-
+  // open PO left behind.
+  var poFormProducts = [];
+  var poLayerReservedSku = {}; // poLayerReservedSku[productId][n] -> sku currently held Reserved for that product's row n (see addPoProductBlock)
   // A row that drops out of view — Ply lowered to fewer rows, or Reserve Reel unchecked entirely —
   // used to just hide silently, leaving whatever it had reserved stuck in the Reserved bucket
   // forever (nothing else in the app remembers "row 6 held sku X" once row 6 isn't rendered).
@@ -7125,13 +7119,16 @@
   // longer shows, still counted Reserved on the card and in the Inventory tab. Releasing here the
   // moment a row goes from visible to hidden closes that leak for anything reserved from now on;
   // see refreshPoOrphanReels below for reconciling reservations that already leaked before this fix.
-  function releasePoLayerRow(n){
-    var sku = poLayerReservedSku[n];
+  function releasePoLayerRow(productId, n){
+    var rowMap = poLayerReservedSku[productId];
+    var sku = rowMap ? rowMap[n] : "";
     if(!sku) return;
-    poLayerReservedSku[n] = "";
-    if(el["po_layer" + n + "_sku"]) el["po_layer" + n + "_sku"].value = "";
-    if(el["po_layer" + n + "_reelweight"]) el["po_layer" + n + "_reelweight"].value = "";
-    refreshPoLayerReelStatus(n);
+    rowMap[n] = "";
+    var skuEl = document.getElementById(poLayerFieldId(productId, n, "sku"));
+    var rwEl = document.getElementById(poLayerFieldId(productId, n, "reelweight"));
+    if(skuEl) skuEl.value = "";
+    if(rwEl) rwEl.value = "";
+    refreshPoLayerReelStatus(productId, n);
     if(!state.editingPoId) return; // defensive: shouldn't happen, a row can't hold a sku without one
     var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
     addStatusTransfer(sku, "reserved", "available", 1, "Released — PO Layer row removed (PO " + poTag.poNumber + ")", poTag).then(function(){
@@ -7141,14 +7138,20 @@
       showBanner(t("layers_err_stock_move_failed"));
     });
   }
-  function refreshPoLayersVisibility(){
-    var ply = el.po_ply.value;
-    var count = (el.po_reservereel.checked && ply) ? plyLayerCount(ply) : 0;
-    el.fld_poreellayers.hidden = count === 0;
+  function refreshPoLayersVisibilityForProduct(productId){
+    var plyEl = document.getElementById(poFieldId(productId, "ply"));
+    var reserveEl = document.getElementById(poFieldId(productId, "reservereel"));
+    var wrapEl = document.getElementById(poFieldId(productId, "fld_reellayers"));
+    if(!plyEl || !reserveEl || !wrapEl) return;
+    var ply = plyEl.value;
+    var count = (reserveEl.checked && ply) ? plyLayerCount(ply) : 0;
+    wrapEl.hidden = count === 0;
     for(var n = 1; n <= 7; n++){
+      var rowEl = document.getElementById(poLayerFieldId(productId, n, "row"));
+      if(!rowEl) continue;
       var nowHidden = n > count;
-      el["poLayerRow" + n].hidden = nowHidden;
-      if(nowHidden) releasePoLayerRow(n);
+      rowEl.hidden = nowHidden;
+      if(nowHidden) releasePoLayerRow(productId, n);
     }
   }
   // Reels that some earlier session reserved against this PO (visible in reservedBucketsForPo's
@@ -7194,8 +7197,13 @@
     var box = el.fld_poorphanreels, list = el.poOrphanReelsList;
     if(!box || !list) return;
     if(!state.editingPoId){ box.hidden = true; list.innerHTML = ""; poOrphanReelsMap = {}; return; }
+    // Aggregate across EVERY product block currently open on this PO (not just one product's 7
+    // rows) — a reel visible on ANY product's row is accounted for, not an orphan.
     var visibleSkus = {};
-    for(var n = 1; n <= 7; n++){ if(poLayerReservedSku[n]) visibleSkus[poLayerReservedSku[n]] = true; }
+    poFormProducts.forEach(function(productId){
+      var rowMap = poLayerReservedSku[productId] || {};
+      for(var n = 1; n <= 7; n++){ if(rowMap[n]) visibleSkus[rowMap[n]] = true; }
+    });
     var map = reservedBucketsForPo(state.editingPoId);
     var orphanSkus = Object.keys(map).filter(function(sku){ return !visibleSkus[sku]; });
     poOrphanReelsMap = {};
@@ -7302,27 +7310,13 @@
       }
     });
   });
-  el.po_ply.addEventListener("change", refreshPoLayersVisibility);
-  el.po_reservereel.addEventListener("change", function(){
-    if(el.po_reservereel.checked && !state.editingPoId){
-      el.po_reservereel.checked = false;
-      showBanner(t("po_err_save_before_reel"));
-      return;
-    }
-    if(el.po_reservereel.checked && !el.po_ply.value){
-      el.po_reservereel.checked = false;
-      showBanner(t("task_err_po_ply_required"));
-      return;
-    }
-    refreshPoLayersVisibility();
-  });
-  function refreshPoLayerReelStatus(n){
-    var chip = el["po_layer" + n + "_status"];
-    var availCell = el["po_layer" + n + "_available"];
-    var budWeightCell = el["po_layer" + n + "_budweight"];
-    var budCountCell = el["po_layer" + n + "_budcount"];
+  function refreshPoLayerReelStatus(productId, n){
+    var chip = document.getElementById(poLayerFieldId(productId, n, "status"));
+    var availCell = document.getElementById(poLayerFieldId(productId, n, "available"));
+    var budWeightCell = document.getElementById(poLayerFieldId(productId, n, "budweight"));
+    var budCountCell = document.getElementById(poLayerFieldId(productId, n, "budcount"));
     if(!chip) return;
-    var skuEl = el["po_layer" + n + "_sku"];
+    var skuEl = document.getElementById(poLayerFieldId(productId, n, "sku"));
     var sku = skuEl ? skuEl.value : "";
     var item = sku ? state.invCatalog[sku] : null;
     // Buds Weight/Count are purely informational here (same "travels with the reservation, never
@@ -7343,19 +7337,23 @@
     chip.hidden = false;
     if(availCell) availCell.textContent = qty.toLocaleString();
   }
-  for(var poLayerAutofillN = 1; poLayerAutofillN <= 7; poLayerAutofillN++){
-    (function(n){
-      el["po_layer" + n + "_sku"].addEventListener("change", function(){
-        var sel = el["po_layer" + n + "_sku"];
+  // Attaches the sku-select change handler + delete-button handler for one (productId, n) row —
+  // called once per row whenever a product block is created (addPoProductBlock), replacing the old
+  // static for(n=1..7) loop that used to run once at page load against fixed po_layer{n}_sku ids.
+  function bindPoLayerRow(productId, n){
+    var sel = document.getElementById(poLayerFieldId(productId, n, "sku"));
+    if(sel){
+      sel.addEventListener("change", function(){
         var newSku = sel.value;
-        var oldSku = poLayerReservedSku[n] || "";
-        if(newSku === oldSku){ refreshPoLayerReelStatus(n); return; }
+        var rowMap = poLayerReservedSku[productId] || (poLayerReservedSku[productId] = {});
+        var oldSku = rowMap[n] || "";
+        if(newSku === oldSku){ refreshPoLayerReelStatus(productId, n); return; }
         if(!state.editingPoId){
           // Defensive: the checkbox guard above should already have kept this hidden/unreachable
           // on a brand-new PO, but never silently reserve against a PO that doesn't exist yet.
           sel.value = "";
           showBanner(t("po_err_save_before_reel"));
-          refreshPoLayerReelStatus(n);
+          refreshPoLayerReelStatus(productId, n);
           return;
         }
         var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
@@ -7367,40 +7365,188 @@
             })
           : Promise.resolve();
         releaseP.then(function(){
-          poLayerReservedSku[n] = "";
-          if(!newSku){ refreshPoLayerReelStatus(n); refreshPoOrphanReels(); return; }
+          rowMap[n] = "";
+          if(!newSku){ refreshPoLayerReelStatus(productId, n); refreshPoOrphanReels(); return; }
           addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via PO", poTag)
             .then(function(){
-              poLayerReservedSku[n] = newSku;
+              rowMap[n] = newSku;
               // Picking a reel by hand fills in its Reel Weight from Inventory's own receiving data
               // (see latestReelWeightForSku) — a sku with no receiving history yet leaves the field
               // as-is for the person to type in.
-              var rw = el["po_layer" + n + "_reelweight"];
+              var rw = document.getElementById(poLayerFieldId(productId, n, "reelweight"));
               if(rw){
                 var known = latestReelWeightForSku(newSku);
                 if(known !== "") rw.value = known;
               }
-              refreshPoLayerReelStatus(n);
+              refreshPoLayerReelStatus(productId, n);
               refreshPoOrphanReels();
             }).catch(function(err){
               sel.value = "";
               showBanner(err && err.message ? err.message : t("layers_err_stock_move_failed"));
-              refreshPoLayerReelStatus(n);
+              refreshPoLayerReelStatus(productId, n);
               refreshPoOrphanReels();
             });
         });
       });
-      // Delete releases whatever this row currently holds Reserved against this PO, same as
-      // releasePoLayerRow's own use when a row drops out of view — frees it straight back to
-      // Available and leaves the row ready for another reel to be picked.
-      var poDelBtn = el["po_layer" + n + "_delete"];
-      if(poDelBtn){
-        poDelBtn.addEventListener("click", function(){
-          releasePoLayerRow(n);
-        });
-      }
-    })(poLayerAutofillN);
+    }
+    // Delete releases whatever this row currently holds Reserved against this PO, same as
+    // releasePoLayerRow's own use when a row drops out of view — frees it straight back to
+    // Available and leaves the row ready for another reel to be picked.
+    var delBtn = document.getElementById(poLayerFieldId(productId, n, "delete"));
+    if(delBtn){
+      delBtn.addEventListener("click", function(){
+        releasePoLayerRow(productId, n);
+      });
+    }
   }
+  function poPlyOptionsHtml(selected){
+    var plys = ["3 Ply", "5 Ply", "7 Ply"];
+    var html = '<option value="">' + esc(t("form_ply_select")) + "</option>";
+    plys.forEach(function(p){
+      html += '<option value="' + esc(p) + '"' + (selected === p ? " selected" : "") + '>' + esc(p) + "</option>";
+    });
+    return html;
+  }
+  function poLayerRowsHtml(productId){
+    var rows = "";
+    for(var n = 1; n <= 7; n++){
+      rows += '<tr id="' + poLayerFieldId(productId, n, "row") + '">' +
+        '<td id="' + poLayerFieldId(productId, n, "label") + '"></td>' +
+        '<td><select id="' + poLayerFieldId(productId, n, "sku") + '"></select></td>' +
+        '<td><input type="text" id="' + poLayerFieldId(productId, n, "reelweight") + '"></td>' +
+        '<td class="mono" id="' + poLayerFieldId(productId, n, "budweight") + '"></td>' +
+        '<td class="mono" id="' + poLayerFieldId(productId, n, "budcount") + '"></td>' +
+        '<td class="mono" id="' + poLayerFieldId(productId, n, "available") + '"></td>' +
+        '<td><span class="capChip" id="' + poLayerFieldId(productId, n, "status") + '" hidden></span></td>' +
+        '<td><button type="button" class="layerDeleteBtn" id="' + poLayerFieldId(productId, n, "delete") + '" title="' + esc(t("layers_delete_title")) + '">✕</button></td>' +
+        '</tr>';
+    }
+    return rows;
+  }
+  // Builds one product block's markup — a self-contained card with the exact same fields the
+  // single-product form used to have at the top level (Product/Material Code, Material Description,
+  // Ply, Reserve Reel, Layers, Quantity), now scoped to this one product via poFieldId/poLayerFieldId.
+  function renderPoProductBlock(product, index){
+    var pid = product.id;
+    return "" +
+      '<div class="poProductBlock" data-product-id="' + esc(pid) + '">' +
+        '<div class="poProductBlockHead">' +
+          '<span class="poProductBlockLabel">' + esc(tf("po_product_label", { n: index + 1 })) + "</span>" +
+          '<button type="button" class="poRemoveProductBtn" id="' + poFieldId(pid, "removebtn") + '">' + esc(t("po_remove_product_btn")) + "</button>" +
+        "</div>" +
+        '<div class="formGrid">' +
+          '<label><span>' + esc(t("po_productcode_label")) + '</span>' +
+            '<input type="text" id="' + poFieldId(pid, "productcode") + '" placeholder="e.g. RM-KRAFT-250" value="' + esc(product.productCode || "") + '"></label>' +
+          '<label class="span2"><span>' + esc(t("po_materialdesc_label")) + '</span>' +
+            '<input type="text" id="' + poFieldId(pid, "materialdesc") + '" placeholder="e.g. Kraft Paper 250 GSM, 109cm" value="' + esc(product.materialDescription || "") + '"></label>' +
+          '<label><span>' + esc(t("po_ply_label")) + '</span>' +
+            '<select id="' + poFieldId(pid, "ply") + '">' + poPlyOptionsHtml(product.ply || "") + "</select></label>" +
+          '<div class="formGridItem" id="' + poFieldId(pid, "fld_reservereel") + '">' +
+            "<span>" + esc(t("po_reservereel_label")) + "</span>" +
+            '<label class="passFailToggle">' +
+              '<input type="checkbox" id="' + poFieldId(pid, "reservereel") + '"' + (product.reserveReel ? " checked" : "") + ">" +
+              '<span class="pfTrack"></span><span class="pfLabel"></span>' +
+            "</label>" +
+          "</div>" +
+          '<div class="span2 qcSpecsBlock" id="' + poFieldId(pid, "fld_reellayers") + '" hidden>' +
+            "<span>" + esc(t("layers_heading")) + "</span>" +
+            '<table class="qcSpecsTable"><thead><tr><th></th><th>' + esc(t("layers_th_item")) + "</th><th>" + esc(t("layers_th_reelweight")) +
+            "</th><th>" + esc(t("layers_th_budweight")) + "</th><th>" + esc(t("layers_th_budcount")) + "</th><th>" + esc(t("layers_th_available")) +
+            "</th><th>" + esc(t("layers_th_status")) + "</th><th></th></tr></thead>" +
+            '<tbody id="' + poFieldId(pid, "layersBody") + '">' + poLayerRowsHtml(pid) + "</tbody></table>" +
+          "</div>" +
+          '<label><span>' + esc(t("form_qty_label")) + '</span>' +
+            '<input type="number" id="' + poFieldId(pid, "quantity") + '" min="0" step="1" placeholder="500" value="' + (product.quantity != null ? esc(String(product.quantity)) : "") + '"></label>' +
+        "</div>" +
+      "</div>";
+  }
+  // Re-labels every remaining "Product N" block after one is added/removed, so the numbering always
+  // matches display order.
+  function renumberPoProductBlockLabels(){
+    poFormProducts.forEach(function(pid, idx){
+      var blockEl = document.querySelector('.poProductBlock[data-product-id="' + pid + '"]');
+      var labelEl = blockEl ? blockEl.querySelector(".poProductBlockLabel") : null;
+      if(labelEl) labelEl.textContent = tf("po_product_label", { n: idx + 1 });
+    });
+  }
+  function addPoProductBlock(product){
+    var pid = product.id;
+    poFormProducts.push(pid);
+    poLayerReservedSku[pid] = {};
+    var wrap = document.createElement("div");
+    wrap.innerHTML = renderPoProductBlock(product, poFormProducts.length - 1);
+    var blockEl = wrap.firstElementChild;
+    el.poProductsContainer.appendChild(blockEl);
+
+    // Seed poLayerReservedSku from this product's own saved layers (same assumption the old
+    // single-product version made: a sku shown in a saved layer row is currently genuinely Reserved
+    // against this PO — refreshPoOrphanReels reconciles anything that's since drifted) and fill in
+    // each row's Reel Weight (the select's own sku option list is populated separately, right after,
+    // by renderLayerSkuOptionsForPoProduct).
+    var savedLayers = product.layers || [];
+    for(var n = 1; n <= 7; n++){
+      var savedLayer = savedLayers[n - 1];
+      if(savedLayer && savedLayer.sku && state.invCatalog[savedLayer.sku]) poLayerReservedSku[pid][n] = savedLayer.sku;
+      var rwEl = document.getElementById(poLayerFieldId(pid, n, "reelweight"));
+      if(rwEl) rwEl.value = (savedLayer && savedLayer.reelWeight) || "";
+      // Row labels ("Layer 1", "Layer 2", ...) are only ever set by applyTranslations for STATIC rows
+      // present at page load — a dynamic block created afterwards (opening a PO, "+ Add Product")
+      // needs its own labels filled in right here instead of waiting for the next language switch.
+      var labelEl = document.getElementById(poLayerFieldId(pid, n, "label"));
+      if(labelEl) labelEl.textContent = tf("layers_row_label_n", { n: n });
+    }
+
+    document.getElementById(poFieldId(pid, "ply")).addEventListener("change", function(){
+      refreshPoLayersVisibilityForProduct(pid);
+    });
+    document.getElementById(poFieldId(pid, "reservereel")).addEventListener("change", function(){
+      var cb = document.getElementById(poFieldId(pid, "reservereel"));
+      if(cb.checked && !state.editingPoId){
+        cb.checked = false;
+        showBanner(t("po_err_save_before_reel"));
+        return;
+      }
+      var plyEl = document.getElementById(poFieldId(pid, "ply"));
+      if(cb.checked && !plyEl.value){
+        cb.checked = false;
+        showBanner(t("task_err_po_ply_required"));
+        return;
+      }
+      refreshPoLayersVisibilityForProduct(pid);
+    });
+    for(var bindN = 1; bindN <= 7; bindN++){ bindPoLayerRow(pid, bindN); }
+    document.getElementById(poFieldId(pid, "removebtn")).addEventListener("click", function(){
+      if(poFormProducts.length <= 1){ showBanner(t("po_err_need_one_product")); return; }
+      if(!window.confirm(t("po_remove_product_confirm"))) return;
+      removePoProductBlock(pid);
+    });
+
+    renderLayerSkuOptionsForPoProduct(pid);
+    // Explicitly set each row's sku <select> to what's actually saved (renderLayerSkuOptionsForPoProduct
+    // only PRESERVES whatever a select already had selected — a freshly-built select has nothing
+    // selected yet, so the saved value has to be applied here once options exist to choose from).
+    for(var skuSetN = 1; skuSetN <= 7; skuSetN++){
+      var savedLayerForSku = savedLayers[skuSetN - 1];
+      var skuSelEl = document.getElementById(poLayerFieldId(pid, skuSetN, "sku"));
+      if(skuSelEl && savedLayerForSku && savedLayerForSku.sku && state.invCatalog[savedLayerForSku.sku]){
+        skuSelEl.value = savedLayerForSku.sku;
+      }
+    }
+    refreshPoLayersVisibilityForProduct(pid);
+    for(var statusN = 1; statusN <= 7; statusN++) refreshPoLayerReelStatus(pid, statusN);
+  }
+  function removePoProductBlock(productId){
+    for(var n = 1; n <= 7; n++) releasePoLayerRow(productId, n);
+    delete poLayerReservedSku[productId];
+    poFormProducts = poFormProducts.filter(function(id){ return id !== productId; });
+    var blockEl = document.querySelector('.poProductBlock[data-product-id="' + productId + '"]');
+    if(blockEl && blockEl.parentNode) blockEl.parentNode.removeChild(blockEl);
+    renumberPoProductBlockLabels();
+    refreshPoOrphanReels();
+  }
+  el.poAddProductBtn.addEventListener("click", function(){
+    addPoProductBlock({ id: poProductSeq(), productCode: "", materialDescription: "", ply: "", quantity: null, reserveReel: false, layers: null });
+  });
 
   // ---------- Device stage lock ----------
   function normalizePhone(raw){
@@ -8056,8 +8202,14 @@
       // if a bud gets recorded/voided elsewhere while this modal happens to be open.
       for(var budRefreshN = 1; budRefreshN <= 7; budRefreshN++){
         if(el.modalOverlay && !el.modalOverlay.hidden) refreshLayerReelStatus(budRefreshN);
-        if(el.poModalOverlay && !el.poModalOverlay.hidden) refreshPoLayerReelStatus(budRefreshN);
         if(el.taskModalOverlay && !el.taskModalOverlay.hidden) refreshTaskLayerReelStatus(budRefreshN);
+      }
+      // PO modal: refresh every currently-open product block's rows, not just a flat 1..7 (see
+      // poFormProducts/refreshPoLayerReelStatus).
+      if(el.poModalOverlay && !el.poModalOverlay.hidden){
+        poFormProducts.forEach(function(pid){
+          for(var poBudRefreshN = 1; poBudRefreshN <= 7; poBudRefreshN++) refreshPoLayerReelStatus(pid, poBudRefreshN);
+        });
       }
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
     // productRates: a Customer+Product -> Rate/Piece master list, imported from Excel on the
@@ -8553,6 +8705,71 @@
     if(!poId) return null;
     return state.purchaseOrders.find(function(p){ return p.id === poId; }) || null;
   }
+  // ---------- PO: multiple products per Purchase Order ----------
+  // A PO now holds an array of products (see the PO form's own "+ Add Product" section) instead of
+  // a single flat Product Code/Material Description/Ply/Reserve Reel/Layers/Quantity set — real
+  // POs commonly cover several different materials at once (see the business's own Excel example:
+  // one PO number, several Material Codes each with their own quantity). Every place that reads a
+  // PO's product details goes through poProducts()/resolvePoProduct() below so it works the same way
+  // whether this PO was saved before or after this feature existed — a PO saved before still has its
+  // old flat fields (never migrated on disk), and poProducts() synthesizes a single-item array from
+  // them on the fly; a PO saved from now on always has a real `products` array and nothing else.
+  function poProductSeq(){
+    return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function poProducts(po){
+    if(!po) return [];
+    if(po.products) return po.products;
+    // Legacy shape (saved before multi-product POs existed) — synthesize the one implicit product
+    // straight from the PO's own old flat fields, so every reader downstream never has to care which
+    // shape a given PO document happens to be in.
+    if(po.productCode || po.materialDescription || po.ply || po.quantity != null || po.reserveReel){
+      return [{
+        id: "legacy", productCode: po.productCode || "", materialDescription: po.materialDescription || "",
+        ply: po.ply || "", quantity: po.quantity != null ? po.quantity : null,
+        reserveReel: !!po.reserveReel, layers: po.layers || null
+      }];
+    }
+    return [];
+  }
+  // Resolves which product a stored poProductId refers to, falling back to this PO's first product
+  // when the id is missing (an entry/task saved before poProductId existed) or no longer matches
+  // (that particular product line was since removed from the PO) — always returns SOMETHING useful
+  // rather than nothing, same "best available guess" spirit as findCanonicalCustomer elsewhere.
+  function resolvePoProduct(po, productId){
+    var products = poProducts(po);
+    if(!products.length) return null;
+    if(productId){
+      var match = products.find(function(p){ return p.id === productId; });
+      if(match) return match;
+    }
+    return products[0];
+  }
+  // Every existing single-product autofill/summary function (renderPoDetailsPanel,
+  // applyPoAutofillToEntry, applyPoAutofillToTask, reconcileLayerReelStatusTransfers, ...) already
+  // expects a flat "po-shaped" object with its own top-level productCode/materialDescription/ply/
+  // quantity/reserveReel/layers — this builds exactly that shape for ONE specific product of a
+  // (possibly multi-product) PO, so all of those call sites keep working completely unchanged; only
+  // what gets passed to them changes (this merged view instead of the raw PO doc).
+  function mergePoProductView(po, product){
+    if(!po || !product) return null;
+    return {
+      id: po.id, poNumber: po.poNumber, customerName: po.customerName,
+      deliveryRequiredAtPlant: po.deliveryRequiredAtPlant, status: po.status,
+      productId: product.id, productCode: product.productCode, materialDescription: product.materialDescription,
+      ply: product.ply, quantity: product.quantity, reserveReel: product.reserveReel, layers: product.layers
+    };
+  }
+  function poProductView(po, productId){
+    return mergePoProductView(po, resolvePoProduct(po, productId));
+  }
+  // Label shown once a specific product line is picked (PO Number field on the Entry/Task forms,
+  // and the product picker's own rows) — decorates the bare PO Number with which product this is,
+  // since a multi-product PO's Number alone no longer says which line was chosen.
+  function poProductPickerLabel(po, product){
+    var bits = [product.productCode, product.materialDescription].filter(Boolean);
+    return (po.poNumber || "") + (bits.length ? " — " + bits.join(" / ") : "");
+  }
   function reservedBucketsForPo(poId){
     var map = {};
     if(!poId) return map;
@@ -8799,12 +9016,27 @@
   // offered. Called whenever the catalog changes (subscribeInventory's onSnapshot) and once more
   // when the entry form opens (openModal), so the list is never stale by the time someone needs
   // it. Preserves each select's current value across a refresh.
+  var lastLayerSkuOptionsHtml = ""; // cached so a freshly-added PO product block (addPoProductBlock)
+                                     // can populate its own rows without waiting for the next catalog change.
+  function applyLayerSkuOptionsToPoProduct(productId, optionsHtml){
+    for(var pn = 1; pn <= 7; pn++){
+      var pSel = document.getElementById(poLayerFieldId(productId, pn, "sku"));
+      if(!pSel) continue;
+      var pPrev = pSel.value;
+      pSel.innerHTML = optionsHtml;
+      pSel.value = state.invCatalog[pPrev] ? pPrev : "";
+    }
+  }
+  function renderLayerSkuOptionsForPoProduct(productId){
+    applyLayerSkuOptionsToPoProduct(productId, lastLayerSkuOptionsHtml);
+  }
   function renderLayerSkuOptions(){
     var reelItems = Object.keys(state.invCatalog).map(function(sku){ return state.invCatalog[sku]; })
       .filter(isReelUnit)
       .sort(function(a, b){ return layerSkuOptionLabel(a).localeCompare(layerSkuOptionLabel(b)); });
     var optionsHtml = '<option value="">' + esc(t("layers_item_select")) + "</option>" +
       reelItems.map(function(item){ return '<option value="' + esc(item.sku) + '">' + esc(layerSkuOptionLabel(item)) + "</option>"; }).join("");
+    lastLayerSkuOptionsHtml = optionsHtml;
     for(var n = 1; n <= 7; n++){
       var sel = el["f_layer" + n + "_sku"];
       if(!sel) continue;
@@ -8821,14 +9053,10 @@
       tSel.innerHTML = optionsHtml;
       tSel.value = state.invCatalog[tPrev] ? tPrev : "";
     }
-    // ...and again for the PO form's own Reserve Reel rows (see fld_poreellayers).
-    for(var pn = 1; pn <= 7; pn++){
-      var pSel = el["po_layer" + pn + "_sku"];
-      if(!pSel) continue;
-      var pPrev = pSel.value;
-      pSel.innerHTML = optionsHtml;
-      pSel.value = state.invCatalog[pPrev] ? pPrev : "";
-    }
+    // ...and again for every PO product block's own Reserve Reel rows (see #poProductsContainer /
+    // renderPoProductBlock) — unlike f_layer/t_layer there's no fixed number of these, so iterate
+    // whatever product blocks are currently open (poFormProducts) instead of a flat 1..7 loop.
+    poFormProducts.forEach(function(productId){ applyLayerSkuOptionsToPoProduct(productId, optionsHtml); });
   }
 
   // Shared arithmetic for both recording a NEW receipt and correcting an EXISTING one (see
@@ -10992,21 +11220,74 @@
   // `onSelect` callback param. Reuses buildPoItem's card look (via the .taskItem/.poItem classes)
   // but as a plain clickable row instead of the board's checkbox/edit-on-click card.
   var poPickerOnSelect = null;
+  // "po" (the original behavior — Update Status/Reserve pick the PO as a whole, onSelect(po)) or
+  // "product" (Entry/Task's PO field — a multi-product PO is picked one product-line at a time, per
+  // the confirmed decision; see openPoProductPicker, onSelect(mergedView, decoratedLabel)).
+  var poPickerMode = "po";
   function poPickerMatches(po, q){
     if(!q) return true;
-    var hay = ((po.poNumber || "") + " " + (po.customerName || "") + " " + (po.productCode || "") + " " + (po.materialDescription || "")).toLowerCase();
+    var productBits = poProducts(po).map(function(p){ return (p.productCode || "") + " " + (p.materialDescription || ""); }).join(" ");
+    var hay = ((po.poNumber || "") + " " + (po.customerName || "") + " " + productBits).toLowerCase();
     return hay.indexOf(q) !== -1;
+  }
+  // Same idea as poPickerMatches, but matched against one specific PRODUCT within a PO — a multi-
+  // product PO's different lines can have completely different codes/descriptions, so each line
+  // needs to be searchable on its own, not just on the PO's shared number/customer.
+  function poProductPickerMatches(po, product, q){
+    if(!q) return true;
+    var hay = ((po.poNumber || "") + " " + (po.customerName || "") + " " + (product.productCode || "") + " " + (product.materialDescription || "")).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+  // One row per (po, product) pair — used only in poPickerMode === "product".
+  function buildPoProductPickerRow(po, product){
+    var received = isPoReceived(po);
+    var overdue = isPoOverdue(po);
+    var row = document.createElement("div");
+    row.className = "taskItem poItem" + (received ? " done" : "") + (overdue ? " overdue" : "");
+    var metaBits = [];
+    if(product.productCode) metaBits.push(product.productCode);
+    if(product.materialDescription) metaBits.push(product.materialDescription);
+    if(product.ply) metaBits.push(product.ply);
+    if(product.quantity != null) metaBits.push(t("card_qty_label") + " " + product.quantity);
+    var deliveryLine = po.deliveryRequiredAtPlant
+      ? tf("po_delivery_line", { date: fmtDateForDisplay(po.deliveryRequiredAtPlant) }) : "";
+    row.innerHTML =
+      '<div class="taskBody">' +
+        '<div class="taskTitleRow">' +
+          '<span class="taskTitle">' + esc(po.poNumber || "") + '</span>' +
+          (overdue ? '<span class="poOverdueBadge">' + esc(t("po_overdue_badge")) + '</span>' : "") +
+          (received ? '<span class="poReceivedBadge">' + esc(t("po_status_received")) + '</span>' : "") +
+        '</div>' +
+        (po.customerName ? '<div class="taskSub">' + esc(po.customerName) + '</div>' : "") +
+        '<div class="taskSub taskMeta"' + (metaBits.length ? "" : " hidden") + '></div>' +
+        (deliveryLine ? '<div class="taskNotes">' + esc(deliveryLine) + '</div>' : "") +
+      '</div>';
+    row.querySelector(".taskMeta").textContent = metaBits.join(" · ");
+    row.querySelector(".taskBody").addEventListener("click", function(){
+      var cb = poPickerOnSelect;
+      closePoPicker();
+      if(cb) cb(mergePoProductView(po, product), poProductPickerLabel(po, product));
+    });
+    return row;
   }
   function buildPoPickerRow(po){
     var received = isPoReceived(po);
     var overdue = isPoOverdue(po);
     var row = document.createElement("div");
     row.className = "taskItem poItem" + (received ? " done" : "") + (overdue ? " overdue" : "");
+    // Same first-product-plus-"+N more" summary as buildPoItem's board card (see poProducts()) —
+    // this row picks the PO as a whole (see poPickerMode/openPoProductPicker for the per-product row
+    // used by Entry/Task's own PO field instead).
+    var pickerRowProducts = poProducts(po);
     var metaBits = [];
-    if(po.productCode) metaBits.push(po.productCode);
-    if(po.materialDescription) metaBits.push(po.materialDescription);
-    if(po.ply) metaBits.push(po.ply);
-    if(po.quantity != null) metaBits.push(t("card_qty_label") + " " + po.quantity);
+    if(pickerRowProducts.length){
+      var pickerRowP0 = pickerRowProducts[0];
+      if(pickerRowP0.productCode) metaBits.push(pickerRowP0.productCode);
+      if(pickerRowP0.materialDescription) metaBits.push(pickerRowP0.materialDescription);
+      if(pickerRowP0.ply) metaBits.push(pickerRowP0.ply);
+      if(pickerRowP0.quantity != null) metaBits.push(t("card_qty_label") + " " + pickerRowP0.quantity);
+      if(pickerRowProducts.length > 1) metaBits.push(tf("po_products_more", { n: pickerRowProducts.length - 1 }));
+    }
     var deliveryLine = po.deliveryRequiredAtPlant
       ? tf("po_delivery_line", { date: fmtDateForDisplay(po.deliveryRequiredAtPlant) }) : "";
     row.innerHTML =
@@ -11030,13 +11311,39 @@
   }
   function renderPoPicker(){
     var q = (el.poPickerSearchInput.value || "").trim().toLowerCase();
-    var matches = state.purchaseOrders.filter(function(po){ return poPickerMatches(po, q); });
     el.poPickerBody.innerHTML = "";
+    if(poPickerMode === "product"){
+      var rowCount = 0;
+      state.purchaseOrders.forEach(function(po){
+        poProducts(po).forEach(function(product){
+          if(!poProductPickerMatches(po, product, q)) return;
+          el.poPickerBody.appendChild(buildPoProductPickerRow(po, product));
+          rowCount++;
+        });
+      });
+      el.poPickerEmpty.hidden = rowCount > 0;
+      return;
+    }
+    var matches = state.purchaseOrders.filter(function(po){ return poPickerMatches(po, q); });
     el.poPickerEmpty.hidden = matches.length > 0;
     matches.forEach(function(po){ el.poPickerBody.appendChild(buildPoPickerRow(po)); });
   }
   el.poPickerSearchInput.addEventListener("input", renderPoPicker);
   function openPoPicker(onSelect){
+    poPickerMode = "po";
+    poPickerOnSelect = onSelect;
+    el.poPickerSearchInput.value = "";
+    renderPoPicker();
+    el.poPickerOverlay.hidden = false;
+    el.poPickerSearchInput.focus();
+  }
+  // Entry/Task's PO field: a multi-product PO is picked one product-line at a time (see
+  // buildPoProductPickerRow/mergePoProductView) — onSelect receives (view, label): `view` is the
+  // merged (po, product) shape every existing autofill/details function already expects, and `label`
+  // is the decorated display text ("PO-4021 — Kraft Paper 250gsm") to show in the readonly input so a
+  // multi-product PO's lines stay distinguishable from each other.
+  function openPoProductPicker(onSelect){
+    poPickerMode = "product";
     poPickerOnSelect = onSelect;
     el.poPickerSearchInput.value = "";
     renderPoPicker();
@@ -12455,9 +12762,17 @@
     el.f_shift.value = entry ? entry.shift : state.shift;
     el.f_stage.value = targetStage;
     el.f_stage.disabled = deviceLocked && allowedStages.length <= 1;
-    entrySelectedPo = (entry && entry.poNumber) ? { id: entry.poId, poNumber: entry.poNumber } : null;
-    el.f_ponumber.value = entry ? (entry.poNumber || "") : "";
-    renderPoDetailsPanel(el.entryPoDetails, entrySelectedPo ? findPoById(entrySelectedPo.id) : null);
+    // entrySelectedPo now carries a merged (po, product) view (see mergePoProductView) resolved from
+    // the entry's own saved poId + poProductId — poProductView() already falls back to the PO's first/
+    // only product for a legacy single-product PO (no poProductId saved), so this reopens correctly
+    // whether the entry was saved before or after multi-product POs existed.
+    entrySelectedPo = (entry && entry.poNumber)
+      ? (poProductView(findPoById(entry.poId), entry.poProductId) || { id: entry.poId, poNumber: entry.poNumber, productId: entry.poProductId || null })
+      : null;
+    el.f_ponumber.value = entry
+      ? (entrySelectedPo ? poProductPickerLabel(entrySelectedPo, entrySelectedPo) : (entry.poNumber || ""))
+      : "";
+    renderPoDetailsPanel(el.entryPoDetails, entrySelectedPo);
     el.f_jobcard.value = entry ? (entry.jobCardNo||"") : "";
     el.f_artworkno.value = entry ? (entry.artworkNo||"") : "";
     el.artworkCheckNoDisplay.textContent = (entry && entry.artworkNo) ? entry.artworkNo : "—";
@@ -12587,15 +12902,17 @@
       if(prefill.type) el.f_type.value = prefill.type;
       if(prefill.quantity != null) el.f_qty.value = prefill.quantity;
       if(prefill.poId || prefill.poNumber){
-        entrySelectedPo = { id: prefill.poId || null, poNumber: prefill.poNumber || "" };
-        el.f_ponumber.value = prefill.poNumber || "";
         var prefillPo = findPoById(prefill.poId);
-        renderPoDetailsPanel(el.entryPoDetails, prefillPo);
+        var prefillView = poProductView(prefillPo, prefill.poProductId) ||
+          { id: prefill.poId || null, poNumber: prefill.poNumber || "", productId: prefill.poProductId || null };
+        entrySelectedPo = prefillView;
+        el.f_ponumber.value = prefillView ? poProductPickerLabel(prefillView, prefillView) : (prefill.poNumber || "");
+        renderPoDetailsPanel(el.entryPoDetails, prefillView);
         // Promoting a Task to QC now carries the linked PO's Ply/Layers along too (QC shows them
         // the same as Plant does — see stageHasPly/stageHasLayers) — Customer Name/Product/Quantity
         // deliberately still come from the TASK's own values above, not the PO, since those may
         // have been edited after the task was first linked to it.
-        applyPoPlyLayersAutofillToEntry(prefillPo);
+        applyPoPlyLayersAutofillToEntry(prefillView);
       }
     }
     updateFormFieldsForStage(targetStage);
@@ -12807,7 +13124,11 @@
     // already-Reserved reels (whether mirrored in by applyPoAutofillToEntry or picked by hand) draws
     // from Reserved instead of double-counting it out of Available, at whichever stage/save first
     // consumes it.
-    var linkedPoForEntryLayers = (stageHasLayers(chosenStage) && entrySelectedPo) ? findPoById(entrySelectedPo.id) : null;
+    // Re-resolved fresh from state.purchaseOrders at submit time (not just whatever entrySelectedPo
+    // captured at pick/open time) — same freshness guarantee the old single-product findPoById(id)
+    // lookup gave, now scoped to the specific product line that was picked (poProductView).
+    var linkedPoForEntryLayers = (stageHasLayers(chosenStage) && entrySelectedPo)
+      ? poProductView(findPoById(entrySelectedPo.id), entrySelectedPo.productId) : null;
     var qcBalanceQtyRequiredNum = (isQC && el.f_qcbalanceqty.value !== "") ? Number(el.f_qcbalanceqty.value) : 0;
     var hasClientName = stageHasCustomerName(chosenStage);
     var hasQtyPerBundle = stageHasQtyPerBundle(chosenStage);
@@ -12849,8 +13170,12 @@
       // PO Number/Id: same "readonly input, backing var holds the id" pattern as Inventory's
       // Reserve/Update Status PO field — cleared alongside Job Card No on HR/Stock Summary, the
       // same two stages that don't carry a job card at all.
-      poNumber: (isHR || isStockSummary) ? "" : el.f_ponumber.value.trim(),
-      poId: (isHR || isStockSummary || !el.f_ponumber.value.trim()) ? null : (entrySelectedPo ? entrySelectedPo.id : null),
+      // Read from entrySelectedPo itself (the bare poNumber, not whatever decorated label the
+      // readonly input is currently showing — see openPoProductPicker) now that a multi-product PO's
+      // display text can read like "PO-4021 — Kraft Paper 250gsm" instead of the plain PO number.
+      poNumber: (isHR || isStockSummary || !entrySelectedPo) ? "" : (entrySelectedPo.poNumber || ""),
+      poId: (isHR || isStockSummary || !entrySelectedPo) ? null : entrySelectedPo.id,
+      poProductId: (isHR || isStockSummary || !entrySelectedPo) ? null : (entrySelectedPo.productId || null),
       jobCardNo: (isHR || isStockSummary) ? "" : el.f_jobcard.value.trim(),
       artworkNo: stageHasArtworkNo(chosenStage) ? el.f_artworkno.value.trim() : "",
       artworkCheckPass: stageHasArtworkNo(chosenStage) ? el.f_artworkcheck_pass.checked : null,
@@ -13419,7 +13744,8 @@
           type: task.type,
           quantity: task.quantity,
           poId: task.poId,
-          poNumber: task.poNumber
+          poNumber: task.poNumber,
+          poProductId: task.poProductId
         });
       });
     }
@@ -13643,9 +13969,15 @@
     // reasoning as refreshTaskStockFields — so a Ply edited on the PO after this task was created
     // still shows the right number of Layer rows here.
     var linkedPo = (task && task.poId) ? state.purchaseOrders.find(function(p){ return p.id === task.poId; }) : null;
-    taskSelectedPo = (task && task.poNumber) ? { id: task.poId, poNumber: task.poNumber, ply: linkedPo ? (linkedPo.ply || "") : "" } : null;
-    el.t_ponumber.value = task ? (task.poNumber || "") : "";
-    renderPoDetailsPanel(el.taskPoDetails, linkedPo);
+    // poProductView() resolves the specific product line this task is linked to (falling back to the
+    // PO's first/only product for a legacy single-product PO or a task saved before poProductId
+    // existed), giving taskSelectedPo the same merged-view shape entrySelectedPo uses.
+    var linkedPoView = linkedPo ? poProductView(linkedPo, task && task.poProductId) : null;
+    taskSelectedPo = (task && task.poNumber)
+      ? (linkedPoView || { id: task.poId, poNumber: task.poNumber, productId: (task && task.poProductId) || null, ply: "" })
+      : null;
+    el.t_ponumber.value = task ? (taskSelectedPo ? poProductPickerLabel(taskSelectedPo, taskSelectedPo) : (task.poNumber || "")) : "";
+    renderPoDetailsPanel(el.taskPoDetails, taskSelectedPo);
     el.t_reel.checked = !!(task && task.reel);
     renderLayerSkuOptions();
     taskLayerReservedSku = {};
@@ -13701,8 +14033,12 @@
       // PO Number/Id + Reel reservation: reels are already reserved live as they're picked (see the
       // t_layer*_sku change handlers above) — this is just snapshotting which rows/PO the task's
       // own card should display (buildTaskItem) and the PO board should count as reserved for it.
-      poNumber: el.t_ponumber.value.trim() || null,
-      poId: el.t_ponumber.value.trim() ? (taskSelectedPo ? taskSelectedPo.id : null) : null,
+      // Read from taskSelectedPo itself (the bare poNumber, not whatever decorated label the readonly
+      // input is currently showing — see openPoProductPicker) now that a multi-product PO's display
+      // text can read like "PO-4021 — Kraft Paper 250gsm" instead of the plain PO number.
+      poNumber: taskSelectedPo ? (taskSelectedPo.poNumber || null) : null,
+      poId: taskSelectedPo ? taskSelectedPo.id : null,
+      poProductId: taskSelectedPo ? (taskSelectedPo.productId || null) : null,
       reel: el.t_reel.checked,
       layers: el.t_reel.checked ? computeTaskLayersData(plyLayerCount(taskSelectedPo ? taskSelectedPo.ply : "")) : null,
       // Snapshotted from what the auto-fill is showing right now — see refreshTaskStockFields —
@@ -13825,11 +14161,19 @@
     var item = document.createElement("div");
     item.className = "taskItem poItem" + (received ? " done" : "") + (overdue ? " overdue" : "");
     item.dataset.id = po.id;
+    // A PO can now cover multiple products (see poProducts()) — the card summarizes the first one
+    // plus a "+N more" tag rather than trying to cram every product's fields into one card; opening
+    // the PO (openPoModal) shows the full per-product breakdown.
+    var poItemProducts = poProducts(po);
     var metaBits = [];
-    if(po.productCode) metaBits.push(po.productCode);
-    if(po.materialDescription) metaBits.push(po.materialDescription);
-    if(po.ply) metaBits.push(po.ply);
-    if(po.quantity != null) metaBits.push(t("card_qty_label") + " " + po.quantity);
+    if(poItemProducts.length){
+      var poItemP0 = poItemProducts[0];
+      if(poItemP0.productCode) metaBits.push(poItemP0.productCode);
+      if(poItemP0.materialDescription) metaBits.push(poItemP0.materialDescription);
+      if(poItemP0.ply) metaBits.push(poItemP0.ply);
+      if(poItemP0.quantity != null) metaBits.push(t("card_qty_label") + " " + poItemP0.quantity);
+      if(poItemProducts.length > 1) metaBits.push(tf("po_products_more", { n: poItemProducts.length - 1 }));
+    }
     var deliveryLine = po.deliveryRequiredAtPlant
       ? tf("po_delivery_line", { date: fmtDateForDisplay(po.deliveryRequiredAtPlant) }) : "";
     // Reels currently held Reserved against this PO — from ANY source (a reel row's own Reserve
@@ -13873,12 +14217,13 @@
   }
 
   // ---------- Purchase Order modal ----------
-  var PO_FORM_FIELDS = [
-    el.po_number, el.po_customer, el.po_productcode, el.po_materialdesc, el.po_ply,
-    el.po_reservereel, el.po_quantity, el.po_delivery, el.po_updatedby
-  ];
-  for(var poLayerFieldN = 1; poLayerFieldN <= 7; poLayerFieldN++){
-    PO_FORM_FIELDS.push(el["po_layer" + poLayerFieldN + "_sku"]);
+  // Only the top-level fields shared by the whole PO are static now — every product's own fields
+  // (Product/Material Code, Material Description, Ply, Reserve Reel, Layers, Quantity) live inside a
+  // dynamic block built by addPoProductBlock, disabled separately via setPoProductBlocksDisabled.
+  var PO_FORM_FIELDS = [el.po_number, el.po_customer, el.po_delivery, el.po_updatedby];
+  function setPoProductBlocksDisabled(disabled){
+    Array.prototype.forEach.call(el.poProductsContainer.querySelectorAll("input, select, button"), function(f){ f.disabled = disabled; });
+    el.poAddProductBtn.disabled = disabled;
   }
   function openPoModal(po){
     // Only the admin device may add/edit/delete/mark-received a PO — every other device can still
@@ -13890,35 +14235,33 @@
     el.poModalTitle.textContent = t(readOnly ? "form_view_po" : (po ? "form_edit_po" : "form_add_po"));
     el.po_number.value = po ? (po.poNumber || "") : "";
     el.po_customer.value = po ? (po.customerName || "") : "";
-    el.po_productcode.value = po ? (po.productCode || "") : "";
-    el.po_materialdesc.value = po ? (po.materialDescription || "") : "";
-    el.po_ply.value = po ? (po.ply || "") : "";
-    el.po_quantity.value = po && po.quantity != null ? po.quantity : "";
     el.po_delivery.value = po ? (po.deliveryRequiredAtPlant || "") : "";
     syncPoDeliveryLabel();
     el.po_updatedby.value = po ? (po.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
-    // Reserve Reel rows: poLayerReservedSku starts fresh from whatever THIS PO actually has saved
-    // (po.layers) — never from whatever a previously-open PO left behind (see closePoModal). A
-    // brand-new PO (no po.reelReserve/layers yet, and no id to tag a reservation with) just starts
-    // unchecked and empty.
-    el.po_reservereel.checked = !!(po && po.reserveReel);
-    renderLayerSkuOptions();
+    // Rebuild the product blocks from scratch (poFormProducts/poLayerReservedSku both start fresh —
+    // see closePoModal) from whatever THIS PO actually has saved (poProducts() synthesizes a
+    // single-item array from an old flat-shape PO automatically) — never from whatever a previously
+    // open PO left in the container. A brand-new PO starts with exactly one blank product block.
+    el.poProductsContainer.innerHTML = "";
+    poFormProducts = [];
     poLayerReservedSku = {};
-    for(var poPopN = 1; poPopN <= 7; poPopN++){
-      var poLayerData = (po && po.layers && po.layers[poPopN - 1]) || null;
-      var poSku = (poLayerData && poLayerData.sku && state.invCatalog[poLayerData.sku]) ? poLayerData.sku : "";
-      el["po_layer" + poPopN + "_sku"].value = poSku;
-      if(el["po_layer" + poPopN + "_reelweight"]) el["po_layer" + poPopN + "_reelweight"].value = (poLayerData && poLayerData.reelWeight) || "";
-      poLayerReservedSku[poPopN] = poSku;
-      refreshPoLayerReelStatus(poPopN);
+    var existingProducts = po ? poProducts(po) : [];
+    if(existingProducts.length){
+      existingProducts.forEach(function(product){ addPoProductBlock(product); });
+    } else {
+      addPoProductBlock({ id: poProductSeq(), productCode: "", materialDescription: "", ply: "", quantity: null, reserveReel: false, layers: null });
     }
-    refreshPoLayersVisibility();
+    // Refresh every block's Reel Item options against the CURRENT catalog (addPoProductBlock already
+    // populated each one from the cached options, but the catalog may have changed since — same
+    // "always refresh on open" guarantee the single-product form gave).
+    renderLayerSkuOptions();
     // A pending release from a PREVIOUSLY open PO's orphan panel is tracked by its own Promise, not
     // by this flag surviving — so opening a (possibly different) PO always starts its panel
     // unlocked rather than inheriting a stale in-flight state from whatever was open before.
     poOrphanActionInFlight = false;
     refreshPoOrphanReels();
     PO_FORM_FIELDS.forEach(function(f){ f.disabled = readOnly; });
+    setPoProductBlocksDisabled(readOnly);
     el.poDeleteBtn.hidden = !po || readOnly;
     el.poSaveBtn.hidden = readOnly;
     el.poCancelBtn.textContent = readOnly ? t("form_close") : t("generic_cancel");
@@ -13929,8 +14272,9 @@
     el.poModalOverlay.hidden = true;
     state.editingPoId = null;
     el.poForm.reset();
+    el.poProductsContainer.innerHTML = "";
+    poFormProducts = [];
     poLayerReservedSku = {};
-    el.fld_poreellayers.hidden = true;
     el.fld_poorphanreels.hidden = true;
     el.poOrphanReelsList.innerHTML = "";
     poOrphanReelsMap = {};
@@ -13946,17 +14290,31 @@
     ev.preventDefault();
     if(state.poModalReadOnly) return;
     el.poSaveBtn.disabled = true;
+    // One entry per currently-open product block (see poFormProducts/renderPoProductBlock) — this is
+    // the NEW shape every read now goes through poProducts()/mergePoProductView() for. An existing
+    // PO's old flat productCode/materialDescription/ply/etc. fields (if any) are simply left alone —
+    // no migration, nothing deleted — since poProducts() only reads them as a fallback when `products`
+    // itself is absent.
+    var products = poFormProducts.map(function(pid){
+      var plyVal = document.getElementById(poFieldId(pid, "ply")).value;
+      var reserveChecked = document.getElementById(poFieldId(pid, "reservereel")).checked;
+      var qtyVal = document.getElementById(poFieldId(pid, "quantity")).value;
+      return {
+        id: pid,
+        productCode: document.getElementById(poFieldId(pid, "productcode")).value.trim(),
+        materialDescription: document.getElementById(poFieldId(pid, "materialdesc")).value.trim(),
+        ply: plyVal,
+        // Reels are already reserved live as they're picked (see bindPoLayerRow above) — this just
+        // snapshots which rows to show/re-populate next time this PO is opened.
+        reserveReel: reserveChecked,
+        layers: reserveChecked ? computePoLayersData(pid, plyLayerCount(plyVal)) : null,
+        quantity: qtyVal === "" ? null : Number(qtyVal)
+      };
+    });
     var payload = {
       poNumber: el.po_number.value.trim(),
       customerName: el.po_customer.value.trim(),
-      productCode: el.po_productcode.value.trim(),
-      materialDescription: el.po_materialdesc.value.trim(),
-      ply: el.po_ply.value,
-      // Reels are already reserved live as they're picked (see the po_layer*_sku change handlers
-      // above) — this just snapshots which rows to show/re-populate next time this PO is opened.
-      reserveReel: el.po_reservereel.checked,
-      layers: el.po_reservereel.checked ? computePoLayersData(plyLayerCount(el.po_ply.value)) : null,
-      quantity: el.po_quantity.value === "" ? null : Number(el.po_quantity.value),
+      products: products,
       deliveryRequiredAtPlant: el.po_delivery.value || null,
       updatedBy: el.po_updatedby.value.trim(),
       updatedAt: Date.now()
@@ -13997,19 +14355,22 @@
     el.poDeleteConfirmYesBtn.disabled = true;
     softDeleteDoc("purchaseOrders", pendingDeletePo.id, omitKeys(pendingDeletePo, ["id"])).then(function(){
       el.poDeleteConfirmYesBtn.disabled = false;
-      // Deleting the PO releases whatever it directly reserved (via its own Reserve Reel rows)
-      // back to Available — same "release on delete" behavior as a Priority Task's own reel rows.
-      // A Task that separately reserved reels against this now-deleted PO keeps its own
+      // Deleting the PO releases whatever it directly reserved (via any of its products' own Reserve
+      // Reel rows) back to Available — same "release on delete" behavior as a Priority Task's own
+      // reel rows. A Task that separately reserved reels against this now-deleted PO keeps its own
       // reservation untouched here (releasing THAT is the Task's own delete/edit flow's job).
-      Object.keys(poLayerReservedSku).forEach(function(n){
-        var sku = poLayerReservedSku[n];
-        if(!sku) return;
-        addStatusTransfer(sku, "reserved", "available", 1, "Released — PO deleted",
-          { poNumber: pendingDeletePo.poNumber, poId: pendingDeletePo.id }).catch(function(err){
-          if(window.console) console.error("PO reel release failed:", err);
-          showBanner(t("layers_err_stock_move_failed"));
+      Object.keys(poLayerReservedSku).forEach(function(productId){
+        var rowMap = poLayerReservedSku[productId] || {};
+        Object.keys(rowMap).forEach(function(n){
+          var sku = rowMap[n];
+          if(!sku) return;
+          addStatusTransfer(sku, "reserved", "available", 1, "Released — PO deleted",
+            { poNumber: pendingDeletePo.poNumber, poId: pendingDeletePo.id }).catch(function(err){
+            if(window.console) console.error("PO reel release failed:", err);
+            showBanner(t("layers_err_stock_move_failed"));
+          });
+          rowMap[n] = "";
         });
-        poLayerReservedSku[n] = "";
       });
       // Also sweep any reservation left in the shared per-PO ledger that none of the 7 rows above
       // knew about — a ghost from before the row-hide leak fix, or from a linked Task's own Reel
@@ -14078,8 +14439,16 @@
     for(var layerLabelN = 1; layerLabelN <= 7; layerLabelN++){
       el["layerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
       el["tLayerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
-      el["poLayerLabel" + layerLabelN].textContent = tf("layers_row_label_n", { n: layerLabelN });
     }
+    // The PO form's own Layer row labels are dynamic now (one set per product block, not a fixed
+    // po_layer{n} — see #poProductsContainer), so relabel whichever blocks are currently open instead
+    // of a flat 1..7 loop against ids that no longer exist statically.
+    poFormProducts.forEach(function(pid){
+      for(var poLabelN = 1; poLabelN <= 7; poLabelN++){
+        var poLabelEl = document.getElementById(poLayerFieldId(pid, poLabelN, "label"));
+        if(poLabelEl) poLabelEl.textContent = tf("layers_row_label_n", { n: poLabelN });
+      }
+    });
     updateFormFieldsForStage(el.f_stage.value);
     el.supAddBtn.textContent = editingSupervisorPhone ? t("sup_save_changes") : t("sup_add_user");
     if(!el.supervisorsOverlay.hidden) applySupervisorFilter();
