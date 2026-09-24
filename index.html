@@ -3037,6 +3037,7 @@
       inv_rates_err_norows: "No valid rate rows found in this file.",
       inv_rates_import_done: "Imported {n} product rates.", inv_rates_err_save: "Couldn’t save the imported rates.",
       inv_rates_edit_prompt: "New Rate/Piece for {customer} — {product}:", inv_rates_err_invalid_rate: "Enter a valid rate.",
+      inv_rates_err_timeout: "This is taking too long — check your internet connection and try again.",
       inv_reels_stock_heading: "Reel Items (GSM / Size / BF)",
       inv_reels_stock_empty: "No reel items yet.",
       inv_other_stock_heading: "Other Items",
@@ -3393,6 +3394,7 @@
       inv_rates_err_norows: "इस फ़ाइल में कोई मान्य दर पंक्ति नहीं मिली।",
       inv_rates_import_done: "{n} उत्पाद दरें आयात की गईं।", inv_rates_err_save: "आयातित दरें सहेजी नहीं जा सकीं।",
       inv_rates_edit_prompt: "{customer} — {product} के लिए नई दर/नग:", inv_rates_err_invalid_rate: "एक मान्य दर दर्ज करें।",
+      inv_rates_err_timeout: "इसमें बहुत समय लग रहा है — अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।",
       inv_reels_stock_heading: "रील आइटम (GSM / साइज़ / BF)",
       inv_reels_stock_empty: "अभी तक कोई रील आइटम नहीं है।",
       inv_other_stock_heading: "अन्य आइटम",
@@ -3749,6 +3751,7 @@
       inv_rates_err_norows: "ఈ ఫైల్‌లో చెల్లుబాటు అయ్యే రేటు వరుసలు కనుగొనబడలేదు.",
       inv_rates_import_done: "{n} ఉత్పత్తి రేట్లు దిగుమతి చేయబడ్డాయి.", inv_rates_err_save: "దిగుమతి చేసిన రేట్లను సేవ్ చేయలేకపోయాము.",
       inv_rates_edit_prompt: "{customer} — {product} కోసం కొత్త రేటు/పీస్:", inv_rates_err_invalid_rate: "సరైన రేటును నమోదు చేయండి.",
+      inv_rates_err_timeout: "ఇది చాలా సమయం తీసుకుంటోంది — మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
       inv_reels_stock_heading: "రీల్ ఐటమ్‌లు (GSM / సైజ్ / BF)",
       inv_reels_stock_empty: "ఇంకా రీల్ ఐటమ్‌లు లేవు.",
       inv_other_stock_heading: "ఇతర ఐటమ్‌లు",
@@ -8009,8 +8012,18 @@
   // A flat rate master the business hands over as a spreadsheet and re-uploads whenever prices
   // change — see importProductRatesFromFile. Doc id is a normalized composite key so a re-import
   // naturally corrects/replaces the matching row instead of piling up duplicates.
+  // A Firestore document id can never contain a "/" (it's the path separator) — a customer or
+  // product name that happens to have one (e.g. a spec like "GSM 100 /Size 115", or "A/B Traders")
+  // would otherwise make state.db.doc("productRates/" + id) parse as an invalid multi-segment path
+  // and throw synchronously, which — before this fix — happened INSIDE the batch-building loop with
+  // no try/catch around it, silently aborting the whole import with the status text stuck on
+  // "Importing…" forever and no error shown. Replacing "/" (and stray whitespace collapsing already
+  // done by normalizeKey) keeps the key stable and importable regardless of what's in the source file.
+  function firestoreIdSafe(s){
+    return (s || "").replace(/\//g, "-");
+  }
   function productRateDocId(customerName, productName){
-    return normalizeKey(customerName) + "::" + normalizeKey(productName);
+    return firestoreIdSafe(normalizeKey(customerName)) + "::" + firestoreIdSafe(normalizeKey(productName));
   }
   // Normalized-key lookup — deliberately does NOT go through the Customer/Product catalog's own
   // canonical-name matching (findCanonicalCustomer/findCanonicalProduct), because the rate file's
@@ -8179,25 +8192,62 @@
       var chunks = [];
       for(var i = 0; i < rows.length; i += BATCH_CHUNK_SIZE) chunks.push(rows.slice(i, i + BATCH_CHUNK_SIZE));
       var committed = 0;
+      // A hard client-side timeout on each chunk's commit — a slow/blocked connection to Firestore
+      // (some office networks quietly block the long-polling channel Firestore falls back to) can
+      // otherwise leave batch.commit()'s promise neither resolved nor rejected indefinitely, which
+      // is exactly the "stuck on Importing… forever with no error" symptom this replaces with a
+      // clear, actionable message after a bounded wait.
+      var COMMIT_TIMEOUT_MS = 25000;
+      function commitWithTimeout(batch){
+        return new Promise(function(resolve, reject){
+          var settled = false;
+          var timer = setTimeout(function(){
+            if(settled) return;
+            settled = true;
+            reject(new Error(t("inv_rates_err_timeout")));
+          }, COMMIT_TIMEOUT_MS);
+          batch.commit().then(function(){
+            if(settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve();
+          }, function(err){
+            if(settled) return;
+            settled = true;
+            clearTimeout(timer);
+            reject(err);
+          });
+        });
+      }
       function commitNextChunk(chunkIndex){
         if(chunkIndex >= chunks.length){
           el.invRatesImportStatus.textContent = tf("inv_rates_import_done", { n: rows.length });
           return;
         }
-        var batch = state.db.batch();
-        chunks[chunkIndex].forEach(function(row){
-          batch.set(state.db.doc("productRates/" + productRateDocId(row.customerName, row.productName)), {
-            customerName: row.customerName,
-            productName: row.productName,
-            ratePerPiece: row.ratePerPiece,
-            updatedAt: now,
-            updatedBy: deviceSupervisorName || ""
+        // Wrapped in try/catch: building the batch itself can throw synchronously (for example, a
+        // Customer/Product name containing "/" used to make state.db.doc() throw an invalid-path
+        // error here — see firestoreIdSafe above for the actual fix — but ANY future per-row problem
+        // should surface as a message instead of silently aborting mid-import with the status text
+        // frozen on "Importing…").
+        try {
+          var batch = state.db.batch();
+          chunks[chunkIndex].forEach(function(row){
+            batch.set(state.db.doc("productRates/" + productRateDocId(row.customerName, row.productName)), {
+              customerName: row.customerName,
+              productName: row.productName,
+              ratePerPiece: row.ratePerPiece,
+              updatedAt: now,
+              updatedBy: deviceSupervisorName || ""
+            });
           });
-        });
+        } catch(buildErr){
+          el.invRatesImportStatus.textContent = t("inv_rates_err_save") + " " + (buildErr && buildErr.message ? buildErr.message : "");
+          return;
+        }
         if(chunks.length > 1){
           el.invRatesImportStatus.textContent = tf("inv_rates_importing_progress", { done: committed, total: rows.length });
         }
-        batch.commit().then(function(){
+        commitWithTimeout(batch).then(function(){
           committed += chunks[chunkIndex].length;
           commitNextChunk(chunkIndex + 1);
         }).catch(function(err){
