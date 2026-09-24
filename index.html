@@ -3072,6 +3072,7 @@
       inv_rates_err_norows: "No valid rate rows found in this file.",
       inv_rates_import_done: "Imported {n} product rates.", inv_rates_err_save: "Couldn’t save the imported rates.",
       inv_rates_edit_prompt: "New Rate/Piece for {customer} — {product}:", inv_rates_err_invalid_rate: "Enter a valid rate.",
+      inv_rate_customer_mismatch_hint: "No rate for customer \"{customer}\". A rate for this product IS imported, but under customer \"{otherCustomer}\" — check the customer name spelling in your Product Rates import.",
       inv_rates_err_timeout: "This is taking too long — check your internet connection and try again.",
       inv_reels_stock_heading: "Reel Items (GSM / Size / BF)",
       inv_reels_stock_empty: "No reel items yet.",
@@ -3438,6 +3439,7 @@
       inv_rates_err_norows: "इस फ़ाइल में कोई मान्य दर पंक्ति नहीं मिली।",
       inv_rates_import_done: "{n} उत्पाद दरें आयात की गईं।", inv_rates_err_save: "आयातित दरें सहेजी नहीं जा सकीं।",
       inv_rates_edit_prompt: "{customer} — {product} के लिए नई दर/नग:", inv_rates_err_invalid_rate: "एक मान्य दर दर्ज करें।",
+      inv_rate_customer_mismatch_hint: "ग्राहक \"{customer}\" के लिए कोई दर नहीं है। इस उत्पाद की दर आयात की गई है, लेकिन ग्राहक \"{otherCustomer}\" के नाम से — अपनी Product Rates आयात फ़ाइल में ग्राहक के नाम की वर्तनी जांचें।",
       inv_rates_err_timeout: "इसमें बहुत समय लग रहा है — अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।",
       inv_reels_stock_heading: "रील आइटम (GSM / साइज़ / BF)",
       inv_reels_stock_empty: "अभी तक कोई रील आइटम नहीं है।",
@@ -3804,6 +3806,7 @@
       inv_rates_err_norows: "ఈ ఫైల్‌లో చెల్లుబాటు అయ్యే రేటు వరుసలు కనుగొనబడలేదు.",
       inv_rates_import_done: "{n} ఉత్పత్తి రేట్లు దిగుమతి చేయబడ్డాయి.", inv_rates_err_save: "దిగుమతి చేసిన రేట్లను సేవ్ చేయలేకపోయాము.",
       inv_rates_edit_prompt: "{customer} — {product} కోసం కొత్త రేటు/పీస్:", inv_rates_err_invalid_rate: "సరైన రేటును నమోదు చేయండి.",
+      inv_rate_customer_mismatch_hint: "కస్టమర్ \"{customer}\" కోసం రేటు లేదు. ఈ ఉత్పత్తికి రేటు దిగుమతి చేయబడింది, కానీ కస్టమర్ \"{otherCustomer}\" పేరుతో — మీ Product Rates దిగుమతి ఫైల్‌లో కస్టమర్ పేరు స్పెల్లింగ్‌ని తనిఖీ చేయండి.",
       inv_rates_err_timeout: "ఇది చాలా సమయం తీసుకుంటోంది — మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
       inv_reels_stock_heading: "రీల్ ఐటమ్‌లు (GSM / సైజ్ / BF)",
       inv_reels_stock_empty: "ఇంకా రీల్ ఐటమ్‌లు లేవు.",
@@ -6939,7 +6942,7 @@
           var sku = taskLayerReservedSku[n];
           if(!sku) return;
           addStatusTransfer(sku, "reserved", "available", 1, "Released — Priority Task PO changed",
-            taskSelectedPo ? { poNumber: taskSelectedPo.poNumber, poId: taskSelectedPo.id } : undefined).catch(function(err){
+            taskSelectedPo ? { poNumber: taskSelectedPo.poNumber, poId: taskSelectedPo.id, poProductId: taskSelectedPo.productId } : undefined).catch(function(err){
             if(window.console) console.error("Task reel release failed:", err);
             showBanner(t("layers_err_stock_move_failed"));
           });
@@ -6968,7 +6971,7 @@
     refreshTaskLayerReelStatus(n);
     var po = taskSelectedPo;
     addStatusTransfer(sku, "reserved", "available", 1, "Released — Priority Task row removed" + (po && po.poNumber ? " (PO " + po.poNumber + ")" : ""),
-      po ? { poNumber: po.poNumber, poId: po.id } : undefined).catch(function(err){
+      po ? { poNumber: po.poNumber, poId: po.id, poProductId: po.productId } : undefined).catch(function(err){
       if(window.console) console.error("Task reel release failed:", err);
       showBanner(t("layers_err_stock_move_failed"));
     });
@@ -7042,7 +7045,7 @@
         var po = taskSelectedPo;
         var releaseNote = "Released — Priority Task Layer changed" + (po && po.poNumber ? " (PO " + po.poNumber + ")" : "");
         var releaseP = oldSku
-          ? addStatusTransfer(oldSku, "reserved", "available", 1, releaseNote, po ? { poNumber: po.poNumber, poId: po.id } : undefined).catch(function(err){
+          ? addStatusTransfer(oldSku, "reserved", "available", 1, releaseNote, po ? { poNumber: po.poNumber, poId: po.id, poProductId: po.productId } : undefined).catch(function(err){
               if(window.console) console.error("Task reel release failed:", err);
               showBanner(t("layers_err_stock_move_failed"));
             })
@@ -7061,7 +7064,7 @@
             refreshTaskLayerReelStatus(n);
             return;
           }
-          addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via Priority Task", { poNumber: po.poNumber, poId: po.id })
+          addStatusTransfer(newSku, "available", "reserved", 1, "Reserved via Priority Task", { poNumber: po.poNumber, poId: po.id, poProductId: po.productId })
             .then(function(){
               taskLayerReservedSku[n] = newSku;
               // Picking a reel by hand fills in its Reel Weight from Inventory's own receiving data
@@ -7130,7 +7133,7 @@
     if(rwEl) rwEl.value = "";
     refreshPoLayerReelStatus(productId, n);
     if(!state.editingPoId) return; // defensive: shouldn't happen, a row can't hold a sku without one
-    var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
+    var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId, poProductId: productId };
     addStatusTransfer(sku, "reserved", "available", 1, "Released — PO Layer row removed (PO " + poTag.poNumber + ")", poTag).then(function(){
       refreshPoOrphanReels();
     }).catch(function(err){
@@ -7356,7 +7359,7 @@
           refreshPoLayerReelStatus(productId, n);
           return;
         }
-        var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId };
+        var poTag = { poNumber: el.po_number.value.trim(), poId: state.editingPoId, poProductId: productId };
         var releaseNote = "Released — PO Layer changed (PO " + poTag.poNumber + ")";
         var releaseP = oldSku
           ? addStatusTransfer(oldSku, "reserved", "available", 1, releaseNote, poTag).catch(function(err){
@@ -8255,12 +8258,40 @@
   // own Customer/Product spellings don't line up with that catalog's (e.g. "Pidilite unit-1" vs
   // the catalog's "PIDILITE -1") — this matches directly against whatever Stock Summary's own
   // Customer Name/Product Name fields currently hold.
+  // Shared "Rate/Piece" cell for the Dispatch Value and FG Stock Value report tables (see below) —
+  // a blank rate that has a rateMismatchHint (see productRateCustomerMismatchHint) gets a hover
+  // tooltip pointing at the likely cause instead of just a bare "—" with no explanation.
+  function rateCellHtml(r){
+    if(r.rate != null) return '<td class="num">' + esc(r.rate) + "</td>";
+    if(r.rateMismatchHint){
+      var hint = tf("inv_rate_customer_mismatch_hint", { customer: r.customerName, otherCustomer: r.rateMismatchHint });
+      return '<td class="num" title="' + esc(hint) + '">—</td>';
+    }
+    return '<td class="num">—</td>';
+  }
   function findProductRate(customerName, productName){
     var id = productRateDocId(customerName, productName);
     for(var i = 0; i < state.productRates.length; i++){
       if(state.productRates[i].id === id) return state.productRates[i];
     }
     return null;
+  }
+  // Surfaced only when findProductRate above found nothing — before assuming a rate was simply
+  // never imported for this Customer+Product, check whether a rate WAS imported for this exact
+  // Product under a DIFFERENT Customer spelling (e.g. the rate file says "Laurus labs unit-2" while
+  // Entries/POs say "LAURUS" — two names for the same real customer, but findProductRate's own
+  // comment explains why the lookup deliberately never guesses across that gap for money). Purely a
+  // diagnostic hint shown as a tooltip on the blank rate cell — NEVER used to compute a Value, so a
+  // coincidental same-product-name-different-customer rate can never silently get charged to the
+  // wrong account.
+  function productRateCustomerMismatchHint(customerName, productName){
+    var productKey = normalizeKey(productName);
+    if(!productKey) return null;
+    var customerKey = normalizeKey(customerName);
+    var match = state.productRates.find(function(r){
+      return normalizeKey(r.productName) === productKey && normalizeKey(r.customerName) !== customerKey;
+    });
+    return match ? match.customerName : null;
   }
   function getFilteredProductRates(){
     var q = normalizeKey(el.invRatesSearch ? el.invRatesSearch.value : "");
@@ -8564,7 +8595,7 @@
     var oldCounts = skuCounts(oldLayers);
     var newCounts = skuCounts(newLayers);
     var poReservedCounts = (po && po.reserveReel) ? skuCounts(po.layers) : {};
-    var poTag = po ? { poNumber: po.poNumber, poId: po.id } : undefined;
+    var poTag = po ? { poNumber: po.poNumber, poId: po.id, poProductId: po.productId } : undefined;
     var allSkus = {};
     Object.keys(oldCounts).forEach(function(s){ allSkus[s] = true; });
     Object.keys(newCounts).forEach(function(s){ allSkus[s] = true; });
@@ -8770,11 +8801,18 @@
     var bits = [product.productCode, product.materialDescription].filter(Boolean);
     return (po.poNumber || "") + (bits.length ? " — " + bits.join(" / ") : "");
   }
-  function reservedBucketsForPo(poId){
+  // `productId` (optional) scopes this to just one product of a multi-product PO — a reservation
+  // transfer explicitly tagged to a DIFFERENT product is excluded, but an older/untagged transfer
+  // (recorded before per-product tagging existed — see poTag in bindPoLayerRow etc.) still counts,
+  // since there's no way to know retroactively which product it belonged to. Omit productId (or
+  // call with just poId) for the PO-wide total across every product — that's what the PO board's
+  // own card (buildPoItem) and the PO modal's own orphan-reel detection intentionally still show.
+  function reservedBucketsForPo(poId, productId){
     var map = {};
     if(!poId) return map;
     state.invStatusTransfers.forEach(function(tr){
       if(tr.poId !== poId) return;
+      if(productId && tr.poProductId && tr.poProductId !== productId) return;
       var qty = Number(tr.qty) || 0;
       if(tr.toStatus === "reserved") map[tr.sku] = (map[tr.sku] || 0) + qty;
       if(tr.fromStatus === "reserved") map[tr.sku] = (map[tr.sku] || 0) - qty;
@@ -8787,8 +8825,8 @@
   // Availability status, not just a bare item name — several catalog items are all literally named
   // "Reel", so the name alone can't tell them apart on the PO/Task card (this is what distinguishes
   // "which reel we selected").
-  function reservedReelsSummaryForPo(poId){
-    var map = reservedBucketsForPo(poId);
+  function reservedReelsSummaryForPo(poId, productId){
+    var map = reservedBucketsForPo(poId, productId);
     return Object.keys(map).map(function(sku){
       var item = state.invCatalog[sku];
       var label = item ? layerSkuOptionLabel(item) : sku;
@@ -8821,7 +8859,10 @@
       item(t("form_qty_label"), po.quantity),
       item(t("po_delivery_label"), fmtDateForDisplay(po.deliveryRequiredAtPlant))
     ].filter(Boolean);
-    var reservedLine = po.id ? reservedReelsSummaryForPo(po.id) : "";
+    // Scoped to just this product (po.productId, present whenever the caller passes a merged
+    // (po, product) view — see mergePoProductView) — a multi-product PO's other products' own
+    // reservations must never show up here (see reservedBucketsForPo's own productId comment).
+    var reservedLine = po.id ? reservedReelsSummaryForPo(po.id, po.productId) : "";
     var html = '<div class="poDetailsRow">' + parts.join("") + '</div>';
     if(reservedLine){
       html += '<div class="poDetailsReels"><b>' + esc(t("task_reservedreels_label")) + ':</b> ' + esc(reservedLine) + '</div>';
@@ -9748,7 +9789,8 @@
           rows.push({
             poNumber: e.poNumber || "", jobCardNo: e.jobCardNo || "",
             customerName: customerName, productName: productName, qty: qty,
-            rate: rate, value: rate != null ? qty * rate : null
+            rate: rate, value: rate != null ? qty * rate : null,
+            rateMismatchHint: rate == null ? productRateCustomerMismatchHint(customerName, productName) : null
           });
         });
         return rows.sort(function(a, b){
@@ -9777,7 +9819,7 @@
           "<td>" + esc(r.customerName) + "</td>" +
           "<td>" + esc(r.productName) + "</td>" +
           '<td class="num">' + r.qty.toLocaleString() + "</td>" +
-          '<td class="num">' + esc(r.rate != null ? r.rate : "—") + "</td>" +
+          rateCellHtml(r) +
           '<td class="num">' + (r.value != null ? esc(formatInr(r.value)) : "—") + "</td>";
         el.drDispatchBody.appendChild(tr);
       });
@@ -9835,7 +9877,8 @@
           rows.push({
             poNumber: e.poNumber || "", jobCardNo: e.jobCardNo || "",
             customerName: customerName, productName: productName, qty: qty,
-            rate: rate, value: rate != null ? qty * rate : null
+            rate: rate, value: rate != null ? qty * rate : null,
+            rateMismatchHint: rate == null ? productRateCustomerMismatchHint(customerName, productName) : null
           });
         });
         return rows.sort(function(a, b){
@@ -9862,7 +9905,7 @@
           '<td class="mono">' + esc(r.jobCardNo || "—") + "</td>" +
           "<td>" + esc(r.customerName) + "</td>" +
           "<td>" + esc(r.productName) + "</td>" +
-          '<td class="num">' + esc(r.rate != null ? r.rate : "—") + "</td>" +
+          rateCellHtml(r) +
           '<td class="num">' + r.qty.toLocaleString() + "</td>" +
           '<td class="num">' + (r.value != null ? esc(formatInr(r.value)) : "—") + "</td>";
         el.drFgStockBody.appendChild(tr);
@@ -11523,7 +11566,9 @@
             (r.poNumber ? ' <span class="fgStockMiniPo">· PO ' + esc(r.poNumber) + "</span>" : "") +
           "</div>" +
           '<div class="fgStockMiniRowMid">' + esc(r.customerName || "—") + " — " + esc(r.productName || "—") + "</div>" +
-          '<div class="fgStockMiniRowBottom">' + r.qty.toLocaleString() +
+          '<div class="fgStockMiniRowBottom"' +
+            (r.rate == null && r.rateMismatchHint ? ' title="' + esc(tf("inv_rate_customer_mismatch_hint", { customer: r.customerName, otherCustomer: r.rateMismatchHint })) + '"' : "") +
+            '>' + r.qty.toLocaleString() +
             (r.rate != null ? " × ₹" + esc(r.rate) + " = " + esc(formatInr(r.value)) : " (" + esc(t("stocksum_fg_no_rate")) + ")") +
           "</div>";
         list.appendChild(row);
@@ -13693,7 +13738,9 @@
     // Reels reserved against this task's own PO — read live off the PO's aggregate reservation
     // ledger (reservedReelsSummaryForPo), not just whatever this one task's own rows picked, per
     // the request that a Task showing a PO surfaces that PO's reserved reels "from the PO Board".
-    var reservedLine = task.poId ? reservedReelsSummaryForPo(task.poId) : "";
+    // Scoped to just the product line this task is actually linked to (task.poProductId) — a
+    // multi-product PO's other products' own reservations must never show up on this task's card.
+    var reservedLine = task.poId ? reservedReelsSummaryForPo(task.poId, task.poProductId) : "";
     // Only the admin device can change anything here — the drag handle is left out of the
     // markup entirely (rather than just hidden) for every other device, and the Done/Pending
     // checkbox is disabled, so the only thing a non-admin device can do with a task is open it
