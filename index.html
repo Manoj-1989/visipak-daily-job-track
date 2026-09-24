@@ -885,6 +885,7 @@
         <button type="button" id="changeDeviceBtn" data-i18n="device_change">Change</button>
       </div>
       <button class="btn ghost" id="manageSupervisorsBtn" type="button" hidden data-i18n="btn_manage_users">Manage Users</button>
+      <button class="btn ghost" id="manageCatalogBtn" type="button" hidden data-i18n="btn_manage_catalog">Manage Catalog</button>
       <button class="btn ghost" id="activityLogBtn" type="button" hidden data-i18n="btn_activity_log">Activity Log</button>
       <!-- Admin-only, same gating as Manage Users/Activity Log above — the practical stand-in for
            "Excel file" the QC Master Sheet request asked for: a CSV of every Customer+Product's
@@ -1963,6 +1964,42 @@
   </div>
 </div>
 
+<!-- Manage Catalog: the Customer Name / Product Name master list every stage's Entry/Task/PO form
+     picks from — importable (and re-importable) from an Excel file at any time, same "Customer
+     name"/"Product name" column-detection pattern as Product Rates' own import (see
+     importCatalogFromFile). A re-import always MERGES: a customer/product already on file (matched
+     case-insensitively, same as upsertCatalogEntry) is left exactly as it is — imported rows never
+     overwrite a Ply/Type someone's already saved — and anything genuinely new is simply added, so
+     nothing already in the dropdown ever disappears just because it wasn't in the latest file. -->
+<div class="modalOverlay" id="catalogModalOverlay" hidden>
+  <div class="modal wide">
+    <h2 data-i18n="cat_title">Manage Catalog</h2>
+    <p data-i18n="cat_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      The Customer Name / Product Name lists every stage's Add Entry, Priority Task, and PO form picks from.
+      Import an Excel file with "Customer name" and "Product name" columns to add to this list at any time —
+      re-importing only adds what's missing; nothing already here is ever removed or overwritten.
+    </p>
+    <div class="invLogHead" style="padding:0;border:none;margin-bottom:10px;">
+      <button class="btn ghost" id="catalogImportBtn" type="button" data-i18n="btn_import_catalog">Import Customers &amp; Products from Excel…</button>
+      <input type="file" accept=".xlsx,.xls" id="catalogImportFileInput" hidden>
+    </div>
+    <div class="logEmpty" id="catalogImportStatus" hidden></div>
+    <input type="text" id="catalogSearchInput" class="supSearchInput" placeholder="Search customer…" data-i18n-placeholder="cat_search_placeholder">
+    <div class="supTableWrap" style="max-height:340px;">
+      <table class="supTable">
+        <thead><tr><th data-i18n="cat_th_customer">Customer</th><th data-i18n="cat_th_products">Products</th></tr></thead>
+        <tbody id="catalogBody"></tbody>
+      </table>
+    </div>
+    <div class="supEmpty" id="catalogEmpty" hidden data-i18n="cat_empty">No customers in the catalog yet.</div>
+    <div class="supCount" id="catalogCount"></div>
+    <div class="modalActions">
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="catalogCloseBtn" data-i18n="generic_done">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="modalOverlay" id="deleteConfirmOverlay" hidden>
   <div class="modal">
     <h2 data-i18n="del_title">Delete Job Card?</h2>
@@ -2835,6 +2872,18 @@
       device_this_device: "This device:", device_change: "Change",
       admin_login_link: "Admin",
       btn_manage_users: "Manage Users", btn_activity_log: "Activity Log",
+      btn_manage_catalog: "Manage Catalog", btn_import_catalog: "Import Customers & Products from Excel…",
+      cat_title: "Manage Catalog",
+      cat_desc: "The Customer Name / Product Name lists every stage's Add Entry, Priority Task, and PO form picks from. Import an Excel file with \"Customer name\" and \"Product name\" columns to add to this list at any time — re-importing only adds what's missing; nothing already here is ever removed or overwritten.",
+      cat_search_placeholder: "Search customer…", cat_th_customer: "Customer", cat_th_products: "Products",
+      cat_empty: "No customers in the catalog yet.",
+      cat_count: "{n} customers", cat_importing: "Importing…",
+      cat_import_done: "Added {customers} new customer(s) and {products} new product(s) ({unchanged} already on file).",
+      cat_err_xlsxlib: "The Excel reader hasn't loaded yet — try again in a moment.",
+      cat_err_parse: "Couldn't read that file — make sure it's a valid .xlsx or .xls file.",
+      cat_err_noheader: "Couldn't find \"Customer name\" and \"Product name\" columns in that file.",
+      cat_err_norows: "No valid Customer/Product rows found in that file.",
+      cat_err_save: "Couldn't save the imported catalog.",
       view_board: "Board", view_log: "Log",
       btn_add_entry: "+ Add Entry",
       btn_refresh: "Refresh", btn_refresh_title: "Refresh app to get the latest updates",
@@ -3202,6 +3251,18 @@
       device_this_device: "यह डिवाइस:", device_change: "बदलें",
       admin_login_link: "एडमिन",
       btn_manage_users: "उपयोगकर्ता प्रबंधित करें", btn_activity_log: "गतिविधि लॉग",
+      btn_manage_catalog: "कैटलॉग प्रबंधित करें", btn_import_catalog: "Excel से ग्राहक और उत्पाद आयात करें…",
+      cat_title: "कैटलॉग प्रबंधित करें",
+      cat_desc: "ग्राहक का नाम / उत्पाद का नाम सूचियाँ जिनसे हर चरण का Add Entry, Priority Task, और PO फ़ॉर्म चुनता है। \"Customer name\" और \"Product name\" कॉलम वाली Excel फ़ाइल आयात करें — दोबारा आयात करने से केवल जो गायब है वही जुड़ता है; जो पहले से यहाँ है वह कभी हटाया या बदला नहीं जाता।",
+      cat_search_placeholder: "ग्राहक खोजें…", cat_th_customer: "ग्राहक", cat_th_products: "उत्पाद",
+      cat_empty: "कैटलॉग में अभी कोई ग्राहक नहीं है।",
+      cat_count: "{n} ग्राहक", cat_importing: "आयात हो रहा है…",
+      cat_import_done: "{customers} नए ग्राहक और {products} नए उत्पाद जोड़े गए ({unchanged} पहले से मौजूद थे)।",
+      cat_err_xlsxlib: "Excel रीडर अभी लोड नहीं हुआ है — कृपया थोड़ी देर बाद पुनः प्रयास करें।",
+      cat_err_parse: "वह फ़ाइल नहीं पढ़ी जा सकी — सुनिश्चित करें कि यह एक मान्य .xlsx या .xls फ़ाइल है।",
+      cat_err_noheader: "उस फ़ाइल में \"Customer name\" और \"Product name\" कॉलम नहीं मिले।",
+      cat_err_norows: "उस फ़ाइल में कोई मान्य Customer/Product पंक्ति नहीं मिली।",
+      cat_err_save: "आयातित कैटलॉग सहेजा नहीं जा सका।",
       view_board: "बोर्ड", view_log: "लॉग",
       btn_add_entry: "+ एंट्री जोड़ें",
       btn_refresh: "रीफ्रेश करें", btn_refresh_title: "नवीनतम अपडेट पाने के लिए ऐप को रीफ्रेश करें",
@@ -3569,6 +3630,18 @@
       device_this_device: "ఈ పరికరం:", device_change: "మార్చండి",
       admin_login_link: "అడ్మిన్",
       btn_manage_users: "వినియోగదారులను నిర్వహించండి", btn_activity_log: "కార్యాచరణ లాగ్",
+      btn_manage_catalog: "కేటలాగ్‌ను నిర్వహించండి", btn_import_catalog: "Excel నుండి కస్టమర్లు & ఉత్పత్తులను దిగుమతి చేయండి…",
+      cat_title: "కేటలాగ్‌ను నిర్వహించండి",
+      cat_desc: "ప్రతి దశలోని Add Entry, Priority Task, మరియు PO ఫారమ్ ఎంచుకునే Customer Name / Product Name జాబితాలు ఇవి. \"Customer name\" మరియు \"Product name\" కాలమ్‌లతో కూడిన Excel ఫైల్‌ను ఎప్పుడైనా దిగుమతి చేయవచ్చు — మళ్లీ దిగుమతి చేస్తే లేనివి మాత్రమే జోడించబడతాయి; ఇప్పటికే ఉన్నవి ఎప్పుడూ తీసివేయబడవు లేదా మార్చబడవు.",
+      cat_search_placeholder: "కస్టమర్‌ను వెతకండి…", cat_th_customer: "కస్టమర్", cat_th_products: "ఉత్పత్తులు",
+      cat_empty: "కేటలాగ్‌లో ఇంకా కస్టమర్లు లేరు.",
+      cat_count: "{n} కస్టమర్లు", cat_importing: "దిగుమతి అవుతోంది…",
+      cat_import_done: "{customers} కొత్త కస్టమర్లు మరియు {products} కొత్త ఉత్పత్తులు జోడించబడ్డాయి ({unchanged} ఇప్పటికే ఉన్నాయి).",
+      cat_err_xlsxlib: "Excel రీడర్ ఇంకా లోడ్ కాలేదు — దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.",
+      cat_err_parse: "ఆ ఫైల్‌ను చదవలేకపోయాము — ఇది చెల్లుబాటు అయ్యే .xlsx లేదా .xls ఫైల్ అని నిర్ధారించుకోండి.",
+      cat_err_noheader: "ఆ ఫైల్‌లో \"Customer name\" మరియు \"Product name\" కాలమ్‌లు కనుగొనబడలేదు.",
+      cat_err_norows: "ఆ ఫైల్‌లో చెల్లుబాటు అయ్యే Customer/Product వరుసలు కనుగొనబడలేదు.",
+      cat_err_save: "దిగుమతి చేసిన కేటలాగ్‌ను సేవ్ చేయలేకపోయాము.",
       view_board: "బోర్డు", view_log: "లాగ్",
       btn_add_entry: "+ ఎంట్రీ జోడించండి",
       btn_refresh: "రిఫ్రెష్ చేయండి", btn_refresh_title: "తాజా అప్‌డేట్ల కోసం యాప్‌ను రిఫ్రెష్ చేయండి",
@@ -4524,6 +4597,16 @@
     activityError: document.getElementById("activityError"),
     activityExportBtn: document.getElementById("activityExportBtn"),
     activityCloseBtn: document.getElementById("activityCloseBtn"),
+    manageCatalogBtn: document.getElementById("manageCatalogBtn"),
+    catalogModalOverlay: document.getElementById("catalogModalOverlay"),
+    catalogImportBtn: document.getElementById("catalogImportBtn"),
+    catalogImportFileInput: document.getElementById("catalogImportFileInput"),
+    catalogImportStatus: document.getElementById("catalogImportStatus"),
+    catalogSearchInput: document.getElementById("catalogSearchInput"),
+    catalogBody: document.getElementById("catalogBody"),
+    catalogEmpty: document.getElementById("catalogEmpty"),
+    catalogCount: document.getElementById("catalogCount"),
+    catalogCloseBtn: document.getElementById("catalogCloseBtn"),
     deleteConfirmOverlay: document.getElementById("deleteConfirmOverlay"),
     deleteConfirmSummary: document.getElementById("deleteConfirmSummary"),
     deleteConfirmName: document.getElementById("deleteConfirmName"),
@@ -5713,6 +5796,10 @@
       refreshProductNameOptions();
       refreshTaskCustomerNameOptions();
       refreshTaskProductNameOptions();
+      // Keep the Manage Catalog list live while it's open — an import (or another device's own
+      // catalog change) should show up immediately, the same "live" expectation every other list in
+      // this app already meets, not just the next time the modal happens to be reopened.
+      if(el.catalogModalOverlay && !el.catalogModalOverlay.hidden) renderCatalogList();
       fixMaraneTypoInCatalog();
       fixDuplicateCatalogEntries();
       backfillQtyPerBundleInCatalog();
@@ -7602,6 +7689,7 @@
     var forceSetupVisible = /(^|[?&])setup=1(&|$)/.test(window.location.search);
     el.deviceTagWrap.hidden = !state.isAdminDevice && !forceSetupVisible;
     el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
+    el.manageCatalogBtn.hidden = !state.isAdminDevice;
     el.activityLogBtn.hidden = !state.isAdminDevice;
     el.exportMasterSheetBtn.hidden = !state.isAdminDevice;
     // Priority Tasks: every device can still see the board, but only the admin device can add,
@@ -12297,6 +12385,145 @@
       ].map(csvEscape).join(","));
     });
     downloadCsv("visipak-daily-job-track-activity-log.csv", lines.join("\r\n"));
+  });
+
+  // ---------- Manage Catalog: import Customer Name / Product Name from Excel ----------
+  // Same shared master every stage's Customer Name/Product Name dropdown reads (state.catalog —
+  // see subscribeCatalog/upsertCatalogEntry above); this just gives an admin a bulk way to load it
+  // from a spreadsheet instead of it only ever growing one entry at a time as job cards get saved.
+  function renderCatalogList(){
+    var q = normalizeKey(el.catalogSearchInput.value);
+    var names = Object.keys(state.catalog.customers || {}).sort(catalogSortCmp);
+    if(q) names = names.filter(function(n){ return normalizeKey(n).indexOf(q) !== -1; });
+    el.catalogBody.innerHTML = "";
+    names.forEach(function(name){
+      var count = Object.keys((state.catalog.customers[name] || {}).products || {}).length;
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + esc(name) + "</td><td>" + count.toLocaleString() + "</td>";
+      el.catalogBody.appendChild(tr);
+    });
+    el.catalogEmpty.hidden = names.length !== 0;
+    el.catalogCount.textContent = names.length ? tf("cat_count", { n: names.length }) : "";
+  }
+  el.manageCatalogBtn.addEventListener("click", function(){
+    el.catalogSearchInput.value = "";
+    el.catalogImportStatus.hidden = true;
+    renderCatalogList();
+    el.catalogModalOverlay.hidden = false;
+  });
+  el.catalogCloseBtn.addEventListener("click", function(){ el.catalogModalOverlay.hidden = true; });
+  el.catalogModalOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.catalogModalOverlay) el.catalogModalOverlay.hidden = true;
+  });
+  el.catalogSearchInput.addEventListener("input", renderCatalogList);
+  // Same dynamic header-row detection as findRateHeaderRow (Product Rates' own import) — just
+  // without requiring a Rate column, since this file only needs Customer/Product name pairs.
+  function findCatalogHeaderRow(sheetRows){
+    for(var i = 0; i < sheetRows.length; i++){
+      var row = sheetRows[i] || [];
+      var hasCustomer = false, hasProduct = false;
+      for(var c = 0; c < row.length; c++){
+        var cell = normalizeKey(row[c] != null ? String(row[c]) : "");
+        if(cell.indexOf("customer") !== -1) hasCustomer = true;
+        if(cell.indexOf("product") !== -1) hasProduct = true;
+      }
+      if(hasCustomer && hasProduct) return i;
+    }
+    return -1;
+  }
+  function importCatalogFromFile(file){
+    if(!window.XLSX){
+      el.catalogImportStatus.hidden = false;
+      el.catalogImportStatus.textContent = t("cat_err_xlsxlib");
+      return;
+    }
+    el.catalogImportStatus.hidden = false;
+    el.catalogImportStatus.textContent = t("cat_importing");
+    var reader = new FileReader();
+    reader.onerror = function(){
+      el.catalogImportStatus.textContent = t("attach_err_upload");
+    };
+    reader.onload = function(){
+      var parsed;
+      try {
+        var wb = XLSX.read(new Uint8Array(reader.result), { type: "array" });
+        var sheet = wb.Sheets[wb.SheetNames[0]];
+        parsed = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      } catch(e){
+        el.catalogImportStatus.textContent = t("cat_err_parse");
+        return;
+      }
+      var headerRow = findCatalogHeaderRow(parsed);
+      if(headerRow === -1){
+        el.catalogImportStatus.textContent = t("cat_err_noheader");
+        return;
+      }
+      var header = parsed[headerRow];
+      var custCol = -1, prodCol = -1;
+      for(var c = 0; c < header.length; c++){
+        var cell = normalizeKey(header[c] != null ? String(header[c]) : "");
+        if(custCol === -1 && cell.indexOf("customer") !== -1) custCol = c;
+        if(prodCol === -1 && cell.indexOf("product") !== -1) prodCol = c;
+      }
+      // Same canonical-name resolution as upsertCatalogEntry (case-insensitive match against
+      // whatever's already on file, else a freshly-formatted ALL CAPS/Sentence case entry) — so a
+      // customer/product that already exists (however it happens to be spelled here) merges into
+      // that same entry instead of creating a look-alike duplicate, and Ply/Type on an existing
+      // product is left completely untouched (this file never carries either).
+      var newCustomers = 0, newProducts = 0, unchanged = 0;
+      var update = { customers: {} };
+      // Tracks canonical names/product-existence minted WITHIN this same import (state.catalog
+      // itself never changes until the write below round-trips back through subscribeCatalog) — so
+      // two Excel rows for the same brand-new customer, or the same brand-new product repeated,
+      // are only ever counted/added once instead of once per row.
+      var mintedCustomerNames = {};
+      var seenNewProducts = {};
+      for(var r = headerRow + 1; r < parsed.length; r++){
+        var dataRow = parsed[r] || [];
+        var rawCustomer = dataRow[custCol];
+        var rawProduct = dataRow[prodCol];
+        var customerName = (typeof rawCustomer === "number" ? String(rawCustomer) : String(rawCustomer || "")).trim();
+        var productName = (typeof rawProduct === "number" ? String(rawProduct) : String(rawProduct || "")).trim();
+        if(!customerName || !productName) continue;
+        var customerKey = normalizeKey(customerName);
+        var canonicalCustomer = findCanonicalCustomer(customerName) || mintedCustomerNames[customerKey] || formatCustomerName(customerName);
+        var isNewCustomer = !state.catalog.customers[canonicalCustomer] && !mintedCustomerNames[customerKey];
+        mintedCustomerNames[customerKey] = canonicalCustomer;
+        var existingCustomer = state.catalog.customers[canonicalCustomer];
+        var canonicalProduct = (existingCustomer && findCanonicalProduct(canonicalCustomer, productName)) || formatProductName(productName);
+        var existingProduct = existingCustomer && existingCustomer.products && existingCustomer.products[canonicalProduct];
+        var seenKey = canonicalCustomer + "\u0001" + normalizeKey(canonicalProduct);
+        if(existingProduct || seenNewProducts[seenKey]){ unchanged++; continue; }
+        seenNewProducts[seenKey] = true;
+        if(isNewCustomer) newCustomers++;
+        newProducts++;
+        if(!update.customers[canonicalCustomer]) update.customers[canonicalCustomer] = { products: {} };
+        // Ply/Type: left blank (never guessed) — exactly what a brand-new product looks like before
+        // its first entry is ever saved (see upsertCatalogEntry); the very next save that picks a
+        // real Ply/Type for it fills these in normally.
+        update.customers[canonicalCustomer].products[canonicalProduct] = { type: "", ply: "" };
+      }
+      if(!newProducts && !unchanged){
+        el.catalogImportStatus.textContent = t("cat_err_norows");
+        return;
+      }
+      if(!newProducts){
+        el.catalogImportStatus.textContent = tf("cat_import_done", { customers: 0, products: 0, unchanged: unchanged });
+        return;
+      }
+      state.db.collection("catalog").doc("customerProducts").set(update, { merge: true }).then(function(){
+        el.catalogImportStatus.textContent = tf("cat_import_done", { customers: newCustomers, products: newProducts, unchanged: unchanged });
+      }).catch(function(err){
+        el.catalogImportStatus.textContent = t("cat_err_save") + " " + (err && err.message ? err.message : "");
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  el.catalogImportBtn.addEventListener("click", function(){ el.catalogImportFileInput.click(); });
+  el.catalogImportFileInput.addEventListener("change", function(){
+    var file = el.catalogImportFileInput.files && el.catalogImportFileInput.files[0];
+    el.catalogImportFileInput.value = "";
+    if(file) importCatalogFromFile(file);
   });
 
   QC_PASS_FIELDS.forEach(function(key){
