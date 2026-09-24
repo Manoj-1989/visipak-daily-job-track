@@ -318,6 +318,23 @@
     border:1px dashed var(--line-strong);border-radius:8px;padding:14px 10px;
     text-align:center;color:var(--ink-faint);font-size:12px;line-height:1.5;
   }
+  /* Board's own "Stock Summary" department column: nobody logs a Stock Summary job card day to day
+     (the empty hint above is normal there), so instead of leaving that column blank this shows the
+     live FG Stock Value figure right on the board — see renderStockSummaryFgMini. Sits above the
+     normal .stageColBody entries row, as its own full-width block. */
+  .stockSummaryFgMini{
+    margin:0 10px 10px;padding:10px 11px;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;box-shadow:var(--shadow);
+  }
+  .fgStockMiniHead{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;}
+  .fgStockMiniEmpty, .fgStockMiniLoading{font-size:12px;color:var(--ink-faint);}
+  .fgStockMiniList{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+  .fgStockMiniRow{border-top:1px dashed var(--line);padding-top:6px;font-size:12px;line-height:1.45;}
+  .fgStockMiniRow:first-child{border-top:none;padding-top:0;}
+  .fgStockMiniRowTop{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);}
+  .fgStockMiniPo{color:var(--ink-faint);}
+  .fgStockMiniRowMid{color:var(--ink);font-weight:600;}
+  .fgStockMiniRowBottom{font-family:var(--font-mono);color:var(--ink-soft);font-variant-numeric:tabular-nums;}
 
   .card{
     background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);
@@ -1138,6 +1155,11 @@
              above, which are this Inventory tab's own receive-only stock) on the selected day, at
              each product's imported rate — see computeDispatchValueForDate/refreshDispatchValueSection. -->
         <div class="statTile"><span class="statLabel" data-i18n="dr_stat_dispatchvalue">Dispatch Value</span><span class="statValue" id="drStatDispatchValue">₹0.00</span></div>
+        <!-- Total value of everything currently sitting in the Finished Goods (FG) stage, across
+             every job card, at each product's imported rate — a live snapshot (not scoped to the
+             selected day, unlike Dispatch Value above) since Available Stock is "what's in FG right
+             now" — see computeFgStockValueRows/refreshFgStockValueSection. -->
+        <div class="statTile"><span class="statLabel" data-i18n="dr_stat_fgstockvalue">FG Stock Value</span><span class="statValue" id="drStatFgStockValue">₹0.00</span></div>
       </div>
       <label class="field"><span data-i18n="dr_date_label">Day</span>
         <span class="dateFieldWrap">
@@ -1170,10 +1192,36 @@
       </div>
     </div>
 
+    <!-- FG Stock Value: every job card currently sitting in Finished Goods, one row each (not
+         grouped — a Job Card No column only makes sense per-card), valued at each product's
+         imported rate. Unlike Dispatch Value below, this isn't scoped to the selected day: Available
+         Stock is a live snapshot of what's in FG right now, the same figure the FG board column
+         itself shows — see computeFgStockValueRows/refreshFgStockValueSection. -->
+    <div class="invLogSection">
+      <div class="invLogHead">
+        <h3 data-i18n="dr_fgstock_heading">FG Stock Value</h3>
+        <button class="btn ghost" id="drFgStockExportBtn" type="button" data-i18n="btn_export_csv">Export CSV</button>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="form_ponumber_label">PO Number</th><th data-i18n="form_jobcard_label">Job Card No</th>
+              <th data-i18n="inv_rates_th_customer">Customer</th><th data-i18n="inv_rates_th_product">Product</th>
+              <th data-i18n="inv_rates_th_rate">Rate/Piece</th><th data-i18n="dr_fgstock_th_qty">FG Quantity</th><th data-i18n="stock_th_value">Value</th>
+            </tr>
+          </thead>
+          <tbody id="drFgStockBody"></tbody>
+          <tfoot id="drFgStockFoot" hidden></tfoot>
+        </table>
+        <div class="logEmpty" id="drFgStockEmpty" hidden data-i18n="dr_fgstock_empty">No Finished Goods stock right now.</div>
+      </div>
+    </div>
+
     <!-- Dispatch Value: what was actually dispatched to customers on this same day (Production's
          Dispatch stage, not this Inventory tab's own receive-only ledger above), valued at each
-         product's imported rate (see Inventory > Product Rates). Customer+Product rows, one per
-         combination dispatched that day. -->
+         product's imported rate (see Inventory > Product Rates). One row per Dispatch-stage job
+         card dispatched that day (not grouped, so Job Card No identifies each row). -->
     <div class="invLogSection">
       <div class="invLogHead">
         <h3 data-i18n="dr_dispatch_heading">Dispatch Value</h3>
@@ -1183,6 +1231,7 @@
         <table>
           <thead>
             <tr>
+              <th data-i18n="form_ponumber_label">PO Number</th><th data-i18n="form_jobcard_label">Job Card No</th>
               <th data-i18n="inv_rates_th_customer">Customer</th><th data-i18n="inv_rates_th_product">Product</th>
               <th data-i18n="dr_dispatch_th_qty">Qty Dispatched</th><th data-i18n="inv_rates_th_rate">Rate/Piece</th><th data-i18n="stock_th_value">Value</th>
             </tr>
@@ -3014,6 +3063,11 @@
       dr_stat_dispatchvalue: "Dispatch Value",
       dr_dispatch_heading: "Dispatch Value", dr_dispatch_th_qty: "Qty Dispatched",
       dr_dispatch_empty: "Nothing dispatched on this day.",
+      dr_fgstock_heading: "FG Stock Value", dr_fgstock_th_qty: "FG Quantity",
+      dr_fgstock_empty: "No Finished Goods stock right now.",
+      dr_stat_fgstockvalue: "FG Stock Value",
+      stocksum_fg_heading: "FG Stock Value", stocksum_fg_empty: "No Finished Goods stock right now.",
+      stocksum_fg_loading: "Loading FG stock…", stocksum_fg_no_rate: "no rate set",
       dr_th_opening: "Opening", dr_th_received: "Received", dr_th_consumed: "Consumed/Shipped", dr_th_closing: "Closing",
       dr_empty: "No items yet. Use \"Manage Inventory Items\" to add your first one.",
       inv_stat_skus: "Total SKUs", inv_stat_units: "Units on Hand", inv_stat_value: "Inventory Value", inv_stat_reorder: "Items to Reorder",
@@ -3371,6 +3425,11 @@
       dr_stat_dispatchvalue: "डिस्पैच मूल्य",
       dr_dispatch_heading: "डिस्पैच मूल्य", dr_dispatch_th_qty: "डिस्पैच मात्रा",
       dr_dispatch_empty: "इस दिन कुछ भी डिस्पैच नहीं हुआ।",
+      dr_fgstock_heading: "FG स्टॉक मूल्य", dr_fgstock_th_qty: "FG मात्रा",
+      dr_fgstock_empty: "अभी कोई फिनिश्ड गुड्स स्टॉक नहीं है।",
+      dr_stat_fgstockvalue: "FG स्टॉक मूल्य",
+      stocksum_fg_heading: "FG स्टॉक मूल्य", stocksum_fg_empty: "अभी कोई फिनिश्ड गुड्स स्टॉक नहीं है।",
+      stocksum_fg_loading: "FG स्टॉक लोड हो रहा है…", stocksum_fg_no_rate: "रेट सेट नहीं है",
       dr_th_opening: "ओपनिंग", dr_th_received: "प्राप्त", dr_th_consumed: "उपयोग/भेजा गया", dr_th_closing: "क्लोजिंग",
       dr_empty: "अभी तक कोई आइटम नहीं है। पहला आइटम जोड़ने के लिए \"Manage Inventory Items\" का उपयोग करें।",
       inv_stat_skus: "कुल SKU", inv_stat_units: "उपलब्ध यूनिट", inv_stat_value: "इन्वेंटरी मूल्य", inv_stat_reorder: "रीऑर्डर करने योग्य आइटम",
@@ -3728,6 +3787,11 @@
       dr_stat_dispatchvalue: "డిస్పాచ్ విలువ",
       dr_dispatch_heading: "డిస్పాచ్ విలువ", dr_dispatch_th_qty: "డిస్పాచ్ చేసిన పరిమాణం",
       dr_dispatch_empty: "ఈ రోజు ఏమీ డిస్పాచ్ చేయలేదు.",
+      dr_fgstock_heading: "FG స్టాక్ విలువ", dr_fgstock_th_qty: "FG పరిమాణం",
+      dr_fgstock_empty: "ప్రస్తుతం ఫినిష్డ్ గూడ్స్ స్టాక్ లేదు.",
+      dr_stat_fgstockvalue: "FG స్టాక్ విలువ",
+      stocksum_fg_heading: "FG స్టాక్ విలువ", stocksum_fg_empty: "ప్రస్తుతం ఫినిష్డ్ గూడ్స్ స్టాక్ లేదు.",
+      stocksum_fg_loading: "FG స్టాక్ లోడ్ అవుతోంది…", stocksum_fg_no_rate: "రేటు సెట్ చేయలేదు",
       dr_th_opening: "ఓపెనింగ్", dr_th_received: "అందుకున్నవి", dr_th_consumed: "వాడినవి/పంపినవి", dr_th_closing: "క్లోజింగ్",
       dr_empty: "ఇంకా ఐటమ్‌లు లేవు. మొదటి ఐటమ్ జోడించడానికి \"Manage Inventory Items\" ఉపయోగించండి.",
       inv_stat_skus: "మొత్తం SKU", inv_stat_units: "అందుబాటులో ఉన్న యూనిట్లు", inv_stat_value: "ఇన్వెంటరీ విలువ", inv_stat_reorder: "రీఆర్డర్ చేయవలసిన ఐటమ్‌లు",
@@ -4143,6 +4207,7 @@
     invBuds: [],             // `reelBuds` (leftover reel weight recorded at Plant) — see subscribeInventory
     productRates: [],        // `productRates` (Customer+Product -> Rate/Piece master) — see subscribeInventory
     lastDispatchValueRows: [], // Daily Report's Dispatch Value rows, kept for its CSV export button
+    lastFgStockValueRows: [], // Daily Report's FG Stock Value rows, kept for its CSV export button
     unsubInvCatalog: null,
     unsubInvPurchases: null,
     unsubInvStatusTransfers: null,
@@ -4231,6 +4296,11 @@
     drDispatchFoot: document.getElementById("drDispatchFoot"),
     drDispatchEmpty: document.getElementById("drDispatchEmpty"),
     drDispatchExportBtn: document.getElementById("drDispatchExportBtn"),
+    drStatFgStockValue: document.getElementById("drStatFgStockValue"),
+    drFgStockBody: document.getElementById("drFgStockBody"),
+    drFgStockFoot: document.getElementById("drFgStockFoot"),
+    drFgStockEmpty: document.getElementById("drFgStockEmpty"),
+    drFgStockExportBtn: document.getElementById("drFgStockExportBtn"),
     inventoryView: document.getElementById("inventoryView"),
     invStockSection: document.getElementById("invStockSection"),
     invHistorySection: document.getElementById("invHistorySection"),
@@ -8002,9 +8072,12 @@
       if(el.modalOverlay && !el.modalOverlay.hidden && !state.editingId && isStockSummaryStage(el.f_stage.value)){
         refreshStockSummaryProductRateAutofill();
       }
-      // A rate landing/changing should also re-value the Daily Report's Dispatch Value section if
-      // it's the visible screen right now — same live-recompute reasoning as above.
-      if(state.appView === "dailyreport") refreshDispatchValueSection();
+      // A rate landing/changing should also re-value the Daily Report's Dispatch Value and FG Stock
+      // Value sections if it's the visible screen right now — same live-recompute reasoning as above.
+      if(state.appView === "dailyreport"){ refreshDispatchValueSection(); refreshFgStockValueSection(); }
+      // ...and the Board's own Stock Summary department column, if that's what's showing — its FG
+      // Stock Value mini widget (see renderStockSummaryFgMini) values off this same rate master.
+      if(state.appView === "board") renderBoard();
     }, function(err){ showBanner(t("banner_inventory_sync_failed_prefix") + " " + (err && err.message ? err.message : "unknown error")); });
   }
 
@@ -9407,6 +9480,7 @@
     el.drStatConsumed.textContent = totals.consumed.toLocaleString();
     el.drStatClosing.textContent = totals.closing.toLocaleString();
     refreshDispatchValueSection();
+    refreshFgStockValueSection();
   }
   function buildDailyReportCsv(rows, dateStr){
     var header = ["Date", "Item", "Category", "Unit", "Opening", "Received", "Consumed/Shipped", "Closing", "Status"];
@@ -9423,9 +9497,12 @@
   // ---------- Daily Report: Dispatch Value ----------
   // Separate from the per-SKU Opening/Received/Consumed/Closing report above (this Inventory tab's
   // own receive-only ledger) — this reads the PRODUCTION side's Dispatch stage `entries` for the
-  // same selected day, groups by Customer+Product, and values each group at its imported rate (see
-  // findProductRate). An async Firestore query (like computeDispatchQuantityForProduct), not a
-  // locally-subscribed array, since Dispatch entries for an arbitrary past day aren't kept in memory.
+  // same selected day and values each one at its product's imported rate (see findProductRate). One
+  // row per Dispatch-stage job card (not grouped by Customer+Product) so each row can carry its own
+  // PO Number/Job Card No — two cards for the same Customer+Product on the same day are two separate
+  // job cards and stay two separate rows. An async Firestore query (like
+  // computeDispatchQuantityForProduct), not a locally-subscribed array, since Dispatch entries for
+  // an arbitrary past day aren't kept in memory.
   function computeDispatchValueForDate(dateStr){
     if(!dateStr) return Promise.resolve([]);
     return state.db.collection("entries")
@@ -9433,23 +9510,20 @@
       .where("date", "==", dateStr)
       .get()
       .then(function(snap){
-        var groups = {}; // keyed by Customer+Product, same composite key as productRateDocId
+        var rows = [];
         snap.forEach(function(doc){
           var e = doc.data();
           var customerName = e.clientName || "", productName = e.productName || "";
-          var key = productRateDocId(customerName, productName);
-          if(!groups[key]) groups[key] = { customerName: customerName, productName: productName, qty: 0 };
-          groups[key].qty += Number(e.quantity) || 0;
-        });
-        return Object.keys(groups).map(function(key){
-          var g = groups[key];
-          var rateDoc = findProductRate(g.customerName, g.productName);
+          var qty = Number(e.quantity) || 0;
+          var rateDoc = findProductRate(customerName, productName);
           var rate = rateDoc && rateDoc.ratePerPiece != null ? rateDoc.ratePerPiece : null;
-          return {
-            customerName: g.customerName, productName: g.productName, qty: g.qty,
-            rate: rate, value: rate != null ? g.qty * rate : null
-          };
-        }).sort(function(a, b){
+          rows.push({
+            poNumber: e.poNumber || "", jobCardNo: e.jobCardNo || "",
+            customerName: customerName, productName: productName, qty: qty,
+            rate: rate, value: rate != null ? qty * rate : null
+          });
+        });
+        return rows.sort(function(a, b){
           return (a.customerName + a.productName).localeCompare(b.customerName + b.productName);
         });
       })
@@ -9470,6 +9544,8 @@
         if(r.value != null) total += r.value;
         var tr = document.createElement("tr");
         tr.innerHTML =
+          "<td>" + esc(r.poNumber || "—") + "</td>" +
+          '<td class="mono">' + esc(r.jobCardNo || "—") + "</td>" +
           "<td>" + esc(r.customerName) + "</td>" +
           "<td>" + esc(r.productName) + "</td>" +
           '<td class="num">' + r.qty.toLocaleString() + "</td>" +
@@ -9482,7 +9558,7 @@
       if(rows.length){
         var totalTr = document.createElement("tr");
         totalTr.innerHTML =
-          '<td colspan="4">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
+          '<td colspan="6">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
           '<td class="num">' + esc(formatInr(total)) + "</td>";
         el.drDispatchFoot.appendChild(totalTr);
       }
@@ -9490,10 +9566,13 @@
     });
   }
   function buildDispatchValueCsv(rows, dateStr){
-    var header = ["Date", "Customer", "Product", "Qty Dispatched", "Rate/Piece", "Value"];
+    var header = ["Date", "PO Number", "Job Card No", "Customer", "Product", "Qty Dispatched", "Rate/Piece", "Value"];
     var lines = [header.map(csvEscape).join(",")];
     rows.forEach(function(r){
-      lines.push([dateStr, r.customerName, r.productName, r.qty, r.rate != null ? r.rate : "", r.value != null ? r.value : ""].map(csvEscape).join(","));
+      lines.push([
+        dateStr, r.poNumber || "", r.jobCardNo || "", r.customerName, r.productName,
+        r.qty, r.rate != null ? r.rate : "", r.value != null ? r.value : ""
+      ].map(csvEscape).join(","));
     });
     return lines.join("\r\n");
   }
@@ -9501,6 +9580,92 @@
     var rows = state.lastDispatchValueRows || [];
     if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
     downloadCsv("visipak-dispatch-value-" + (el.drDateInput.value || todayStr()) + ".csv", buildDispatchValueCsv(rows, el.drDateInput.value || todayStr()));
+  });
+
+  // ---------- Daily Report: FG Stock Value ----------
+  // Every job card currently sitting in the Finished Goods (FG) stage, valued at its product's
+  // imported rate — the same per-Customer+Product Available Stock figure computeFgQuantityForProduct
+  // sums for the Stock Summary entry form, but listed one row per job card here (so PO Number/Job
+  // Card No mean something) rather than summed into a single number. Not date-scoped, unlike
+  // Dispatch Value above — Available Stock is a live snapshot of what's in FG right now, not tied to
+  // a particular day. Zero-balance rows are left out (nothing left to value). Reused by the Board's
+  // own Stock Summary department column (see renderStockSummaryFgMini) so the same figures show up
+  // there without a Stock Summary job card ever needing to be logged for the day.
+  function computeFgStockValueRows(){
+    return state.db.collection("entries")
+      .where("stage", "==", "Finished Goods (FG)")
+      .get()
+      .then(function(snap){
+        var rows = [];
+        snap.forEach(function(doc){
+          var e = doc.data();
+          var qty = Number(e.openingStock) || 0;
+          if(qty <= 0) return;
+          var customerName = e.clientName || "", productName = e.productName || "";
+          var rateDoc = findProductRate(customerName, productName);
+          var rate = rateDoc && rateDoc.ratePerPiece != null ? rateDoc.ratePerPiece : null;
+          rows.push({
+            poNumber: e.poNumber || "", jobCardNo: e.jobCardNo || "",
+            customerName: customerName, productName: productName, qty: qty,
+            rate: rate, value: rate != null ? qty * rate : null
+          });
+        });
+        return rows.sort(function(a, b){
+          return (a.customerName + a.productName).localeCompare(b.customerName + b.productName);
+        });
+      })
+      .catch(function(){ return []; });
+  }
+  var fgStockValueRequestToken = 0;
+  function refreshFgStockValueSection(){
+    if(!el.drFgStockBody) return;
+    var myToken = ++fgStockValueRequestToken;
+    computeFgStockValueRows().then(function(rows){
+      if(myToken !== fgStockValueRequestToken) return; // superseded by a newer request
+      state.lastFgStockValueRows = rows; // kept for the CSV export button below
+      el.drFgStockEmpty.hidden = rows.length !== 0;
+      el.drFgStockBody.innerHTML = "";
+      var total = 0;
+      rows.forEach(function(r){
+        if(r.value != null) total += r.value;
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>" + esc(r.poNumber || "—") + "</td>" +
+          '<td class="mono">' + esc(r.jobCardNo || "—") + "</td>" +
+          "<td>" + esc(r.customerName) + "</td>" +
+          "<td>" + esc(r.productName) + "</td>" +
+          '<td class="num">' + esc(r.rate != null ? r.rate : "—") + "</td>" +
+          '<td class="num">' + r.qty.toLocaleString() + "</td>" +
+          '<td class="num">' + (r.value != null ? esc(formatInr(r.value)) : "—") + "</td>";
+        el.drFgStockBody.appendChild(tr);
+      });
+      el.drFgStockFoot.innerHTML = "";
+      el.drFgStockFoot.hidden = rows.length === 0;
+      if(rows.length){
+        var totalTr = document.createElement("tr");
+        totalTr.innerHTML =
+          '<td colspan="6">' + esc(tf("inv_totals_label", { count: rows.length })) + "</td>" +
+          '<td class="num">' + esc(formatInr(total)) + "</td>";
+        el.drFgStockFoot.appendChild(totalTr);
+      }
+      el.drStatFgStockValue.textContent = formatInr(total);
+    });
+  }
+  function buildFgStockValueCsv(rows){
+    var header = ["PO Number", "Job Card No", "Customer", "Product", "Rate/Piece", "FG Quantity", "Value"];
+    var lines = [header.map(csvEscape).join(",")];
+    rows.forEach(function(r){
+      lines.push([
+        r.poNumber || "", r.jobCardNo || "", r.customerName, r.productName,
+        r.rate != null ? r.rate : "", r.qty, r.value != null ? r.value : ""
+      ].map(csvEscape).join(","));
+    });
+    return lines.join("\r\n");
+  }
+  el.drFgStockExportBtn.addEventListener("click", function(){
+    var rows = state.lastFgStockValueRows || [];
+    if(rows.length === 0){ showBanner(t("banner_no_rows_export")); return; }
+    downloadCsv("visipak-fg-stock-value-" + todayStr() + ".csv", buildFgStockValueCsv(rows));
   });
 
   var syncDrDateDisplay = bindDateDisplay(el.drDateInput, el.drDateInputLabel);
@@ -10988,6 +11153,17 @@
       head.appendChild(headRight);
       col.appendChild(head);
 
+      // Nobody logs an actual Stock Summary job card day to day, so this column would otherwise
+      // always just show the empty hint below — show the live FG Stock Value instead (see
+      // computeFgStockValueRows/renderStockSummaryFgMini). Real Stock Summary entries, if any exist
+      // for the day, still render normally underneath.
+      if(stage === "Stock Summary"){
+        var fgMiniWrap = document.createElement("div");
+        fgMiniWrap.className = "stockSummaryFgMini";
+        col.appendChild(fgMiniWrap);
+        renderStockSummaryFgMini(fgMiniWrap);
+      }
+
       var body = document.createElement("div");
       body.className = "stageColBody";
 
@@ -11003,6 +11179,49 @@
       }
       col.appendChild(body);
       el.boardView.appendChild(col);
+    });
+  }
+
+  // Fills the Board's Stock Summary department column with the live FG Stock Value snapshot (see
+  // computeFgStockValueRows, shared with the Daily Report's own FG Stock Value section). `container`
+  // is a freshly-created element for this one renderBoard() call — if the board re-renders (another
+  // entries/rates update) before this query returns, that older container is no longer attached to
+  // the page, so the `isConnected` check below quietly drops the stale response instead of writing
+  // into a column that's already been replaced.
+  function renderStockSummaryFgMini(container){
+    container.innerHTML = '<div class="fgStockMiniLoading">' + esc(t("stocksum_fg_loading")) + "</div>";
+    computeFgStockValueRows().then(function(rows){
+      if(!container.isConnected) return;
+      var total = 0;
+      rows.forEach(function(r){ if(r.value != null) total += r.value; });
+      container.innerHTML = "";
+      var head = document.createElement("div");
+      head.className = "fgStockMiniHead";
+      head.textContent = t("stocksum_fg_heading") + " — " + formatInr(total);
+      container.appendChild(head);
+      if(rows.length === 0){
+        var empty = document.createElement("div");
+        empty.className = "fgStockMiniEmpty";
+        empty.textContent = t("stocksum_fg_empty");
+        container.appendChild(empty);
+        return;
+      }
+      var list = document.createElement("div");
+      list.className = "fgStockMiniList";
+      rows.forEach(function(r){
+        var row = document.createElement("div");
+        row.className = "fgStockMiniRow";
+        row.innerHTML =
+          '<div class="fgStockMiniRowTop">' + esc(r.jobCardNo || "—") +
+            (r.poNumber ? ' <span class="fgStockMiniPo">· PO ' + esc(r.poNumber) + "</span>" : "") +
+          "</div>" +
+          '<div class="fgStockMiniRowMid">' + esc(r.customerName || "—") + " — " + esc(r.productName || "—") + "</div>" +
+          '<div class="fgStockMiniRowBottom">' + r.qty.toLocaleString() +
+            (r.rate != null ? " × ₹" + esc(r.rate) + " = " + esc(formatInr(r.value)) : " (" + esc(t("stocksum_fg_no_rate")) + ")") +
+          "</div>";
+        list.appendChild(row);
+      });
+      container.appendChild(list);
     });
   }
 
