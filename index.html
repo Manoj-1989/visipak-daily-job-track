@@ -5172,7 +5172,72 @@
     if(!trimmed) return "";
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
   }
+  // ---------- Product Rates is now the single source of truth for WHICH Customer/Product names are
+  // selectable (Round 13) ----------
+  // Every Customer Name / Product Name dropdown across Entry, Priority Task and PO used to be built
+  // from the older, separately-maintained catalog (state.catalog.customers — grown one entry at a
+  // time as job cards were saved, or bulk-loaded via "Manage Catalog"). Over time that catalog
+  // accumulated customers/products that are no longer real selections (e.g. a bare "LAURUS" or
+  // "PIDILITE -1" left over from before the real Product Rates sheet existed) — cluttering every
+  // dropdown in the app with names nobody should be picking anymore. Product Rates (state.productRates,
+  // see subscribeProductRates) is the sheet actually kept up to date with real customers/products, so
+  // it's now the ONLY thing that decides what appears in these dropdowns: a customer/product shows up
+  // here if and only if it has at least one Product Rates row. The older catalog doc still exists and
+  // is still written to (upsertCatalogEntry) — it's kept purely as a side lookup for its Ply/Type/
+  // Quantity-Per-Bundle metadata (see findCanonicalCatalogCustomer/findCanonicalCatalogProduct below),
+  // which Product Rates rows don't carry — but it no longer has any say over which names are offered.
+  function productRatesCustomerNames(){
+    var seen = {};
+    var names = [];
+    state.productRates.forEach(function(r){
+      var key = normalizeKey(r.customerName);
+      if(!key || seen[key]) return;
+      seen[key] = true;
+      names.push(r.customerName);
+    });
+    return names;
+  }
+  function productRatesProductNames(canonicalCustomerName){
+    if(!canonicalCustomerName) return [];
+    var customerKey = normalizeKey(canonicalCustomerName);
+    var seen = {};
+    var names = [];
+    state.productRates.forEach(function(r){
+      if(normalizeKey(r.customerName) !== customerKey) return;
+      var key = normalizeKey(r.productName);
+      if(!key || seen[key]) return;
+      seen[key] = true;
+      names.push(r.productName);
+    });
+    return names;
+  }
   function findCanonicalCustomer(typed){
+    var key = normalizeKey(typed);
+    if(!key) return null;
+    var names = productRatesCustomerNames();
+    for(var i = 0; i < names.length; i++){
+      if(normalizeKey(names[i]) === key) return names[i];
+    }
+    return null;
+  }
+  function findCanonicalProduct(canonicalCustomer, typedProduct){
+    if(!canonicalCustomer) return null;
+    var key = normalizeKey(typedProduct);
+    if(!key) return null;
+    var names = productRatesProductNames(canonicalCustomer);
+    for(var i = 0; i < names.length; i++){
+      if(normalizeKey(names[i]) === key) return names[i];
+    }
+    return null;
+  }
+  // Catalog-only match (deliberately separate from findCanonicalCustomer/findCanonicalProduct above,
+  // which now match against Product Rates instead) — used ONLY where the shared catalog's own Ply/
+  // Type/Quantity-Per-Bundle metadata or its own Firestore doc is actually being read or written
+  // (applyCatalogAutofill, applyPoCatalogAutofillForProduct, upsertCatalogEntry,
+  // buildCatalogUpdateFromPairs, and the Next-Stage catalog carry-forward) — every one of those
+  // still indexes state.catalog.customers directly by exact key, so it needs the catalog's OWN
+  // canonical spelling, which can differ in casing from Product Rates' spelling of the same customer.
+  function findCanonicalCatalogCustomer(typed){
     var key = normalizeKey(typed);
     if(!key) return null;
     var names = Object.keys(state.catalog.customers || {});
@@ -5181,7 +5246,7 @@
     }
     return null;
   }
-  function findCanonicalProduct(canonicalCustomer, typedProduct){
+  function findCanonicalCatalogProduct(canonicalCustomer, typedProduct){
     if(!canonicalCustomer) return null;
     var key = normalizeKey(typedProduct);
     if(!key) return null;
@@ -5232,14 +5297,17 @@
     html += '<option value="' + ADD_NEW_VALUE + '">+ Add new…</option>';
     return html;
   }
+  // formatFn is the identity function here (not formatCustomerName/formatProductName) — Product
+  // Rates names are shown exactly as they appear in that sheet (e.g. "Dodla Dairy Limited", not
+  // forced to "DODLA DAIRY LIMITED"), and productRatesCustomerNames/productRatesProductNames
+  // already dedupe by normalizeKey, so there's nothing left for a format-and-dedupe pass to do.
   function buildCustomerOptionsHtml(rawSelected){
-    var names = Object.keys(state.catalog.customers || {}).sort(catalogSortCmp);
-    return buildCatalogOptionsHtml(names, formatCustomerName, findCanonicalCustomer, rawSelected);
+    var names = productRatesCustomerNames().sort(catalogSortCmp);
+    return buildCatalogOptionsHtml(names, function(s){ return s; }, findCanonicalCustomer, rawSelected);
   }
   function buildProductOptionsHtml(canonicalCustomer, rawSelected){
-    var names = canonicalCustomer ? Object.keys((state.catalog.customers[canonicalCustomer] || {}).products || {}) : [];
-    names.sort(catalogSortCmp);
-    return buildCatalogOptionsHtml(names, formatProductName, function(typed){ return findCanonicalProduct(canonicalCustomer, typed); }, rawSelected);
+    var names = productRatesProductNames(canonicalCustomer).sort(catalogSortCmp);
+    return buildCatalogOptionsHtml(names, function(s){ return s; }, function(typed){ return findCanonicalProduct(canonicalCustomer, typed); }, rawSelected);
   }
   // Rebuilds a select's options while preserving whatever it currently holds (used both for a
   // fresh Firestore snapshot arriving and for the general refresh calls elsewhere in the file) —
@@ -5264,14 +5332,18 @@
     var raw = rawValue || "";
     el.f_clientname.innerHTML = buildCustomerOptionsHtml(raw);
     var canonical = findCanonicalCustomer(raw);
-    el.f_clientname.value = canonical ? formatCustomerName(canonical) : raw;
+    // Round 13: canonical now comes straight from Product Rates (see findCanonicalCustomer), already
+    // spelled exactly as buildCustomerOptionsHtml's own <option value> — no reformatting (that was
+    // only ever needed for the older, pre-formatted catalog), so setting .value to it always matches
+    // a real option instead of silently reverting to blank.
+    el.f_clientname.value = canonical || raw;
   }
   function setProductField(rawValue){
     var raw = rawValue || "";
     var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
     el.f_product.innerHTML = buildProductOptionsHtml(canonicalCustomer, raw);
     var canonicalProduct = findCanonicalProduct(canonicalCustomer, raw);
-    el.f_product.value = canonicalProduct ? formatProductName(canonicalProduct) : raw;
+    el.f_product.value = canonicalProduct || raw;
   }
   // Adds a new option (just before the "+ Add new…" sentinel) if the select doesn't already have
   // one with this exact value, then selects it.
@@ -5332,8 +5404,8 @@
   // Called whenever either field changes — handles picking Customer then Product, or (less
   // common, but harmless to support) typing/pasting a known Product before choosing its Customer.
   function applyCatalogAutofill(){
-    var canonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
-    var canonicalProduct = findCanonicalProduct(canonicalCustomer, el.f_product.value);
+    var canonicalCustomer = findCanonicalCatalogCustomer(el.f_clientname.value);
+    var canonicalProduct = findCanonicalCatalogProduct(canonicalCustomer, el.f_product.value);
     if(!canonicalProduct) return;
     var info = state.catalog.customers[canonicalCustomer].products[canonicalProduct] || {};
     // Only touch Type/PLY if this stage actually shows that field right now, and only if the
@@ -5373,14 +5445,14 @@
     var raw = rawValue || "";
     el.t_clientname.innerHTML = buildCustomerOptionsHtml(raw);
     var canonical = findCanonicalCustomer(raw);
-    el.t_clientname.value = canonical ? formatCustomerName(canonical) : raw;
+    el.t_clientname.value = canonical || raw;
   }
   function setTaskProductField(rawValue){
     var raw = rawValue || "";
     var canonicalCustomer = findCanonicalCustomer(el.t_clientname.value);
     el.t_product.innerHTML = buildProductOptionsHtml(canonicalCustomer, raw);
     var canonicalProduct = findCanonicalProduct(canonicalCustomer, raw);
-    el.t_product.value = canonicalProduct ? formatProductName(canonicalProduct) : raw;
+    el.t_product.value = canonicalProduct || raw;
   }
   var lastTaskClientNameValue = "";
   var lastTaskProductValue = "";
@@ -5429,7 +5501,7 @@
     var raw = rawValue || "";
     el.po_customer.innerHTML = buildCustomerOptionsHtml(raw);
     var canonical = findCanonicalCustomer(raw);
-    el.po_customer.value = canonical ? formatCustomerName(canonical) : raw;
+    el.po_customer.value = canonical || raw;
   }
   function poProductCodeSelectEl(pid){ return document.getElementById(poFieldId(pid, "productcode")); }
   // rawValue lets a caller seed the list around a specific saved value (e.g. right after the select
@@ -5442,15 +5514,15 @@
     var current = rawValue != null ? rawValue : sel.value;
     sel.innerHTML = buildProductOptionsHtml(canonicalCustomer, current);
     var canonicalProduct = findCanonicalProduct(canonicalCustomer, current);
-    sel.value = canonicalProduct ? formatProductName(canonicalProduct) : current;
+    sel.value = canonicalProduct || current;
   }
   // Mirrors the main Entry form's applyCatalogAutofill, scoped to one product block — a Ply the
   // catalog already has on file for this exact Customer+Product fills the block's own Ply select
   // (Material Description isn't part of the catalog's saved fields, so it's left alone either way).
   function applyPoCatalogAutofillForProduct(pid){
-    var canonicalCustomer = findCanonicalCustomer(el.po_customer.value);
+    var canonicalCustomer = findCanonicalCatalogCustomer(el.po_customer.value);
     var sel = poProductCodeSelectEl(pid);
-    var canonicalProduct = sel && findCanonicalProduct(canonicalCustomer, sel.value);
+    var canonicalProduct = sel && findCanonicalCatalogProduct(canonicalCustomer, sel.value);
     if(!canonicalProduct) return;
     var info = state.catalog.customers[canonicalCustomer].products[canonicalProduct] || {};
     if(info.ply){
@@ -5625,8 +5697,8 @@
     // ALL CAPS for the customer, Sentence case for the product — so newly-added catalog entries
     // are already consistent with formatCustomerName/formatProductName's display formatting rather
     // than depending on it to clean things up every time the dropdown renders.
-    var canonicalCustomer = findCanonicalCustomer(custTrim) || formatCustomerName(custTrim);
-    var canonicalProduct = findCanonicalProduct(canonicalCustomer, prodTrim) || formatProductName(prodTrim);
+    var canonicalCustomer = findCanonicalCatalogCustomer(custTrim) || formatCustomerName(custTrim);
+    var canonicalProduct = findCanonicalCatalogProduct(canonicalCustomer, prodTrim) || formatProductName(prodTrim);
     var existing = ((state.catalog.customers[canonicalCustomer] || {}).products || {})[canonicalProduct] || {};
     var existingQtyPerBundle = existing.qtyPerBundle != null ? existing.qtyPerBundle : null;
     var merged = { type: existing.type || "", ply: existing.ply || "", qtyPerBundle: existingQtyPerBundle };
@@ -5669,11 +5741,11 @@
       var productName = (pair.productName || "").trim();
       if(!customerName || !productName) return;
       var customerKey = normalizeKey(customerName);
-      var canonicalCustomer = findCanonicalCustomer(customerName) || mintedCustomerNames[customerKey] || formatCustomerName(customerName);
+      var canonicalCustomer = findCanonicalCatalogCustomer(customerName) || mintedCustomerNames[customerKey] || formatCustomerName(customerName);
       var isNewCustomer = !state.catalog.customers[canonicalCustomer] && !mintedCustomerNames[customerKey];
       mintedCustomerNames[customerKey] = canonicalCustomer;
       var existingCustomer = state.catalog.customers[canonicalCustomer];
-      var canonicalProduct = (existingCustomer && findCanonicalProduct(canonicalCustomer, productName)) || formatProductName(productName);
+      var canonicalProduct = (existingCustomer && findCanonicalCatalogProduct(canonicalCustomer, productName)) || formatProductName(productName);
       var existingProduct = existingCustomer && existingCustomer.products && existingCustomer.products[canonicalProduct];
       var seenKey = canonicalCustomer + "\u0001" + normalizeKey(canonicalProduct);
       if(existingProduct || seenNewProducts[seenKey]){ unchanged++; return; }
@@ -8636,6 +8708,19 @@
     state.unsubProductRates = state.db.collection("productRates").onSnapshot(function(snap){
       state.productRates = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
       if(state.appView === "inventory") renderProductRates();
+      // Product Rates is now the source of every Customer Name/Product Name dropdown across Entry,
+      // Priority Task and PO (see findCanonicalCustomer/buildCustomerOptionsHtml above) — a rate
+      // landing/changing (a fresh import, most commonly) needs to refresh all of them live, exactly
+      // like subscribeCatalog already does for its own (now Ply/Type-only) catalog changes, so a
+      // brand-new customer/product shows up in an already-open form without a reload.
+      refreshCustomerNameOptions();
+      refreshProductNameOptions();
+      refreshTaskCustomerNameOptions();
+      refreshTaskProductNameOptions();
+      if(el.poModalOverlay && !el.poModalOverlay.hidden){
+        refreshPoCustomerNameOptions();
+        poFormProducts.forEach(function(pid){ refreshPoProductNameOptionsForProduct(pid); });
+      }
       // A rate landing/changing while Stock Summary's Add Entry modal happens to be open should
       // re-autofill Unit Rate for a brand-new (not-yet-edited) entry the same way a fresh
       // Customer/Product pick would — see refreshStockSummaryProductRateAutofill.
@@ -13890,8 +13975,8 @@
     // visible on this stage to autofill into in the first place.
     var qtyPerBundleFromCatalogOnMove = null;
     if(!hasQtyPerBundle && movedTo && stageHasQtyPerBundle(movedTo)){
-      var moveCanonicalCustomer = findCanonicalCustomer(el.f_clientname.value);
-      var moveCanonicalProduct = findCanonicalProduct(moveCanonicalCustomer, el.f_product.value);
+      var moveCanonicalCustomer = findCanonicalCatalogCustomer(el.f_clientname.value);
+      var moveCanonicalProduct = findCanonicalCatalogProduct(moveCanonicalCustomer, el.f_product.value);
       if(moveCanonicalProduct){
         var moveCatalogInfo = state.catalog.customers[moveCanonicalCustomer].products[moveCanonicalProduct] || {};
         if(moveCatalogInfo.qtyPerBundle != null) qtyPerBundleFromCatalogOnMove = moveCatalogInfo.qtyPerBundle;
