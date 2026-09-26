@@ -500,6 +500,12 @@
      differ by these specs, so without this line the reorder list can't tell them apart at a glance. */
   .invReorderRow .invReorderSpecs{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
   .invReorderRow .invReorderMeta{font-size:11.5px;color:var(--ink-soft);font-family:var(--font-mono);white-space:nowrap;}
+  /* "Expected {date}" note for an item with an active reorder on file (see orderPlacedLineHtml) —
+     shown under the item name on both the Reorder list and the Current Stock table, so restocking
+     status is visible right where the shortage itself is shown. Turns --crit once the expected date
+     has passed without the stock actually showing up yet. */
+  .invReorderExpected{font-size:11.5px;color:var(--accent);margin-top:2px;font-weight:600;}
+  .invReorderExpected.invReorderExpectedOverdue{color:var(--crit);}
   .invRowActions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;}
   .invSmallBtn{padding:5px 9px;font-size:11.5px;}
   .invItemsList{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;margin-bottom:16px;}
@@ -1417,6 +1423,28 @@
         <input type="number" id="invItemPriceInput" class="mono" min="0" step="0.01" placeholder="0.00">
       </label>
     </div>
+    <!-- Order Placed / Lead Time: one active reorder per item — set once a Low Stock/Out of Stock
+         item has actually been ordered, so the Reorder list and Current Stock table can show an
+         expected-arrival date instead of just a bare "reorder needed" flag. Cleared by hand (untick
+         Order Placed) once the new stock is received — see the Reorder list/Current Stock rendering
+         for how this pair turns into "Expected {date}". -->
+    <div class="supAddRow">
+      <label class="invItemCheckboxRow" style="align-self:end;">
+        <input type="checkbox" id="invItemOrderPlacedInput">
+        <span data-i18n="inv_items_order_placed">Order placed</span>
+      </label>
+      <label><span data-i18n="inv_items_lead_time">Lead time (days)</span>
+        <input type="number" id="invItemLeadTimeInput" min="0" step="1" placeholder="e.g. 7">
+      </label>
+    </div>
+    <div class="supAddRow" id="invItemOrderPlacedDateRow" hidden>
+      <label><span data-i18n="inv_items_order_placed_date">Order placed on</span>
+        <input type="date" id="invItemOrderPlacedDateInput">
+      </label>
+      <label><span data-i18n="inv_items_expected_arrival">Expected arrival</span>
+        <input type="text" id="invItemExpectedArrivalDisplay" readonly>
+      </label>
+    </div>
     <div class="supAddRow">
       <label><span data-i18n="inv_items_zone">Zone / Storage Location</span>
         <input type="text" id="invItemZoneInput" placeholder="e.g. ZONE-2">
@@ -2141,6 +2169,14 @@
            unhidden — simpler and more robust than rebuilding rows on every PLY change. -->
       <div class="span2 qcSpecsBlock" id="fld_layers">
         <div class="qcSpecsHead" data-i18n="layers_heading">Layers</div>
+        <!-- Reel No's own dropdown normally hides a reel once its recorded weight is fully drawn by
+             other Job Cards (see reelRemainingWeight/buildReelNoOptionsHtml) — this admin-only escape
+             hatch (per the confirmed "keep both" decision) reveals every reel regardless, for the
+             rare case one genuinely needs reusing beyond what it was recorded as holding. -->
+        <label class="invItemCheckboxRow" id="fld_layerreeloverride" hidden>
+          <input type="checkbox" id="layerReelOverride">
+          <span data-i18n="layers_reelno_override_label">Allow reusing fully-drawn reels (admin override)</span>
+        </label>
         <!-- Reel Item ties this layer to a real Inventory SKU (reel/roll-priced items only — see
              isReelUnit) so saving the entry can automatically move one reel of that SKU from
              Available to In Use (see renderLayerSkuOptions/reconcileLayerReelStatusTransfers in the
@@ -2152,16 +2188,16 @@
              weight of the physical reel used, which varies reel to reel even for the same SKU. -->
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelno">Reel No</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="layersBody">
-            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td><input type="text" id="f_layer1_reelweight"></td><td><input type="text" id="f_layer1_budweight"></td><td class="mono" id="f_layer1_budcount"></td><td class="mono" id="f_layer1_available"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td><input type="text" id="f_layer2_reelweight"></td><td><input type="text" id="f_layer2_budweight"></td><td class="mono" id="f_layer2_budcount"></td><td class="mono" id="f_layer2_available"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td><input type="text" id="f_layer3_reelweight"></td><td><input type="text" id="f_layer3_budweight"></td><td class="mono" id="f_layer3_budcount"></td><td class="mono" id="f_layer3_available"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td><input type="text" id="f_layer4_reelweight"></td><td><input type="text" id="f_layer4_budweight"></td><td class="mono" id="f_layer4_budcount"></td><td class="mono" id="f_layer4_available"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td><input type="text" id="f_layer5_reelweight"></td><td><input type="text" id="f_layer5_budweight"></td><td class="mono" id="f_layer5_budcount"></td><td class="mono" id="f_layer5_available"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td><input type="text" id="f_layer6_reelweight"></td><td><input type="text" id="f_layer6_budweight"></td><td class="mono" id="f_layer6_budcount"></td><td class="mono" id="f_layer6_available"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_budweight"></td><td class="mono" id="f_layer7_budcount"></td><td class="mono" id="f_layer7_available"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow1"><td id="layerLabel1"></td><td><select id="f_layer1_sku"></select></td><td><select id="f_layer1_reelno"></select></td><td><input type="text" id="f_layer1_reelweight"></td><td><input type="text" id="f_layer1_budweight"></td><td class="mono" id="f_layer1_budcount"></td><td class="mono" id="f_layer1_available"></td><td><span class="capChip" id="f_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow2"><td id="layerLabel2"></td><td><select id="f_layer2_sku"></select></td><td><select id="f_layer2_reelno"></select></td><td><input type="text" id="f_layer2_reelweight"></td><td><input type="text" id="f_layer2_budweight"></td><td class="mono" id="f_layer2_budcount"></td><td class="mono" id="f_layer2_available"></td><td><span class="capChip" id="f_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow3"><td id="layerLabel3"></td><td><select id="f_layer3_sku"></select></td><td><select id="f_layer3_reelno"></select></td><td><input type="text" id="f_layer3_reelweight"></td><td><input type="text" id="f_layer3_budweight"></td><td class="mono" id="f_layer3_budcount"></td><td class="mono" id="f_layer3_available"></td><td><span class="capChip" id="f_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow4"><td id="layerLabel4"></td><td><select id="f_layer4_sku"></select></td><td><select id="f_layer4_reelno"></select></td><td><input type="text" id="f_layer4_reelweight"></td><td><input type="text" id="f_layer4_budweight"></td><td class="mono" id="f_layer4_budcount"></td><td class="mono" id="f_layer4_available"></td><td><span class="capChip" id="f_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow5"><td id="layerLabel5"></td><td><select id="f_layer5_sku"></select></td><td><select id="f_layer5_reelno"></select></td><td><input type="text" id="f_layer5_reelweight"></td><td><input type="text" id="f_layer5_budweight"></td><td class="mono" id="f_layer5_budcount"></td><td class="mono" id="f_layer5_available"></td><td><span class="capChip" id="f_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow6"><td id="layerLabel6"></td><td><select id="f_layer6_sku"></select></td><td><select id="f_layer6_reelno"></select></td><td><input type="text" id="f_layer6_reelweight"></td><td><input type="text" id="f_layer6_budweight"></td><td class="mono" id="f_layer6_budcount"></td><td class="mono" id="f_layer6_available"></td><td><span class="capChip" id="f_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><select id="f_layer7_reelno"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_budweight"></td><td class="mono" id="f_layer7_budcount"></td><td class="mono" id="f_layer7_available"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2606,16 +2642,16 @@
         <span data-i18n="layers_heading">Layers</span>
         <table class="qcSpecsTable">
           <thead>
-            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
+            <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelno">Reel No</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
           </thead>
           <tbody id="taskLayersBody">
-            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td><input type="text" id="t_layer1_reelweight"></td><td class="mono" id="t_layer1_budweight"></td><td class="mono" id="t_layer1_budcount"></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td><input type="text" id="t_layer2_reelweight"></td><td class="mono" id="t_layer2_budweight"></td><td class="mono" id="t_layer2_budcount"></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td><input type="text" id="t_layer3_reelweight"></td><td class="mono" id="t_layer3_budweight"></td><td class="mono" id="t_layer3_budcount"></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td><input type="text" id="t_layer4_reelweight"></td><td class="mono" id="t_layer4_budweight"></td><td class="mono" id="t_layer4_budcount"></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td><input type="text" id="t_layer5_reelweight"></td><td class="mono" id="t_layer5_budweight"></td><td class="mono" id="t_layer5_budcount"></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td><input type="text" id="t_layer6_reelweight"></td><td class="mono" id="t_layer6_budweight"></td><td class="mono" id="t_layer6_budcount"></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
-            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td><input type="text" id="t_layer7_reelweight"></td><td class="mono" id="t_layer7_budweight"></td><td class="mono" id="t_layer7_budcount"></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow1"><td id="tLayerLabel1"></td><td><select id="t_layer1_sku"></select></td><td><select id="t_layer1_reelno"></select></td><td><input type="text" id="t_layer1_reelweight"></td><td class="mono" id="t_layer1_budweight"></td><td class="mono" id="t_layer1_budcount"></td><td class="mono" id="t_layer1_available"></td><td><span class="capChip" id="t_layer1_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer1_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow2"><td id="tLayerLabel2"></td><td><select id="t_layer2_sku"></select></td><td><select id="t_layer2_reelno"></select></td><td><input type="text" id="t_layer2_reelweight"></td><td class="mono" id="t_layer2_budweight"></td><td class="mono" id="t_layer2_budcount"></td><td class="mono" id="t_layer2_available"></td><td><span class="capChip" id="t_layer2_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer2_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow3"><td id="tLayerLabel3"></td><td><select id="t_layer3_sku"></select></td><td><select id="t_layer3_reelno"></select></td><td><input type="text" id="t_layer3_reelweight"></td><td class="mono" id="t_layer3_budweight"></td><td class="mono" id="t_layer3_budcount"></td><td class="mono" id="t_layer3_available"></td><td><span class="capChip" id="t_layer3_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer3_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow4"><td id="tLayerLabel4"></td><td><select id="t_layer4_sku"></select></td><td><select id="t_layer4_reelno"></select></td><td><input type="text" id="t_layer4_reelweight"></td><td class="mono" id="t_layer4_budweight"></td><td class="mono" id="t_layer4_budcount"></td><td class="mono" id="t_layer4_available"></td><td><span class="capChip" id="t_layer4_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer4_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow5"><td id="tLayerLabel5"></td><td><select id="t_layer5_sku"></select></td><td><select id="t_layer5_reelno"></select></td><td><input type="text" id="t_layer5_reelweight"></td><td class="mono" id="t_layer5_budweight"></td><td class="mono" id="t_layer5_budcount"></td><td class="mono" id="t_layer5_available"></td><td><span class="capChip" id="t_layer5_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer5_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow6"><td id="tLayerLabel6"></td><td><select id="t_layer6_sku"></select></td><td><select id="t_layer6_reelno"></select></td><td><input type="text" id="t_layer6_reelweight"></td><td class="mono" id="t_layer6_budweight"></td><td class="mono" id="t_layer6_budcount"></td><td class="mono" id="t_layer6_available"></td><td><span class="capChip" id="t_layer6_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer6_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
+            <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td><select id="t_layer7_reelno"></select></td><td><input type="text" id="t_layer7_reelweight"></td><td class="mono" id="t_layer7_budweight"></td><td class="mono" id="t_layer7_budcount"></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
       </div>
@@ -2680,7 +2716,7 @@
         <input type="text" id="po_number" required placeholder="e.g. PO-4021" data-i18n-placeholder="po_number_placeholder">
       </label>
       <label><span data-i18n="po_customer_label">Customer Name</span>
-        <input type="text" id="po_customer" required placeholder="e.g. ABC Packaging Pvt Ltd" data-i18n-placeholder="po_customer_placeholder">
+        <select id="po_customer" required></select>
       </label>
       <!-- A PO can cover multiple different products/materials (each with its own Material
            Description/Ply/Reserve Reel/Layers/Quantity) — see poProducts()/mergePoProductView() and
@@ -2949,7 +2985,9 @@
       form_add_entry: "Add Entry", form_edit_entry: "Edit Entry", form_view_entry: "View Entry",
       form_close: "Close",
       form_ply_label: "PLY", form_ply_select: "— select —",
-      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_budweight: "Buds Weight", layers_th_budcount: "Buds Count", layers_th_status: "Status", layers_delete_title: "Delete this reel",
+      layers_heading: "Layers", layers_th_item: "Reel Item", layers_th_reelno: "Reel No", layers_th_available: "Available", layers_th_reelweight: "Reel Weight", layers_th_budweight: "Buds Weight", layers_th_budcount: "Buds Count", layers_th_status: "Status", layers_delete_title: "Delete this reel",
+      layers_reelno_placeholder: "— select —", layers_reelno_override_label: "Allow reusing fully-drawn reels (admin override)",
+      layers_reelno_remaining: "{qty} kg left", layers_reelno_unknown_weight: "weight unknown",
       layers_reelstatus_available: "Available", layers_reelstatus_low: "Low Stock", layers_reelstatus_out: "Out of Stock",
       layers_row_label_n: "Layer {n}", layers_item_select: "— select reel —",
       layers_err_stock_move_failed: "Saved, but couldn't update Inventory stock for a Layer's reel — check Inventory > Update Status.",
@@ -3120,6 +3158,8 @@
       inv_rates_err_noheader: "Couldn’t find Customer name/Product name/Rate columns in this file.",
       inv_rates_err_norows: "No valid rate rows found in this file.",
       inv_rates_import_done: "Imported {n} product rates.", inv_rates_err_save: "Couldn’t save the imported rates.",
+      inv_rates_import_done_catalog: "Imported {n} product rates. Added {customers} new customer(s) and {products} new product(s) to the Customer Name/Product Name dropdown list.",
+      inv_rates_err_catalog_sync: "(The dropdown list couldn’t be updated with any new names from this file — the rates themselves were still saved.)",
       inv_rates_edit_prompt: "New Rate/Piece for {customer} — {product}:", inv_rates_err_invalid_rate: "Enter a valid rate.",
       inv_rate_customer_mismatch_hint: "No rate for customer \"{customer}\". A rate for this product IS imported, but under customer \"{otherCustomer}\" — check the customer name spelling in your Product Rates import.",
       inv_rates_err_timeout: "This is taking too long — check your internet connection and try again.",
@@ -3141,6 +3181,9 @@
       inv_items_supplier: "Supplier", inv_items_unit: "Unit", inv_items_unit_placeholder: "e.g. sheets, kg, rolls",
       inv_items_zone: "Zone / Storage Location",
       inv_items_price: "Unit/Price",
+      inv_items_order_placed: "Order placed", inv_items_lead_time: "Lead time (days)",
+      inv_items_order_placed_date: "Order placed on", inv_items_expected_arrival: "Expected arrival",
+      inv_expected_arrival_label: "Expected {date}", inv_expected_arrival_overdue: "Expected {date} (overdue)",
       inv_items_category_custom_option: "+ Add new category…",
       inv_items_category_custom_placeholder: "Type new category name",
       inv_items_specs_heading: "Paper / Invoice Specifications (optional)",
@@ -3328,7 +3371,9 @@
       form_add_entry: "एंट्री जोड़ें", form_edit_entry: "एंट्री बदलें", form_view_entry: "एंट्री देखें",
       form_close: "बंद करें",
       form_ply_label: "PLY", form_ply_select: "— चुनें —",
-      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_budweight: "बड्स वज़न", layers_th_budcount: "बड्स गिनती", layers_th_status: "स्थिति", layers_delete_title: "यह रील हटाएं",
+      layers_heading: "लेयर", layers_th_item: "रील आइटम", layers_th_reelno: "रील नंबर", layers_th_available: "उपलब्ध", layers_th_reelweight: "रील वज़न", layers_th_budweight: "बड्स वज़न", layers_th_budcount: "बड्स गिनती", layers_th_status: "स्थिति", layers_delete_title: "यह रील हटाएं",
+      layers_reelno_placeholder: "— चुनें —", layers_reelno_override_label: "पूरी तरह इस्तेमाल हो चुकी रील दोबारा उपयोग करने दें (एडमिन ओवरराइड)",
+      layers_reelno_remaining: "{qty} kg बचा है", layers_reelno_unknown_weight: "वज़न अज्ञात",
       layers_reelstatus_available: "उपलब्ध", layers_reelstatus_low: "कम स्टॉक", layers_reelstatus_out: "स्टॉक खत्म",
       layers_row_label_n: "लेयर {n}", layers_item_select: "— रील चुनें —",
       layers_err_stock_move_failed: "सेव हो गया, लेकिन लेयर की रील के लिए इन्वेंटरी स्टॉक अपडेट नहीं हो सका — इन्वेंटरी > स्थिति अपडेट करें में देखें।",
@@ -3499,6 +3544,8 @@
       inv_rates_err_noheader: "इस फ़ाइल में Customer name/Product name/Rate कॉलम नहीं मिले।",
       inv_rates_err_norows: "इस फ़ाइल में कोई मान्य दर पंक्ति नहीं मिली।",
       inv_rates_import_done: "{n} उत्पाद दरें आयात की गईं।", inv_rates_err_save: "आयातित दरें सहेजी नहीं जा सकीं।",
+      inv_rates_import_done_catalog: "{n} उत्पाद दरें आयात की गईं। ग्राहक का नाम/उत्पाद का नाम ड्रॉपडाउन सूची में {customers} नए ग्राहक और {products} नए उत्पाद जोड़े गए।",
+      inv_rates_err_catalog_sync: "(इस फ़ाइल से ड्रॉपडाउन सूची में कोई नया नाम नहीं जोड़ा जा सका — दरें फिर भी सहेजी गई हैं।)",
       inv_rates_edit_prompt: "{customer} — {product} के लिए नई दर/नग:", inv_rates_err_invalid_rate: "एक मान्य दर दर्ज करें।",
       inv_rate_customer_mismatch_hint: "ग्राहक \"{customer}\" के लिए कोई दर नहीं है। इस उत्पाद की दर आयात की गई है, लेकिन ग्राहक \"{otherCustomer}\" के नाम से — अपनी Product Rates आयात फ़ाइल में ग्राहक के नाम की वर्तनी जांचें।",
       inv_rates_err_timeout: "इसमें बहुत समय लग रहा है — अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।",
@@ -3520,6 +3567,9 @@
       inv_items_supplier: "सप्लायर", inv_items_unit: "यूनिट", inv_items_unit_placeholder: "जैसे, शीट, किग्रा, रोल",
       inv_items_zone: "ज़ोन / भंडारण स्थान",
       inv_items_price: "यूनिट/मूल्य",
+      inv_items_order_placed: "ऑर्डर दिया गया", inv_items_lead_time: "लीड टाइम (दिन)",
+      inv_items_order_placed_date: "ऑर्डर दिनांक", inv_items_expected_arrival: "अपेक्षित आगमन",
+      inv_expected_arrival_label: "{date} तक अपेक्षित", inv_expected_arrival_overdue: "{date} तक अपेक्षित था (देर हो गई)",
       inv_items_category_custom_option: "+ नई श्रेणी जोड़ें…",
       inv_items_category_custom_placeholder: "नई श्रेणी का नाम लिखें",
       inv_items_specs_heading: "पेपर / इनवॉइस स्पेसिफिकेशन (वैकल्पिक)",
@@ -3707,7 +3757,9 @@
       form_add_entry: "ఎంట్రీ జోడించండి", form_edit_entry: "ఎంట్రీని సవరించండి", form_view_entry: "ఎంట్రీని చూడండి",
       form_close: "మూసివేయండి",
       form_ply_label: "PLY", form_ply_select: "— ఎంచుకోండి —",
-      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_budweight: "బడ్స్ బరువు", layers_th_budcount: "బడ్స్ లెక్క", layers_th_status: "స్థితి", layers_delete_title: "ఈ రీల్‌ను తొలగించండి",
+      layers_heading: "లేయర్లు", layers_th_item: "రీల్ ఐటమ్", layers_th_reelno: "రీల్ నంబర్", layers_th_available: "అందుబాటులో", layers_th_reelweight: "రీల్ బరువు", layers_th_budweight: "బడ్స్ బరువు", layers_th_budcount: "బడ్స్ లెక్క", layers_th_status: "స్థితి", layers_delete_title: "ఈ రీల్‌ను తొలగించండి",
+      layers_reelno_placeholder: "— ఎంచుకోండి —", layers_reelno_override_label: "పూర్తిగా వాడిన రీళ్లను మళ్ళీ వాడనివ్వండి (అడ్మిన్ ఓవర్‌రైడ్)",
+      layers_reelno_remaining: "{qty} kg మిగిలింది", layers_reelno_unknown_weight: "బరువు తెలియదు",
       layers_reelstatus_available: "అందుబాటులో", layers_reelstatus_low: "తక్కువ స్టాక్", layers_reelstatus_out: "స్టాక్ లేదు",
       layers_row_label_n: "లేయర్ {n}", layers_item_select: "— రీల్‌ను ఎంచుకోండి —",
       layers_err_stock_move_failed: "సేవ్ అయ్యింది, కానీ లేయర్ రీల్ కోసం ఇన్వెంటరీ స్టాక్‌ను అప్‌డేట్ చేయలేకపోయాము — ఇన్వెంటరీ > స్థితిని అప్‌డేట్ చేయండి చూడండి.",
@@ -3878,6 +3930,8 @@
       inv_rates_err_noheader: "ఈ ఫైల్‌లో Customer name/Product name/Rate కాలమ్‌లు కనుగొనబడలేదు.",
       inv_rates_err_norows: "ఈ ఫైల్‌లో చెల్లుబాటు అయ్యే రేటు వరుసలు కనుగొనబడలేదు.",
       inv_rates_import_done: "{n} ఉత్పత్తి రేట్లు దిగుమతి చేయబడ్డాయి.", inv_rates_err_save: "దిగుమతి చేసిన రేట్లను సేవ్ చేయలేకపోయాము.",
+      inv_rates_import_done_catalog: "{n} ఉత్పత్తి రేట్లు దిగుమతి చేయబడ్డాయి. కస్టమర్ పేరు/ప్రొడక్ట్ పేరు డ్రాప్‌డౌన్ జాబితాకు {customers} కొత్త కస్టమర్లు మరియు {products} కొత్త ఉత్పత్తులు జోడించబడ్డాయి.",
+      inv_rates_err_catalog_sync: "(ఈ ఫైల్ నుండి డ్రాప్‌డౌన్ జాబితాకు కొత్త పేర్లు జోడించలేకపోయాము — రేట్లు అయితే సేవ్ చేయబడ్డాయి.)",
       inv_rates_edit_prompt: "{customer} — {product} కోసం కొత్త రేటు/పీస్:", inv_rates_err_invalid_rate: "సరైన రేటును నమోదు చేయండి.",
       inv_rate_customer_mismatch_hint: "కస్టమర్ \"{customer}\" కోసం రేటు లేదు. ఈ ఉత్పత్తికి రేటు దిగుమతి చేయబడింది, కానీ కస్టమర్ \"{otherCustomer}\" పేరుతో — మీ Product Rates దిగుమతి ఫైల్‌లో కస్టమర్ పేరు స్పెల్లింగ్‌ని తనిఖీ చేయండి.",
       inv_rates_err_timeout: "ఇది చాలా సమయం తీసుకుంటోంది — మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
@@ -3899,6 +3953,9 @@
       inv_items_supplier: "సప్లయర్", inv_items_unit: "యూనిట్", inv_items_unit_placeholder: "ఉదా. షీట్లు, కిలోలు, రోల్స్",
       inv_items_zone: "జోన్ / నిల్వ స్థానం",
       inv_items_price: "యూనిట్/ధర",
+      inv_items_order_placed: "ఆర్డర్ చేయబడింది", inv_items_lead_time: "లీడ్ టైమ్ (రోజులు)",
+      inv_items_order_placed_date: "ఆర్డర్ చేసిన తేదీ", inv_items_expected_arrival: "అంచనా రాక",
+      inv_expected_arrival_label: "{date} నాటికి అంచనా", inv_expected_arrival_overdue: "{date} నాటికి అంచనా (ఆలస్యం)",
       inv_items_category_custom_option: "+ కొత్త కేటగిరీ జోడించండి…",
       inv_items_category_custom_placeholder: "కొత్త కేటగిరీ పేరు టైప్ చేయండి",
       inv_items_specs_heading: "పేపర్ / ఇన్వాయిస్ స్పెసిఫికేషన్లు (ఐచ్ఛికం)",
@@ -4415,6 +4472,11 @@
     invItemSupplierInput: document.getElementById("invItemSupplierInput"),
     invItemZoneInput: document.getElementById("invItemZoneInput"),
     invItemReorderInput: document.getElementById("invItemReorderInput"),
+    invItemOrderPlacedInput: document.getElementById("invItemOrderPlacedInput"),
+    invItemLeadTimeInput: document.getElementById("invItemLeadTimeInput"),
+    invItemOrderPlacedDateRow: document.getElementById("invItemOrderPlacedDateRow"),
+    invItemOrderPlacedDateInput: document.getElementById("invItemOrderPlacedDateInput"),
+    invItemExpectedArrivalDisplay: document.getElementById("invItemExpectedArrivalDisplay"),
     invItemUnitInput: document.getElementById("invItemUnitInput"),
     invItemPriceInput: document.getElementById("invItemPriceInput"),
     invItemRateInput: document.getElementById("invItemRateInput"),
@@ -4598,6 +4660,8 @@
     activityExportBtn: document.getElementById("activityExportBtn"),
     activityCloseBtn: document.getElementById("activityCloseBtn"),
     manageCatalogBtn: document.getElementById("manageCatalogBtn"),
+    fld_layerreeloverride: document.getElementById("fld_layerreeloverride"),
+    layerReelOverride: document.getElementById("layerReelOverride"),
     catalogModalOverlay: document.getElementById("catalogModalOverlay"),
     catalogImportBtn: document.getElementById("catalogImportBtn"),
     catalogImportFileInput: document.getElementById("catalogImportFileInput"),
@@ -4824,6 +4888,7 @@
     el["layerRow" + layerN] = document.getElementById("layerRow" + layerN);
     el["layerLabel" + layerN] = document.getElementById("layerLabel" + layerN);
     el["f_layer" + layerN + "_sku"] = document.getElementById("f_layer" + layerN + "_sku");
+    el["f_layer" + layerN + "_reelno"] = document.getElementById("f_layer" + layerN + "_reelno");
     el["f_layer" + layerN + "_available"] = document.getElementById("f_layer" + layerN + "_available");
     el["f_layer" + layerN + "_reelweight"] = document.getElementById("f_layer" + layerN + "_reelweight");
     // Buds Weight (see refreshLayerReelStatus/computeLayersData): a real editable input, unlike
@@ -4840,6 +4905,7 @@
     el["tLayerRow" + tLayerN] = document.getElementById("tLayerRow" + tLayerN);
     el["tLayerLabel" + tLayerN] = document.getElementById("tLayerLabel" + tLayerN);
     el["t_layer" + tLayerN + "_sku"] = document.getElementById("t_layer" + tLayerN + "_sku");
+    el["t_layer" + tLayerN + "_reelno"] = document.getElementById("t_layer" + tLayerN + "_reelno");
     el["t_layer" + tLayerN + "_reelweight"] = document.getElementById("t_layer" + tLayerN + "_reelweight");
     el["t_layer" + tLayerN + "_budweight"] = document.getElementById("t_layer" + tLayerN + "_budweight");
     el["t_layer" + tLayerN + "_budcount"] = document.getElementById("t_layer" + tLayerN + "_budcount");
@@ -4942,7 +5008,7 @@
   // Layer Reel Item/Reel Weight fields belong to Plant's own team, same as its other normal fields
   // (the Status cell next to them is a plain read-only display, not a form control).
   for(var layerFieldN = 1; layerFieldN <= 7; layerFieldN++){
-    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_sku"], el["f_layer" + layerFieldN + "_reelweight"], el["f_layer" + layerFieldN + "_budweight"]);
+    NORMAL_FORM_FIELDS.push(el["f_layer" + layerFieldN + "_sku"], el["f_layer" + layerFieldN + "_reelno"], el["f_layer" + layerFieldN + "_reelweight"], el["f_layer" + layerFieldN + "_budweight"]);
   }
   // Every field only QC (or admin) can edit, regardless of which stage the entry itself belongs
   // to: the Specifications table, the Artwork No check, and the Hold switch.
@@ -5345,6 +5411,90 @@
   }
   el.t_clientname.addEventListener("change", handleTaskClientNameChange);
   el.t_product.addEventListener("change", handleTaskProductChange);
+  // ---------- PO modal's Customer Name / Product-Material Code selects (same shared catalog) ----------
+  // po_customer used to be a free-typed text input, and each product block's Product/Material Code
+  // field likewise — unlike the main Entry form and the Task modal, the PO form never picked up the
+  // shared Customer Name/Product Name catalog dropdown at all. This brings it in line: one Customer
+  // Name select per PO (buildCustomerOptionsHtml, same as everywhere else), and, since a PO can have
+  // several products, each product block gets its OWN Product/Material Code select scoped to
+  // whichever customer the PO currently has (buildProductOptionsHtml(canonicalCustomer, ...)) — so
+  // picking the Customer re-filters every product block's own list to that customer's linked
+  // products, and each block can still independently pick a different one of those products.
+  function refreshPoCustomerNameOptions(){
+    var current = el.po_customer.value;
+    el.po_customer.innerHTML = buildCustomerOptionsHtml(current);
+    el.po_customer.value = current;
+  }
+  function setPoClientNameField(rawValue){
+    var raw = rawValue || "";
+    el.po_customer.innerHTML = buildCustomerOptionsHtml(raw);
+    var canonical = findCanonicalCustomer(raw);
+    el.po_customer.value = canonical ? formatCustomerName(canonical) : raw;
+  }
+  function poProductCodeSelectEl(pid){ return document.getElementById(poFieldId(pid, "productcode")); }
+  // rawValue lets a caller seed the list around a specific saved value (e.g. right after the select
+  // is first created, before it holds anything of its own) — omitted, it just preserves whatever the
+  // select currently has, same as refreshTaskProductNameOptions.
+  function refreshPoProductNameOptionsForProduct(pid, rawValue){
+    var sel = poProductCodeSelectEl(pid);
+    if(!sel) return;
+    var canonicalCustomer = findCanonicalCustomer(el.po_customer.value);
+    var current = rawValue != null ? rawValue : sel.value;
+    sel.innerHTML = buildProductOptionsHtml(canonicalCustomer, current);
+    var canonicalProduct = findCanonicalProduct(canonicalCustomer, current);
+    sel.value = canonicalProduct ? formatProductName(canonicalProduct) : current;
+  }
+  // Mirrors the main Entry form's applyCatalogAutofill, scoped to one product block — a Ply the
+  // catalog already has on file for this exact Customer+Product fills the block's own Ply select
+  // (Material Description isn't part of the catalog's saved fields, so it's left alone either way).
+  function applyPoCatalogAutofillForProduct(pid){
+    var canonicalCustomer = findCanonicalCustomer(el.po_customer.value);
+    var sel = poProductCodeSelectEl(pid);
+    var canonicalProduct = sel && findCanonicalProduct(canonicalCustomer, sel.value);
+    if(!canonicalProduct) return;
+    var info = state.catalog.customers[canonicalCustomer].products[canonicalProduct] || {};
+    if(info.ply){
+      var plySel = document.getElementById(poFieldId(pid, "ply"));
+      if(plySel){
+        plySel.value = info.ply;
+        refreshPoLayersVisibilityForProduct(pid);
+      }
+    }
+  }
+  var lastPoCustomerValue = "";
+  var lastPoProductCodeValue = {}; // keyed by product id, for the "+ Add new…" cancel/revert
+  function handlePoClientNameChange(){
+    if(el.po_customer.value === ADD_NEW_VALUE){
+      var name = window.prompt("Enter the new customer's name:", "");
+      if(name && name.trim()){
+        addOptionAndSelect(el.po_customer, formatCustomerName(name));
+      } else {
+        el.po_customer.value = lastPoCustomerValue;
+      }
+    }
+    lastPoCustomerValue = el.po_customer.value;
+    // Customer changed — every product block's own Product/Material Code list has to re-filter to
+    // whatever this (possibly new) customer's linked products actually are.
+    poFormProducts.forEach(function(pid){
+      refreshPoProductNameOptionsForProduct(pid);
+      applyPoCatalogAutofillForProduct(pid);
+    });
+  }
+  function handlePoProductCodeChange(pid){
+    var sel = poProductCodeSelectEl(pid);
+    if(!sel) return;
+    if(sel.value === ADD_NEW_VALUE){
+      var name = window.prompt("Enter the new product's name:", "");
+      if(name && name.trim()){
+        addOptionAndSelect(sel, formatProductName(name));
+      } else {
+        sel.value = lastPoProductCodeValue[pid] || "";
+      }
+    }
+    lastPoProductCodeValue[pid] = sel.value;
+    applyPoCatalogAutofillForProduct(pid);
+  }
+  el.po_customer.addEventListener("change", handlePoClientNameChange);
   // ---------- Shared lookup: the single most recent Finished Goods entry for a Customer+Product
   // (as of a given date) ----------
   // Used by both Priority Tasks (Opening Stock Qty / Job Card No / Ageing / Required Stock Qty,
@@ -5496,6 +5646,47 @@
     state.db.collection("catalog").doc("customerProducts").set(update, { merge: true }).catch(function(err){
       if(window.console) console.error("Catalog update failed:", err);
     });
+  }
+  // Shared bulk version of upsertCatalogEntry's canonical-name resolution, used by both the Manage
+  // Catalog import (Customer/Product only) and the Product Rates import (Customer/Product/Rate) —
+  // every row across BOTH imports ends up in the same shared catalog that every stage's Customer
+  // Name/Product Name dropdown reads, so a customer/product name only ever needs to be taught to the
+  // dropdown once, no matter which of the two files it first appears in.
+  // `pairs` is an array of {customerName, productName} (a rate itself is irrelevant to the catalog).
+  // Returns {update, newCustomers, newProducts, unchanged} — `update` is ready to `.set(update,
+  // {merge:true})` on catalog/customerProducts (it's `{customers:{}}`, a harmless no-op, when
+  // nothing in `pairs` was actually new).
+  function buildCatalogUpdateFromPairs(pairs){
+    var newCustomers = 0, newProducts = 0, unchanged = 0;
+    var update = { customers: {} };
+    // Tracks canonical names/product-existence minted WITHIN this same import (state.catalog itself
+    // never changes until the write round-trips back through subscribeCatalog) — so two rows for the
+    // same brand-new customer, or the same brand-new product repeated, are only counted/added once.
+    var mintedCustomerNames = {};
+    var seenNewProducts = {};
+    pairs.forEach(function(pair){
+      var customerName = (pair.customerName || "").trim();
+      var productName = (pair.productName || "").trim();
+      if(!customerName || !productName) return;
+      var customerKey = normalizeKey(customerName);
+      var canonicalCustomer = findCanonicalCustomer(customerName) || mintedCustomerNames[customerKey] || formatCustomerName(customerName);
+      var isNewCustomer = !state.catalog.customers[canonicalCustomer] && !mintedCustomerNames[customerKey];
+      mintedCustomerNames[customerKey] = canonicalCustomer;
+      var existingCustomer = state.catalog.customers[canonicalCustomer];
+      var canonicalProduct = (existingCustomer && findCanonicalProduct(canonicalCustomer, productName)) || formatProductName(productName);
+      var existingProduct = existingCustomer && existingCustomer.products && existingCustomer.products[canonicalProduct];
+      var seenKey = canonicalCustomer + "\u0001" + normalizeKey(canonicalProduct);
+      if(existingProduct || seenNewProducts[seenKey]){ unchanged++; return; }
+      seenNewProducts[seenKey] = true;
+      if(isNewCustomer) newCustomers++;
+      newProducts++;
+      // Ply/Type: left blank (never guessed) — exactly what a brand-new product looks like before
+      // its first entry is ever saved (see upsertCatalogEntry); the very next save that picks a real
+      // Ply/Type for it fills these in normally.
+      if(!update.customers[canonicalCustomer]) update.customers[canonicalCustomer] = { products: {} };
+      update.customers[canonicalCustomer].products[canonicalProduct] = { type: "", ply: "" };
+    });
+    return { update: update, newCustomers: newCustomers, newProducts: newProducts, unchanged: unchanged };
   }
 
   // ---------- QC Master Sheet ----------
@@ -6004,6 +6195,7 @@
       }
       layers.push({
         sku: el["f_layer" + i + "_sku"] ? el["f_layer" + i + "_sku"].value : "",
+        reelNo: el["f_layer" + i + "_reelno"] ? el["f_layer" + i + "_reelno"].value : "",
         reelWeight: el["f_layer" + i + "_reelweight"].value.trim(),
         budWeight: budWeight,
         budRecordId: budRecordId
@@ -6022,6 +6214,7 @@
     for(var i = 1; i <= count; i++){
       layers.push({
         sku: el["t_layer" + i + "_sku"] ? el["t_layer" + i + "_sku"].value : "",
+        reelNo: el["t_layer" + i + "_reelno"] ? el["t_layer" + i + "_reelno"].value : "",
         reelWeight: el["t_layer" + i + "_reelweight"] ? el["t_layer" + i + "_reelweight"].value.trim() : ""
       });
     }
@@ -6037,9 +6230,11 @@
     var layers = [];
     for(var i = 1; i <= count; i++){
       var skuEl = document.getElementById(poLayerFieldId(productId, i, "sku"));
+      var reelNoEl = document.getElementById(poLayerFieldId(productId, i, "reelno"));
       var rwEl = document.getElementById(poLayerFieldId(productId, i, "reelweight"));
       layers.push({
         sku: skuEl ? skuEl.value : "",
+        reelNo: reelNoEl ? reelNoEl.value : "",
         reelWeight: rwEl ? rwEl.value.trim() : ""
       });
     }
@@ -6940,6 +7135,7 @@
       // entry, or the row's saved value populated when this entry was opened (see openModal).
     }
     if(budCountCell) budCountCell.textContent = item ? String(budsAvailableCountForSku(sku)) : "";
+    refreshLayerReelNoOptions(n);
     if(!item){
       chip.hidden = true;
       if(availCell) availCell.textContent = "";
@@ -6953,11 +7149,37 @@
     chip.hidden = false;
     if(availCell) availCell.textContent = qty.toLocaleString();
   }
+  // Rebuilds one row's Reel No options against whatever Reel Item it currently has picked — called
+  // whenever the row's own state might affect the list (sku changed) or another Job Card's save might
+  // have changed a reel's remaining balance (see refreshLayerReelStatus, which calls this too so the
+  // "kg left" figures shown here stay live while the form's open).
+  function refreshLayerReelNoOptions(n){
+    var sel = el["f_layer" + n + "_reelno"];
+    if(!sel) return;
+    var skuEl = el["f_layer" + n + "_sku"];
+    var sku = skuEl ? skuEl.value : "";
+    var current = sel.value;
+    var showAll = el.layerReelOverride ? el.layerReelOverride.checked : false;
+    sel.innerHTML = buildReelNoOptionsHtml(sku, current, state.editingId, showAll);
+    sel.value = current;
+    sel.disabled = !sku;
+  }
+  if(el.layerReelOverride){
+    el.layerReelOverride.addEventListener("change", function(){
+      for(var overrideN = 1; overrideN <= 7; overrideN++) refreshLayerReelNoOptions(overrideN);
+    });
+  }
   for(var layerAutofillN = 1; layerAutofillN <= 7; layerAutofillN++){
     (function(n){
       el["f_layer" + n + "_sku"].addEventListener("change", function(){
         var sel = el["f_layer" + n + "_sku"];
         var rw = el["f_layer" + n + "_reelweight"];
+        // A fresh sku pick invalidates whatever Reel No the row had (a different SKU's reels aren't
+        // even offered as options) — clear it before rebuilding so a stale reelNo never lingers
+        // silently selected against the new sku.
+        var reelNoEl = el["f_layer" + n + "_reelno"];
+        if(reelNoEl) reelNoEl.value = "";
+        refreshLayerReelNoOptions(n);
         // Picking a reel by hand fills in its Reel Weight from Inventory's own receiving data (see
         // latestReelWeightForSku) — a mirrored pick (applyPoAutofillToEntry setting .value directly,
         // no change event) already carries the PO's own recorded weight for that specific reel and
@@ -6973,7 +7195,25 @@
         if(bw && el.f_stage.value === "Plant") bw.value = "";
         refreshLayerReelStatus(n);
       });
-      // Delete clears this row's reel (and its Reel Weight/Buds Weight, if any) so it can be
+      var reelNoChangeEl = el["f_layer" + n + "_reelno"];
+      if(reelNoChangeEl){
+        reelNoChangeEl.addEventListener("change", function(){
+          var sku = el["f_layer" + n + "_sku"].value;
+          var reelNo = reelNoChangeEl.value;
+          var rw = el["f_layer" + n + "_reelweight"];
+          if(rw && sku && reelNo){
+            // Autofill with what's ACTUALLY still left on this exact physical reel (its recorded
+            // weight minus whatever other Job Cards already draw from it) — falling back to the
+            // reel's original recorded weight only if a balance genuinely couldn't be computed (no
+            // weight on file for it at all).
+            var remaining = reelRemainingWeight(sku, reelNo, state.editingId);
+            var original = reelOriginalWeight(findPurchaseByReelNo(sku, reelNo));
+            var fillValue = remaining != null ? remaining : original;
+            if(fillValue != null) rw.value = fillValue;
+          }
+        });
+      }
+      // Delete clears this row's reel (and its Reel No/Reel Weight/Buds Weight, if any) so it can be
       // replaced with another one — same "blank selection" the dropdown's own "— select reel —"
       // option produces, just one click instead of opening the dropdown. Nothing to release here:
       // the Entry form's own Layers table only ever moves Inventory stock at SAVE time (see
@@ -6986,6 +7226,9 @@
           var sel = el["f_layer" + n + "_sku"];
           if(!sel || !sel.value) return;
           sel.value = "";
+          var reelNoEl = el["f_layer" + n + "_reelno"];
+          if(reelNoEl) reelNoEl.value = "";
+          refreshLayerReelNoOptions(n);
           var rw = el["f_layer" + n + "_reelweight"];
           if(rw) rw.value = "";
           var bw = el["f_layer" + n + "_budweight"];
@@ -7035,6 +7278,7 @@
           });
           taskLayerReservedSku[n] = "";
           el["t_layer" + n + "_sku"].value = "";
+          if(el["t_layer" + n + "_reelno"]) el["t_layer" + n + "_reelno"].value = "";
           refreshTaskLayerReelStatus(Number(n));
         });
       }
@@ -7054,6 +7298,7 @@
     if(!sku) return;
     taskLayerReservedSku[n] = "";
     if(el["t_layer" + n + "_sku"]) el["t_layer" + n + "_sku"].value = "";
+    if(el["t_layer" + n + "_reelno"]) el["t_layer" + n + "_reelno"].value = "";
     if(el["t_layer" + n + "_reelweight"]) el["t_layer" + n + "_reelweight"].value = "";
     refreshTaskLayerReelStatus(n);
     var po = taskSelectedPo;
@@ -7098,6 +7343,7 @@
     // can see there's already spare material sitting around before reserving a brand-new reel.
     if(budWeightCell) budWeightCell.textContent = item ? budsAvailableWeightForSku(sku).toLocaleString() : "";
     if(budCountCell) budCountCell.textContent = item ? budsAvailableCountForSku(sku).toLocaleString() : "";
+    refreshTaskLayerReelNoOptions(n);
     if(!item){
       chip.hidden = true;
       if(availCell) availCell.textContent = "";
@@ -7110,6 +7356,20 @@
     chip.textContent = label;
     chip.hidden = false;
     if(availCell) availCell.textContent = qty.toLocaleString();
+  }
+  // Same idea as Plant's refreshLayerReelNoOptions — a Task's Reel No is informational/traceability
+  // only (which exact physical reel this reservation intends to use) and never itself moves the
+  // Reserved-bucket count, which stays keyed by sku alone exactly as before; there's no "this Task's
+  // own entry" to exclude from the remaining-weight math since a Task never contributes to it.
+  function refreshTaskLayerReelNoOptions(n){
+    var sel = el["t_layer" + n + "_reelno"];
+    if(!sel) return;
+    var skuEl = el["t_layer" + n + "_sku"];
+    var sku = skuEl ? skuEl.value : "";
+    var current = sel.value;
+    sel.innerHTML = buildReelNoOptionsHtml(sku, current, null, false);
+    sel.value = current;
+    sel.disabled = !sku;
   }
   // taskLayerReservedSku[n] tracks which sku (if any) row n currently HOLDS a live Reserved
   // transfer for, independent of state.editingTaskId — reset in openTaskModal/closeTaskModal so a
@@ -7129,6 +7389,10 @@
         var newSku = sel.value;
         var oldSku = taskLayerReservedSku[n] || "";
         if(newSku === oldSku){ refreshTaskLayerReelStatus(n); return; }
+        // A different sku invalidates whatever Reel No this row had (a different sku's reels aren't
+        // even offered as options) — cleared here before the reservation move below.
+        var reelNoElOnSkuChange = el["t_layer" + n + "_reelno"];
+        if(reelNoElOnSkuChange) reelNoElOnSkuChange.value = "";
         var po = taskSelectedPo;
         var releaseNote = "Released — Priority Task Layer changed" + (po && po.poNumber ? " (PO " + po.poNumber + ")" : "");
         var releaseP = oldSku
@@ -7170,6 +7434,20 @@
             });
         });
       });
+      var tReelNoEl = el["t_layer" + n + "_reelno"];
+      if(tReelNoEl){
+        tReelNoEl.addEventListener("change", function(){
+          var sku = el["t_layer" + n + "_sku"].value;
+          var reelNo = tReelNoEl.value;
+          var rw = el["t_layer" + n + "_reelweight"];
+          if(rw && sku && reelNo){
+            var remaining = reelRemainingWeight(sku, reelNo, null);
+            var original = reelOriginalWeight(findPurchaseByReelNo(sku, reelNo));
+            var fillValue = remaining != null ? remaining : original;
+            if(fillValue != null) rw.value = fillValue;
+          }
+        });
+      }
       // Delete releases whatever this row currently holds Reserved (same move as picking back to
       // "— select reel —") so the freed unit shows up in Inventory's Available count right away and
       // the row is ready to be replaced with another reel.
@@ -7215,8 +7493,10 @@
     if(!sku) return;
     rowMap[n] = "";
     var skuEl = document.getElementById(poLayerFieldId(productId, n, "sku"));
+    var reelNoEl = document.getElementById(poLayerFieldId(productId, n, "reelno"));
     var rwEl = document.getElementById(poLayerFieldId(productId, n, "reelweight"));
     if(skuEl) skuEl.value = "";
+    if(reelNoEl) reelNoEl.value = "";
     if(rwEl) rwEl.value = "";
     refreshPoLayerReelStatus(productId, n);
     if(!state.editingPoId) return; // defensive: shouldn't happen, a row can't hold a sku without one
@@ -7414,6 +7694,7 @@
     // aggregate of buds already on file for whichever reel spec is picked.
     if(budWeightCell) budWeightCell.textContent = item ? budsAvailableWeightForSku(sku).toLocaleString() : "";
     if(budCountCell) budCountCell.textContent = item ? budsAvailableCountForSku(sku).toLocaleString() : "";
+    refreshPoLayerReelNoOptions(productId, n);
     if(!item){
       chip.hidden = true;
       if(availCell) availCell.textContent = "";
@@ -7427,6 +7708,19 @@
     chip.hidden = false;
     if(availCell) availCell.textContent = qty.toLocaleString();
   }
+  // Same idea as Plant's/Task's own refreshLayerReelNoOptions/refreshTaskLayerReelNoOptions — a PO's
+  // Reel No is informational/traceability only, same as its Reel Weight; it never itself moves the
+  // Reserved-bucket count (that stays keyed by sku alone). No "current entry" to exclude here either.
+  function refreshPoLayerReelNoOptions(productId, n){
+    var sel = document.getElementById(poLayerFieldId(productId, n, "reelno"));
+    if(!sel) return;
+    var skuEl = document.getElementById(poLayerFieldId(productId, n, "sku"));
+    var sku = skuEl ? skuEl.value : "";
+    var current = sel.value;
+    sel.innerHTML = buildReelNoOptionsHtml(sku, current, null, false);
+    sel.value = current;
+    sel.disabled = !sku;
+  }
   // Attaches the sku-select change handler + delete-button handler for one (productId, n) row —
   // called once per row whenever a product block is created (addPoProductBlock), replacing the old
   // static for(n=1..7) loop that used to run once at page load against fixed po_layer{n}_sku ids.
@@ -7438,6 +7732,10 @@
         var rowMap = poLayerReservedSku[productId] || (poLayerReservedSku[productId] = {});
         var oldSku = rowMap[n] || "";
         if(newSku === oldSku){ refreshPoLayerReelStatus(productId, n); return; }
+        // A different sku invalidates whatever Reel No this row had (a different sku's reels aren't
+        // even offered as options) — cleared here before the reservation move below.
+        var reelNoElOnSkuChange = document.getElementById(poLayerFieldId(productId, n, "reelno"));
+        if(reelNoElOnSkuChange) reelNoElOnSkuChange.value = "";
         if(!state.editingPoId){
           // Defensive: the checkbox guard above should already have kept this hidden/unreachable
           // on a brand-new PO, but never silently reserve against a PO that doesn't exist yet.
@@ -7479,6 +7777,21 @@
         });
       });
     }
+    var reelNoSel = document.getElementById(poLayerFieldId(productId, n, "reelno"));
+    if(reelNoSel){
+      reelNoSel.addEventListener("change", function(){
+        var skuEl = document.getElementById(poLayerFieldId(productId, n, "sku"));
+        var sku = skuEl ? skuEl.value : "";
+        var reelNo = reelNoSel.value;
+        var rw = document.getElementById(poLayerFieldId(productId, n, "reelweight"));
+        if(rw && sku && reelNo){
+          var remaining = reelRemainingWeight(sku, reelNo, null);
+          var original = reelOriginalWeight(findPurchaseByReelNo(sku, reelNo));
+          var fillValue = remaining != null ? remaining : original;
+          if(fillValue != null) rw.value = fillValue;
+        }
+      });
+    }
     // Delete releases whatever this row currently holds Reserved against this PO, same as
     // releasePoLayerRow's own use when a row drops out of view — frees it straight back to
     // Available and leaves the row ready for another reel to be picked.
@@ -7503,6 +7816,7 @@
       rows += '<tr id="' + poLayerFieldId(productId, n, "row") + '">' +
         '<td id="' + poLayerFieldId(productId, n, "label") + '"></td>' +
         '<td><select id="' + poLayerFieldId(productId, n, "sku") + '"></select></td>' +
+        '<td><select id="' + poLayerFieldId(productId, n, "reelno") + '"></select></td>' +
         '<td><input type="text" id="' + poLayerFieldId(productId, n, "reelweight") + '"></td>' +
         '<td class="mono" id="' + poLayerFieldId(productId, n, "budweight") + '"></td>' +
         '<td class="mono" id="' + poLayerFieldId(productId, n, "budcount") + '"></td>' +
@@ -7526,7 +7840,7 @@
         "</div>" +
         '<div class="formGrid">' +
           '<label><span>' + esc(t("po_productcode_label")) + '</span>' +
-            '<input type="text" id="' + poFieldId(pid, "productcode") + '" placeholder="e.g. RM-KRAFT-250" value="' + esc(product.productCode || "") + '"></label>' +
+            '<select id="' + poFieldId(pid, "productcode") + '"></select></label>' +
           '<label class="span2"><span>' + esc(t("po_materialdesc_label")) + '</span>' +
             '<input type="text" id="' + poFieldId(pid, "materialdesc") + '" placeholder="e.g. Kraft Paper 250 GSM, 109cm" value="' + esc(product.materialDescription || "") + '"></label>' +
           '<label><span>' + esc(t("po_ply_label")) + '</span>' +
@@ -7540,7 +7854,7 @@
           "</div>" +
           '<div class="span2 qcSpecsBlock" id="' + poFieldId(pid, "fld_reellayers") + '" hidden>' +
             "<span>" + esc(t("layers_heading")) + "</span>" +
-            '<table class="qcSpecsTable"><thead><tr><th></th><th>' + esc(t("layers_th_item")) + "</th><th>" + esc(t("layers_th_reelweight")) +
+            '<table class="qcSpecsTable"><thead><tr><th></th><th>' + esc(t("layers_th_item")) + "</th><th>" + esc(t("layers_th_reelno")) + "</th><th>" + esc(t("layers_th_reelweight")) +
             "</th><th>" + esc(t("layers_th_budweight")) + "</th><th>" + esc(t("layers_th_budcount")) + "</th><th>" + esc(t("layers_th_available")) +
             "</th><th>" + esc(t("layers_th_status")) + "</th><th></th></tr></thead>" +
             '<tbody id="' + poFieldId(pid, "layersBody") + '">' + poLayerRowsHtml(pid) + "</tbody></table>" +
@@ -7568,6 +7882,14 @@
     var blockEl = wrap.firstElementChild;
     el.poProductsContainer.appendChild(blockEl);
 
+    // Seed the Product/Material Code select from this block's own saved value (against whatever
+    // customer po_customer currently holds — set before addPoProductBlock runs, see openPoModal) —
+    // the select starts out empty in the template above, same as the Reel Item selects below.
+    refreshPoProductNameOptionsForProduct(pid, product.productCode || "");
+    document.getElementById(poFieldId(pid, "productcode")).addEventListener("change", function(){
+      handlePoProductCodeChange(pid);
+    });
+
     // Seed poLayerReservedSku from this product's own saved layers (same assumption the old
     // single-product version made: a sku shown in a saved layer row is currently genuinely Reserved
     // against this PO — refreshPoOrphanReels reconciles anything that's since drifted) and fill in
@@ -7577,6 +7899,10 @@
     for(var n = 1; n <= 7; n++){
       var savedLayer = savedLayers[n - 1];
       if(savedLayer && savedLayer.sku && state.invCatalog[savedLayer.sku]) poLayerReservedSku[pid][n] = savedLayer.sku;
+      // Reel No is set here too (before refreshPoLayerReelStatus, called further below, rebuilds
+      // this row's Reel No options) — same reasoning as the Plant/Task restores.
+      var reelNoEl = document.getElementById(poLayerFieldId(pid, n, "reelno"));
+      if(reelNoEl) reelNoEl.value = (savedLayer && savedLayer.reelNo) || "";
       var rwEl = document.getElementById(poLayerFieldId(pid, n, "reelweight"));
       if(rwEl) rwEl.value = (savedLayer && savedLayer.reelWeight) || "";
       // Row labels ("Layer 1", "Layer 2", ...) are only ever set by applyTranslations for STATIC rows
@@ -7691,6 +8017,7 @@
     el.manageSupervisorsBtn.hidden = !state.isAdminDevice;
     el.manageCatalogBtn.hidden = !state.isAdminDevice;
     el.activityLogBtn.hidden = !state.isAdminDevice;
+    el.fld_layerreeloverride.hidden = !state.isAdminDevice;
     el.exportMasterSheetBtn.hidden = !state.isAdminDevice;
     // Priority Tasks: every device can still see the board, but only the admin device can add,
     // edit, delete, or reorder a task — everyone else can open one to read it (see openTaskModal's
@@ -8565,7 +8892,29 @@
       }
       function commitNextChunk(chunkIndex){
         if(chunkIndex >= chunks.length){
-          el.invRatesImportStatus.textContent = tf("inv_rates_import_done", { n: rows.length });
+          // Every imported rate row also teaches the shared Customer Name/Product Name catalog those
+          // two names (see buildCatalogUpdateFromPairs) — the same catalog every stage's Customer
+          // Name/Product Name dropdown reads (see subscribeCatalog/upsertCatalogEntry) — so importing
+          // Product Rates alone is enough to make a new customer/product show up in every dropdown,
+          // without also needing a separate Manage Catalog import of the very same names.
+          var catalogBuilt = buildCatalogUpdateFromPairs(rows);
+          var finishRatesImport = function(){
+            el.invRatesImportStatus.textContent = (catalogBuilt.newCustomers || catalogBuilt.newProducts)
+              ? tf("inv_rates_import_done_catalog", { n: rows.length, customers: catalogBuilt.newCustomers, products: catalogBuilt.newProducts })
+              : tf("inv_rates_import_done", { n: rows.length });
+          };
+          if(catalogBuilt.newProducts){
+            state.db.collection("catalog").doc("customerProducts").set(catalogBuilt.update, { merge: true })
+              .then(finishRatesImport).catch(function(err){
+                // The rates themselves are already safely saved at this point — a catalog-sync
+                // hiccup only means the new names might not show up in dropdowns yet, not that the
+                // rate import itself failed, so this is appended as a note rather than an error.
+                el.invRatesImportStatus.textContent = tf("inv_rates_import_done", { n: rows.length }) + " " + t("inv_rates_err_catalog_sync");
+                if(window.console) console.error("Catalog sync after rate import failed:", err);
+              });
+          } else {
+            finishRatesImport();
+          }
           return;
         }
         // Wrapped in try/catch: building the batch itself can throw synchronously (for example, a
@@ -8797,6 +9146,87 @@
     if(!sku) return "";
     var p = state.invPurchases.find(function(p){ return p.sku === sku && p.weightPerReel != null; });
     return p ? p.weightPerReel : "";
+  }
+  // ---------- Reel No: picking a specific physical reel, not just its SKU/item type ----------
+  // Every Layers table (Plant, Priority Task, PO) already lets someone pick a Reel ITEM — the
+  // Inventory SKU/item type (e.g. "Kraft 250 GSM reel") — but until now had no way to say WHICH of
+  // that SKU's actual received reels is being used; Reel Weight was always typed by hand or copied
+  // from whichever receiving lot happened to be most recent. `purchases` already records each
+  // individual physical reel received (its own reelNo + actual weight — see the receiving form), so
+  // Reel No just surfaces that same data as a second dropdown, scoped to whatever Reel Item is
+  // currently picked on the row, and selecting one autofills the REAL weight of THAT reel.
+  //
+  // This does NOT touch the existing per-SKU Available/Reserved/In Use COUNT ledger at all
+  // (addStatusTransfer/computeStatusBucketsMap) — that keeps deciding overall stock/reservation the
+  // exact same way it always has, one whole unit per Layer row. Reel No is a purely additive
+  // traceability/allocation layer on top of it: which exact reel to physically pull, and (see
+  // reelRemainingWeight below) how much of ITS weight is left once more than one Job Card draws from
+  // it — this is what lets "multiple Job Cards run off the same reel, split by the quantity each one
+  // actually needs" (as opposed to today's one-reel-per-row assumption) without changing how many
+  // whole units of the SKU the Inventory dashboard thinks are Available/Reserved/In Use.
+  function findPurchaseByReelNo(sku, reelNo){
+    if(!sku || !reelNo) return null;
+    return state.invPurchases.find(function(p){ return p.sku === sku && p.reelNo === reelNo; }) || null;
+  }
+  function reelOriginalWeight(purchase){
+    if(!purchase) return null;
+    var w = purchase.weightPerReel != null ? purchase.weightPerReel : purchase.weight;
+    return w != null && w !== "" ? Number(w) : null;
+  }
+  // Sums how much weight is already drawn against one specific physical reel by every PLANT Job Card
+  // (an `entries` doc's own `layers[]`, the only place Reel Weight is ever actual physical
+  // consumption rather than a future reservation) other than the one currently open for editing —
+  // `excludeEntryId` is state.editingId, so a Job Card re-checking its OWN already-saved draw against
+  // this reel never double-counts itself against its own remaining balance.
+  function reelWeightDrawnByPlant(sku, reelNo, excludeEntryId){
+    if(!sku || !reelNo) return 0;
+    var total = 0;
+    // state.boardEntries (today/pending/on-hold, id-merged from three separate live queries) and
+    // state.logEntries (a broader, separately-queried recent-300 list) can both legitimately contain
+    // the SAME underlying entry doc at once — e.g. a Job Card saved today is "pending" AND within the
+    // most recent 300 — so this dedupes by entry id first; summing the concatenated arrays directly
+    // would otherwise double (or triple) count that one Job Card's own draw against the reel.
+    var seenEntryIds = {};
+    state.boardEntries.concat(state.logEntries).forEach(function(e){
+      if(!e || !e.id || seenEntryIds[e.id]) return;
+      seenEntryIds[e.id] = true;
+      if(excludeEntryId && e.id === excludeEntryId) return;
+      (e.layers || []).forEach(function(l){
+        if(l && l.sku === sku && l.reelNo === reelNo) total += Number(l.reelWeight) || 0;
+      });
+    });
+    return total;
+  }
+  // null means "can't compute a real balance" (no receiving record with a weight on file for this
+  // reel) — callers treat that as unlimited/unknown rather than zero, so an older reel received
+  // before weights were tracked never gets silently hidden from the picker.
+  function reelRemainingWeight(sku, reelNo, excludeEntryId){
+    var purchase = findPurchaseByReelNo(sku, reelNo);
+    var original = reelOriginalWeight(purchase);
+    if(original == null) return null;
+    return Math.max(0, original - reelWeightDrawnByPlant(sku, reelNo, excludeEntryId));
+  }
+  // Every individual reel on file for this sku (purchases with a reelNo), newest lot first (matches
+  // state.invPurchases' own order), de-duplicated in the rare case the same reelNo was somehow
+  // entered on more than one purchase row. `currentReelNo` (this row's own saved/selected value) is
+  // always offered even if its remaining balance has hit zero, so an already-picked reel is never
+  // yanked out from under the row that's using it; `showAll` (the admin override) surfaces every
+  // other reel too, remaining balance or not, for the rare case a reel genuinely needs reusing beyond
+  // what it was recorded as holding (a scale error, an under-recorded weight, etc).
+  function buildReelNoOptionsHtml(sku, currentReelNo, excludeEntryId, showAll){
+    var html = '<option value="">' + esc(t("layers_reelno_placeholder")) + "</option>";
+    if(!sku) return html;
+    var seen = {};
+    state.invPurchases.forEach(function(p){
+      if(p.sku !== sku || !p.reelNo || seen[p.reelNo]) return;
+      seen[p.reelNo] = true;
+      var isCurrent = p.reelNo === currentReelNo;
+      var remaining = reelRemainingWeight(sku, p.reelNo, excludeEntryId);
+      if(!isCurrent && !showAll && remaining != null && remaining <= 0) return; // fully drawn elsewhere
+      var suffix = remaining != null ? tf("layers_reelno_remaining", { qty: remaining.toLocaleString() }) : t("layers_reelno_unknown_weight");
+      html += '<option value="' + esc(p.reelNo) + '">' + esc(p.reelNo) + " (" + esc(suffix) + ")</option>";
+    });
+    return html;
   }
   // Buds ("reelBuds" docs — see subscribeInventory/reconcilePlantBudWeights): the leftover weight
   // still sitting on a reel once Plant records how much of it actually went into production. These
@@ -9359,6 +9789,19 @@
   // Items at or below their reorder point (by Available quantity — stock sitting In Use or
   // Damaged can't fill a new request), most urgent (biggest deficit) first — mirrors the
   // stand-alone Intake Ledger tool's Dashboard reorder list.
+  // Shared by the Reorder list and the Current Stock table: a one-line "Expected {date}" note for an
+  // item that has an active reorder on file (see refreshInvItemOrderPlacedUI/computeExpectedArrival),
+  // flagged "(overdue)" once that date has passed without the stock actually showing up yet — purely
+  // informational either way, never hidden or auto-cleared on its own (that's still a manual Manage
+  // Inventory Items edit, see item.orderPlaced).
+  function orderPlacedLineHtml(item){
+    if(!item.orderPlaced) return "";
+    var expected = computeExpectedArrival(item.orderPlacedDate, item.leadTimeDays);
+    if(!expected) return "";
+    var overdue = expected < todayStr();
+    var text = tf(overdue ? "inv_expected_arrival_overdue" : "inv_expected_arrival_label", { date: fmtDateForDisplay(expected) });
+    return '<div class="invReorderExpected' + (overdue ? ' invReorderExpectedOverdue' : '') + '">' + esc(text) + "</div>";
+  }
   function renderInventoryReorderList(items, statusMap){
     var reorderItems = [];
     items.forEach(function(item){
@@ -9377,7 +9820,8 @@
       if(r.item.size) specParts.push("Size " + r.item.size + (r.item.sizeUnit ? " " + r.item.sizeUnit : ""));
       if(r.item.bf != null && r.item.bf !== "") specParts.push("BF " + r.item.bf);
       var specsLine = specParts.length ? '<div class="invReorderSpecs">' + esc(specParts.join(" · ")) + "</div>" : "";
-      return '<div class="invReorderRow"><div class="invReorderNameWrap"><div class="invReorderName">' + esc(r.item.name) + "</div>" + specsLine + "</div>" +
+      var orderLine = orderPlacedLineHtml(r.item);
+      return '<div class="invReorderRow"><div class="invReorderNameWrap"><div class="invReorderName">' + esc(r.item.name) + "</div>" + specsLine + orderLine + "</div>" +
         '<span class="invReorderMeta">' + r.qty.toLocaleString() + " / " + (Number(r.item.reorderPoint) || 0).toLocaleString() + " " + esc(r.item.unit || "") + "</span>" +
         '<span class="capChip ' + r.cls + '">' + esc(inventoryStatusLabel(r.cls)) + "</span></div>";
     }).join("");
@@ -9475,7 +9919,7 @@
       // SKU isn't shown here — it's still the Firestore document id and still appears in Manage
       // Inventory Items, Purchase History and CSV exports, just not on this on-screen dashboard.
       tr.innerHTML =
-        "<td>" + esc(item.name) + "</td>" +
+        "<td>" + esc(item.name) + orderPlacedLineHtml(item) + "</td>" +
         "<td>" + esc(item.zone || "—") + "</td>" +
         "<td>" + esc(item.category || "—") + "</td>" +
         '<td class="mono">' + esc(item.gsm != null ? String(item.gsm) : "—") + "</td>" +
@@ -10078,6 +10522,38 @@
     else el.invItemCategoryCustomInput.value = "";
   });
 
+  // Expected arrival = Order Placed On + Lead Time (days) — plain calendar-day arithmetic, computed
+  // fresh from the two fields rather than stored separately, so editing either one always keeps the
+  // shown date honest. Returns "" when either input isn't set yet.
+  function computeExpectedArrival(orderPlacedDate, leadTimeDays){
+    if(!orderPlacedDate || leadTimeDays == null || leadTimeDays === "") return "";
+    var days = Number(leadTimeDays);
+    if(!isFinite(days)) return "";
+    var d = new Date(orderPlacedDate + "T00:00:00");
+    if(isNaN(d.getTime())) return "";
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+  // Shared by the Manage Inventory Items form's own change handlers AND fillInvItemForm/
+  // resetInvItemForm — shows/hides the Order Placed On + Expected Arrival row and keeps the
+  // read-only Expected Arrival display in sync with whatever's currently typed.
+  function refreshInvItemOrderPlacedUI(){
+    var placed = el.invItemOrderPlacedInput.checked;
+    el.invItemOrderPlacedDateRow.hidden = !placed;
+    if(!placed) return;
+    var expected = computeExpectedArrival(el.invItemOrderPlacedDateInput.value, el.invItemLeadTimeInput.value);
+    el.invItemExpectedArrivalDisplay.value = expected ? fmtDateForDisplay(expected) : "";
+  }
+  el.invItemOrderPlacedInput.addEventListener("change", function(){
+    // Checking it fresh (nothing dated yet) defaults Order Placed On to today, same convenience as
+    // any other "flip this on and it's obviously about right now" toggle in this app.
+    if(el.invItemOrderPlacedInput.checked && !el.invItemOrderPlacedDateInput.value){
+      el.invItemOrderPlacedDateInput.value = todayStr();
+    }
+    refreshInvItemOrderPlacedUI();
+  });
+  el.invItemOrderPlacedDateInput.addEventListener("input", refreshInvItemOrderPlacedUI);
+  el.invItemLeadTimeInput.addEventListener("input", refreshInvItemOrderPlacedUI);
   function resetInvItemForm(){
     editingInvSku = null;
     el.invItemNameInput.value = "";
@@ -10107,6 +10583,10 @@
     el.invItemGstinInput.value = "";
     el.invItemLastAmountInput.value = "";
     el.invItemPricedPerReelInput.checked = false;
+    el.invItemOrderPlacedInput.checked = false;
+    el.invItemOrderPlacedDateInput.value = "";
+    el.invItemLeadTimeInput.value = "";
+    refreshInvItemOrderPlacedUI();
     invoiceAttachmentCtrl.setValue(null);
     hideInvExtractSection();
     el.invItemAddBtn.textContent = t("inv_items_add");
@@ -10152,6 +10632,10 @@
     el.invItemGstinInput.value = item.supplierGstin || "";
     el.invItemLastAmountInput.value = item.lastInvoiceAmount != null ? item.lastInvoiceAmount : "";
     el.invItemPricedPerReelInput.checked = !!item.pricedPerReel;
+    el.invItemOrderPlacedInput.checked = !!item.orderPlaced;
+    el.invItemOrderPlacedDateInput.value = item.orderPlacedDate || "";
+    el.invItemLeadTimeInput.value = item.leadTimeDays != null ? item.leadTimeDays : "";
+    refreshInvItemOrderPlacedUI();
     // Reconstructed from the three flat fields the item is actually saved with (see the save
     // handler below) — same convention as the entry form's own attachment widgets.
     invoiceAttachmentCtrl.setValue(item.purchaseInvoiceAttachmentData ? {
@@ -10324,6 +10808,13 @@
       // item itself; Zone only says where it's kept, same idea as a warehouse bin label.
       zone: el.invItemZoneInput.value.trim() || null,
       reorderPoint: isFinite(reorderPoint) ? reorderPoint : 0,
+      // Order Placed / Lead Time: one active reorder per item (see refreshInvItemOrderPlacedUI/
+      // computeExpectedArrival) — orderPlacedDate and leadTimeDays are only meaningful while
+      // orderPlaced is true, but are saved as typed either way so unticking-then-reticking without
+      // retyping still shows what was last entered.
+      orderPlaced: !!el.invItemOrderPlacedInput.checked,
+      orderPlacedDate: el.invItemOrderPlacedDateInput.value || null,
+      leadTimeDays: invNumOrNull(el.invItemLeadTimeInput.value),
       unit: el.invItemUnitInput.value.trim() || "units", defaultPrice: isFinite(defaultPrice) ? defaultPrice : 0,
       // Paper/Invoice Specifications — all optional, blank for items that don't have them. Typed
       // by hand or pre-filled (always still editable here) via "Extract items from this invoice".
@@ -12469,40 +12960,20 @@
       // whatever's already on file, else a freshly-formatted ALL CAPS/Sentence case entry) — so a
       // customer/product that already exists (however it happens to be spelled here) merges into
       // that same entry instead of creating a look-alike duplicate, and Ply/Type on an existing
-      // product is left completely untouched (this file never carries either).
-      var newCustomers = 0, newProducts = 0, unchanged = 0;
-      var update = { customers: {} };
-      // Tracks canonical names/product-existence minted WITHIN this same import (state.catalog
-      // itself never changes until the write below round-trips back through subscribeCatalog) — so
-      // two Excel rows for the same brand-new customer, or the same brand-new product repeated,
-      // are only ever counted/added once instead of once per row.
-      var mintedCustomerNames = {};
-      var seenNewProducts = {};
+      // product is left completely untouched (this file never carries either). Shared with the
+      // Product Rates import below via buildCatalogUpdateFromPairs.
+      var pairs = [];
       for(var r = headerRow + 1; r < parsed.length; r++){
         var dataRow = parsed[r] || [];
         var rawCustomer = dataRow[custCol];
         var rawProduct = dataRow[prodCol];
-        var customerName = (typeof rawCustomer === "number" ? String(rawCustomer) : String(rawCustomer || "")).trim();
-        var productName = (typeof rawProduct === "number" ? String(rawProduct) : String(rawProduct || "")).trim();
-        if(!customerName || !productName) continue;
-        var customerKey = normalizeKey(customerName);
-        var canonicalCustomer = findCanonicalCustomer(customerName) || mintedCustomerNames[customerKey] || formatCustomerName(customerName);
-        var isNewCustomer = !state.catalog.customers[canonicalCustomer] && !mintedCustomerNames[customerKey];
-        mintedCustomerNames[customerKey] = canonicalCustomer;
-        var existingCustomer = state.catalog.customers[canonicalCustomer];
-        var canonicalProduct = (existingCustomer && findCanonicalProduct(canonicalCustomer, productName)) || formatProductName(productName);
-        var existingProduct = existingCustomer && existingCustomer.products && existingCustomer.products[canonicalProduct];
-        var seenKey = canonicalCustomer + "\u0001" + normalizeKey(canonicalProduct);
-        if(existingProduct || seenNewProducts[seenKey]){ unchanged++; continue; }
-        seenNewProducts[seenKey] = true;
-        if(isNewCustomer) newCustomers++;
-        newProducts++;
-        if(!update.customers[canonicalCustomer]) update.customers[canonicalCustomer] = { products: {} };
-        // Ply/Type: left blank (never guessed) — exactly what a brand-new product looks like before
-        // its first entry is ever saved (see upsertCatalogEntry); the very next save that picks a
-        // real Ply/Type for it fills these in normally.
-        update.customers[canonicalCustomer].products[canonicalProduct] = { type: "", ply: "" };
+        pairs.push({
+          customerName: (typeof rawCustomer === "number" ? String(rawCustomer) : String(rawCustomer || "")).trim(),
+          productName: (typeof rawProduct === "number" ? String(rawProduct) : String(rawProduct || "")).trim()
+        });
       }
+      var built = buildCatalogUpdateFromPairs(pairs);
+      var update = built.update, newCustomers = built.newCustomers, newProducts = built.newProducts, unchanged = built.unchanged;
       if(!newProducts && !unchanged){
         el.catalogImportStatus.textContent = t("cat_err_norows");
         return;
@@ -13070,6 +13541,11 @@
     for(var layerPopN = 1; layerPopN <= 7; layerPopN++){
       var layerData = (entry && entry.layers && entry.layers[layerPopN - 1]) || null;
       el["f_layer" + layerPopN + "_sku"].value = (layerData && layerData.sku && state.invCatalog[layerData.sku]) ? layerData.sku : "";
+      // Reel No is set BEFORE refreshLayerReelStatus below rebuilds this row's Reel No options, so
+      // buildReelNoOptionsHtml sees it as the row's "current" pick and always includes it as an
+      // option (even if its remaining balance has since hit zero) rather than silently reverting to
+      // blank because nothing selectable happened to match yet.
+      if(el["f_layer" + layerPopN + "_reelno"]) el["f_layer" + layerPopN + "_reelno"].value = layerData ? (layerData.reelNo || "") : "";
       el["f_layer" + layerPopN + "_reelweight"].value = layerData ? (layerData.reelWeight || "") : "";
       // Buds Weight: only actually matters at Plant (see refreshLayerReelStatus, which overwrites
       // this with a live aggregate everywhere else) — populated here from whatever this row's saved
@@ -14259,6 +14735,9 @@
       var tLayerData = (task && task.layers && task.layers[tPopN - 1]) || null;
       var tSku = (tLayerData && tLayerData.sku && state.invCatalog[tLayerData.sku]) ? tLayerData.sku : "";
       el["t_layer" + tPopN + "_sku"].value = tSku;
+      // Set before refreshTaskLayerReelStatus rebuilds this row's Reel No options, same reasoning as
+      // the Plant entry form's own restore just above.
+      if(el["t_layer" + tPopN + "_reelno"]) el["t_layer" + tPopN + "_reelno"].value = (tLayerData && tLayerData.reelNo) || "";
       if(el["t_layer" + tPopN + "_reelweight"]) el["t_layer" + tPopN + "_reelweight"].value = (tLayerData && tLayerData.reelWeight) || "";
       taskLayerReservedSku[tPopN] = tSku;
       refreshTaskLayerReelStatus(tPopN);
@@ -14508,7 +14987,8 @@
     state.poModalReadOnly = readOnly;
     el.poModalTitle.textContent = t(readOnly ? "form_view_po" : (po ? "form_edit_po" : "form_add_po"));
     el.po_number.value = po ? (po.poNumber || "") : "";
-    el.po_customer.value = po ? (po.customerName || "") : "";
+    setPoClientNameField(po ? po.customerName : "");
+    lastPoCustomerValue = el.po_customer.value;
     el.po_delivery.value = po ? (po.deliveryRequiredAtPlant || "") : "";
     syncPoDeliveryLabel();
     el.po_updatedby.value = po ? (po.updatedBy || "") : (deviceSupervisorName || lastUpdatedBy);
