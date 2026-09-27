@@ -575,6 +575,16 @@
     background:var(--surface);border-radius:12px;padding:22px 24px;width:100%;max-width:480px;
     box-shadow:0 12px 32px rgba(0,0,0,.25);border:1px solid var(--line);
     max-height:90vh;overflow-y:auto;
+    /* Explicitly pinned to hidden (never auto) -- leaving this axis unset made its COMPUTED value
+       auto too (per the CSS overflow-x/overflow-y interaction rule: one axis set to a scrolling
+       value forces the other off "visible"), which is what let the whole modal itself scroll
+       sideways whenever something inside it overflowed (the Layers table chief among them) — every
+       field to the left of whatever you'd just interacted with scrolled out of view along with it,
+       which is what made Delivery Required At Plant look like it was "asking again" after simply
+       picking a Reel No far over on the table's right edge. Now only a deliberately-wrapped inner
+       element (see .tableWrap) ever scrolls horizontally — the modal itself, and every field in it,
+       stays put. */
+    overflow-x:hidden;
   }
   .modal h2{font-size:18px;margin-bottom:16px;}
   .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -2094,7 +2104,7 @@
 </div>
 
 <div class="modalOverlay" id="modalOverlay" hidden>
-  <form class="modal" id="entryForm">
+  <form class="modal wide" id="entryForm" style="max-width:880px;">
     <h2 id="modalTitle">Add Entry</h2>
     <div class="readOnlyNote" id="readOnlyNote" hidden></div>
     <div class="formGrid">
@@ -2234,6 +2244,10 @@
              Status is what actually matters when picking which reel to use) — see
              refreshLayerReelStatus below. Reel Weight is always typed by hand since it's the actual
              weight of the physical reel used, which varies reel to reel even for the same SKU. -->
+        <!-- Scoped horizontal scroll: only this table scrolls sideways when it doesn't fit, never
+             the whole modal (see .modal's own overflow-x:hidden) -- picking a Reel No far over on
+             the right no longer drags Customer Name/other fields out of view with it. -->
+        <div class="tableWrap">
         <table class="qcSpecsTable">
           <thead>
             <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelno">Reel No</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
@@ -2248,6 +2262,7 @@
             <tr id="layerRow7"><td id="layerLabel7"></td><td><select id="f_layer7_sku"></select></td><td><select id="f_layer7_reelno"></select></td><td><input type="text" id="f_layer7_reelweight"></td><td><input type="text" id="f_layer7_budweight"></td><td class="mono" id="f_layer7_budcount"></td><td class="mono" id="f_layer7_available"></td><td><span class="capChip" id="f_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="f_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
+        </div>
       </div>
       <label id="fld_invoiceno"><span data-i18n="form_invoiceno_label">Invoice No</span> <input type="text" id="f_invoiceno" placeholder="e.g. INV-1042" data-i18n-placeholder="form_invoiceno_placeholder"></label>
       <label id="fld_vehicleno"><span data-i18n="form_vehicleno_label">Vehicle Number</span> <input type="text" id="f_vehicleno" placeholder="e.g. TS09AB1234" data-i18n-placeholder="form_vehicleno_placeholder"></label>
@@ -2604,7 +2619,7 @@
      since a task is just a planning item. Customer Name/Product Name are required (same as the
      main entry form); Type/Ply/Quantity/Assign To are optional extra detail. -->
 <div class="modalOverlay" id="taskModalOverlay" hidden>
-  <form class="modal" id="taskForm">
+  <form class="modal wide" id="taskForm" style="max-width:880px;">
     <h2 id="taskModalTitle">Add Task</h2>
     <div class="formGrid">
       <label><span data-i18n="filter_date">Date</span>
@@ -2688,6 +2703,7 @@
            see refreshTaskLayersVisibility. -->
       <div class="span2 qcSpecsBlock" id="fld_treellayers" hidden>
         <span data-i18n="layers_heading">Layers</span>
+        <div class="tableWrap">
         <table class="qcSpecsTable">
           <thead>
             <tr><th></th><th data-i18n="layers_th_item">Reel Item</th><th data-i18n="layers_th_reelno">Reel No</th><th data-i18n="layers_th_reelweight">Reel Weight</th><th data-i18n="layers_th_budweight">Buds Weight</th><th data-i18n="layers_th_budcount">Buds Count</th><th data-i18n="layers_th_available">Available</th><th data-i18n="layers_th_status">Status</th><th></th></tr>
@@ -2702,6 +2718,7 @@
             <tr id="tLayerRow7"><td id="tLayerLabel7"></td><td><select id="t_layer7_sku"></select></td><td><select id="t_layer7_reelno"></select></td><td><input type="text" id="t_layer7_reelweight"></td><td class="mono" id="t_layer7_budweight"></td><td class="mono" id="t_layer7_budcount"></td><td class="mono" id="t_layer7_available"></td><td><span class="capChip" id="t_layer7_status" hidden></span></td><td><button type="button" class="layerDeleteBtn" id="t_layer7_delete" data-i18n-title="layers_delete_title" title="Delete">✕</button></td></tr>
           </tbody>
         </table>
+        </div>
       </div>
       <!-- All three auto-calculated (readonly): Opening Stock Qty, its Job Card No, and its Ageing
            all come from the single most recent Finished Goods entry for this same Customer+Product
@@ -2757,7 +2774,7 @@
      (Pending/Received) isn't edited here — it's toggled directly from the board list's own
      checkbox (see buildPoItem), same pattern as a Task's Done checkbox. -->
 <div class="modalOverlay" id="poModalOverlay" hidden>
-  <form class="modal" id="poForm">
+  <form class="modal wide" id="poForm" style="max-width:880px;">
     <h2 id="poModalTitle">Add PO</h2>
     <div class="formGrid">
       <label><span data-i18n="po_number_label">PO Number</span>
@@ -8049,10 +8066,12 @@
           "</div>" +
           '<div class="span2 qcSpecsBlock" id="' + poFieldId(pid, "fld_reellayers") + '" hidden>' +
             "<span>" + esc(t("layers_heading")) + "</span>" +
+            '<div class="tableWrap">' +
             '<table class="qcSpecsTable"><thead><tr><th></th><th>' + esc(t("layers_th_item")) + "</th><th>" + esc(t("layers_th_reelno")) + "</th><th>" + esc(t("layers_th_reelweight")) +
             "</th><th>" + esc(t("layers_th_budweight")) + "</th><th>" + esc(t("layers_th_budcount")) + "</th><th>" + esc(t("layers_th_available")) +
             "</th><th>" + esc(t("layers_th_status")) + "</th><th></th></tr></thead>" +
             '<tbody id="' + poFieldId(pid, "layersBody") + '">' + poLayerRowsHtml(pid) + "</tbody></table>" +
+            "</div>" +
           "</div>" +
           '<label><span>' + esc(t("form_qty_label")) + '</span>' +
             '<input type="number" id="' + poFieldId(pid, "quantity") + '" min="0" step="1" placeholder="500" value="' + (product.quantity != null ? esc(String(product.quantity)) : "") + '"></label>' +
