@@ -2015,15 +2015,63 @@
     <input type="text" id="catalogSearchInput" class="supSearchInput" placeholder="Search customer…" data-i18n-placeholder="cat_search_placeholder">
     <div class="supTableWrap" style="max-height:340px;">
       <table class="supTable">
-        <thead><tr><th data-i18n="cat_th_customer">Customer</th><th data-i18n="cat_th_products">Products</th></tr></thead>
+        <thead><tr><th data-i18n="cat_th_customer">Customer</th><th data-i18n="cat_th_products">Products</th><th data-i18n="cat_th_actions">Actions</th></tr></thead>
         <tbody id="catalogBody"></tbody>
       </table>
     </div>
     <div class="supEmpty" id="catalogEmpty" hidden data-i18n="cat_empty">No customers in the catalog yet.</div>
     <div class="supCount" id="catalogCount"></div>
+    <div class="readOnlyNote" id="catalogListError" hidden style="margin-top:12px;"></div>
     <div class="modalActions">
       <div class="spacer"></div>
       <button type="button" class="btn primary" id="catalogCloseBtn" data-i18n="generic_done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Customer: rename a catalog customer and add/rename/remove its products' own Ply/Type/
+     Qty-per-Bundle metadata (see catalogEditProducts/renderCatalogEditProducts in the script). This
+     older catalog no longer decides which Customer/Product names are selectable anywhere in the app
+     (Product Rates does, see cat_edit_desc below) — this modal only edits its Ply/Type/Qty-per-Bundle
+     records for whichever customer/product a Product Rates row already made selectable. -->
+<div class="modalOverlay" id="catalogEditModalOverlay" hidden>
+  <div class="modal wide">
+    <h2 data-i18n="cat_edit_title">Edit Customer</h2>
+    <p data-i18n="cat_edit_desc" style="font-size:13px;color:var(--ink-soft);line-height:1.5;margin:0 0 14px;">
+      This only changes this older catalog's own Ply/Type/Quantity-per-Bundle records. It does not add or
+      remove this customer from the Customer Name dropdown anywhere in the app — that list is driven by the
+      Product Rates catalog instead.
+    </p>
+    <label><span data-i18n="cat_edit_name_label">Customer Name</span>
+      <input type="text" id="catEditCustomerNameInput">
+    </label>
+    <div class="invExtractHeader" style="margin-top:14px;">
+      <strong data-i18n="cat_edit_products_label">Products</strong>
+    </div>
+    <div class="tableWrap">
+      <table class="invExtractTable" id="catEditProductsTable">
+        <thead>
+          <tr>
+            <th data-i18n="cat_edit_th_product">Product</th>
+            <th data-i18n="cat_edit_th_ply">Ply</th>
+            <th data-i18n="cat_edit_th_type">Type</th>
+            <th data-i18n="cat_edit_th_qtybundle">Qty/Bundle</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="catEditProductsTbody"></tbody>
+      </table>
+    </div>
+    <div class="supEmpty" id="catEditProductsEmpty" hidden data-i18n="cat_edit_no_products">No products yet — add one below.</div>
+    <div class="modalActions" style="margin-top:8px;">
+      <button type="button" class="btn ghost small" id="catEditAddProductBtn" data-i18n="cat_edit_add_product_btn">+ Add Product</button>
+      <div class="spacer"></div>
+    </div>
+    <div class="readOnlyNote" id="catalogEditError" hidden style="margin-top:12px;"></div>
+    <div class="modalActions">
+      <button type="button" class="btn ghost" id="catalogEditCancelBtn" data-i18n="generic_cancel">Cancel</button>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="catalogEditSaveBtn" data-i18n="generic_save">Save</button>
     </div>
   </div>
 </div>
@@ -2835,6 +2883,8 @@
   }catch(e){}
 
   var STAGES = [
+    "PO",
+    "Priority Task",
     "QC",
     "Plant",
     "RD-1CP",
@@ -2879,7 +2929,13 @@
   // stage. It has its own dedicated top-level screen (see the "Inventory" nav link/#inventoryView)
   // instead of a job-card form, so it must never appear as a Kanban column: renderBoard's column
   // loop and deviceVisibleStages both skip anything listed here.
-  var NON_BOARD_STAGES = ["Inventory Management"];
+  // "PO" and "Priority Task" are STAGES for the exact same reason (Round 14) — they let an admin
+  // grant a specific device the ability to add/edit/delete a Purchase Order or a Priority Task,
+  // the same way "Inventory Management" grants the Store department access, without making that
+  // device a full Admin. Neither is a job-card stage a board column or Add Entry's own Stage field
+  // could ever show (a PO/Task isn't a production step an entry sits in) — see
+  // deviceCanManagePo/deviceCanManageTasks for where this grant is actually checked.
+  var NON_BOARD_STAGES = ["Inventory Management", "PO", "Priority Task"];
   // Everywhere a stage picker means "a stage a job card can sit in" (the entry form's own Stage
   // field, the board/log Stage filters, a Priority Task's Stage) — as opposed to "Manage Users"
   // and the manual device-setup picker, which assign a DEVICE to a stage and rightly still offer
@@ -2900,6 +2956,7 @@
   var I18N = {
     en: {
       generic_cancel: "Cancel", generic_delete: "Delete", generic_save: "Save", generic_done: "Done", generic_or: "or",
+      generic_edit: "Edit",
       generic_err_invalid_phone: "Enter a valid 10-digit phone number.",
       generic_err_network: "Couldn't check that number right now. Check your connection and try again.",
       filter_date: "Date", filter_shift: "Shift", filter_stage: "Stage", filter_status: "Status",
@@ -2912,6 +2969,7 @@
       cat_title: "Manage Catalog",
       cat_desc: "The Customer Name / Product Name lists every stage's Add Entry, Priority Task, and PO form picks from. Import an Excel file with \"Customer name\" and \"Product name\" columns to add to this list at any time — re-importing only adds what's missing; nothing already here is ever removed or overwritten.",
       cat_search_placeholder: "Search customer…", cat_th_customer: "Customer", cat_th_products: "Products",
+      cat_th_actions: "Actions",
       cat_empty: "No customers in the catalog yet.",
       cat_count: "{n} customers", cat_importing: "Importing…",
       cat_import_done: "Added {customers} new customer(s) and {products} new product(s) ({unchanged} already on file).",
@@ -2920,6 +2978,20 @@
       cat_err_noheader: "Couldn't find \"Customer name\" and \"Product name\" columns in that file.",
       cat_err_norows: "No valid Customer/Product rows found in that file.",
       cat_err_save: "Couldn't save the imported catalog.",
+      cat_delete_confirm: "Delete \"{name}\" and its {count} product(s) from the catalog? This can't be undone.",
+      cat_delete_err: "Couldn't delete that customer. Try again.",
+      cat_edit_title: "Edit Customer",
+      cat_edit_desc: "This only changes this older catalog's own Ply/Type/Quantity-per-Bundle records. It does not add or remove this customer from the Customer Name dropdown anywhere in the app — that list is driven by the Product Rates catalog instead.",
+      cat_edit_name_label: "Customer Name", cat_edit_products_label: "Products",
+      cat_edit_th_product: "Product", cat_edit_th_ply: "Ply", cat_edit_th_type: "Type", cat_edit_th_qtybundle: "Qty/Bundle",
+      cat_edit_no_products: "No products yet — add one below.",
+      cat_edit_add_product_btn: "+ Add Product",
+      cat_edit_remove_product_title: "Remove this product",
+      cat_edit_err_name_required: "Customer name can't be empty.",
+      cat_edit_err_duplicate: "Another customer already has this name.",
+      cat_edit_err_product_name_required: "Every product needs a name.",
+      cat_edit_err_duplicate_product: "Two products can't have the same name.",
+      cat_edit_err_save: "Couldn't save changes. Try again.",
       view_board: "Board", view_log: "Log",
       btn_add_entry: "+ Add Entry",
       btn_refresh: "Refresh", btn_refresh_title: "Refresh app to get the latest updates",
@@ -3286,6 +3358,7 @@
     },
     hi: {
       generic_cancel: "रद्द करें", generic_delete: "हटाएं", generic_save: "सेव करें", generic_done: "हो गया", generic_or: "या",
+      generic_edit: "एडिट",
       generic_err_invalid_phone: "एक सही 10-अंकों का फ़ोन नंबर दर्ज करें।",
       generic_err_network: "अभी उस नंबर की जांच नहीं हो सकी। अपना कनेक्शन जांचें और फिर कोशिश करें।",
       filter_date: "तारीख", filter_shift: "शिफ्ट", filter_stage: "स्टेज", filter_status: "स्थिति",
@@ -3298,6 +3371,7 @@
       cat_title: "कैटलॉग प्रबंधित करें",
       cat_desc: "ग्राहक का नाम / उत्पाद का नाम सूचियाँ जिनसे हर चरण का Add Entry, Priority Task, और PO फ़ॉर्म चुनता है। \"Customer name\" और \"Product name\" कॉलम वाली Excel फ़ाइल आयात करें — दोबारा आयात करने से केवल जो गायब है वही जुड़ता है; जो पहले से यहाँ है वह कभी हटाया या बदला नहीं जाता।",
       cat_search_placeholder: "ग्राहक खोजें…", cat_th_customer: "ग्राहक", cat_th_products: "उत्पाद",
+      cat_th_actions: "कार्रवाई",
       cat_empty: "कैटलॉग में अभी कोई ग्राहक नहीं है।",
       cat_count: "{n} ग्राहक", cat_importing: "आयात हो रहा है…",
       cat_import_done: "{customers} नए ग्राहक और {products} नए उत्पाद जोड़े गए ({unchanged} पहले से मौजूद थे)।",
@@ -3305,6 +3379,20 @@
       cat_err_parse: "वह फ़ाइल नहीं पढ़ी जा सकी — सुनिश्चित करें कि यह एक मान्य .xlsx या .xls फ़ाइल है।",
       cat_err_noheader: "उस फ़ाइल में \"Customer name\" और \"Product name\" कॉलम नहीं मिले।",
       cat_err_norows: "उस फ़ाइल में कोई मान्य Customer/Product पंक्ति नहीं मिली।",
+      cat_delete_confirm: "\"{name}\" और उसके {count} प्रोडक्ट कैटलॉग से हटाएं? यह वापस नहीं किया जा सकता।",
+      cat_delete_err: "वह ग्राहक हटाया नहीं जा सका। फिर कोशिश करें।",
+      cat_edit_title: "ग्राहक एडिट करें",
+      cat_edit_desc: "यह केवल इस पुराने कैटलॉग के अपने Ply/Type/Quantity-per-Bundle रिकॉर्ड बदलता है। इससे यह ग्राहक ऐप में कहीं भी Customer Name ड्रॉपडाउन से न जुड़ता है, न हटता है — वह सूची Product Rates कैटलॉग से चलती है।",
+      cat_edit_name_label: "ग्राहक का नाम", cat_edit_products_label: "प्रोडक्ट्स",
+      cat_edit_th_product: "प्रोडक्ट", cat_edit_th_ply: "प्लाई", cat_edit_th_type: "टाइप", cat_edit_th_qtybundle: "क्वांटिटी/बंडल",
+      cat_edit_no_products: "अभी कोई प्रोडक्ट नहीं है — नीचे एक जोड़ें।",
+      cat_edit_add_product_btn: "+ प्रोडक्ट जोड़ें",
+      cat_edit_remove_product_title: "यह प्रोडक्ट हटाएं",
+      cat_edit_err_name_required: "ग्राहक का नाम खाली नहीं हो सकता।",
+      cat_edit_err_duplicate: "यह नाम किसी और ग्राहक के पास पहले से है।",
+      cat_edit_err_product_name_required: "हर प्रोडक्ट का नाम होना चाहिए।",
+      cat_edit_err_duplicate_product: "दो प्रोडक्ट का नाम एक जैसा नहीं हो सकता।",
+      cat_edit_err_save: "बदलाव सेव नहीं हो सके। फिर कोशिश करें।",
       cat_err_save: "आयातित कैटलॉग सहेजा नहीं जा सका।",
       view_board: "बोर्ड", view_log: "लॉग",
       btn_add_entry: "+ एंट्री जोड़ें",
@@ -3672,6 +3760,7 @@
     },
     te: {
       generic_cancel: "రద్దు చేయండి", generic_delete: "తొలగించండి", generic_save: "సేవ్ చేయండి", generic_done: "పూర్తయింది", generic_or: "లేదా",
+      generic_edit: "ఎడిట్",
       generic_err_invalid_phone: "సరైన 10-అంకెల ఫోన్ నంబర్ నమోదు చేయండి।",
       generic_err_network: "ఆ నంబర్‌ను ఇప్పుడు తనిఖీ చేయలేకపోయాము. మీ కనెక్షన్‌ని తనిఖీ చేసి మళ్ళీ ప్రయత్నించండి।",
       filter_date: "తేదీ", filter_shift: "షిఫ్ట్", filter_stage: "దశ", filter_status: "స్థితి",
@@ -3684,6 +3773,7 @@
       cat_title: "కేటలాగ్‌ను నిర్వహించండి",
       cat_desc: "ప్రతి దశలోని Add Entry, Priority Task, మరియు PO ఫారమ్ ఎంచుకునే Customer Name / Product Name జాబితాలు ఇవి. \"Customer name\" మరియు \"Product name\" కాలమ్‌లతో కూడిన Excel ఫైల్‌ను ఎప్పుడైనా దిగుమతి చేయవచ్చు — మళ్లీ దిగుమతి చేస్తే లేనివి మాత్రమే జోడించబడతాయి; ఇప్పటికే ఉన్నవి ఎప్పుడూ తీసివేయబడవు లేదా మార్చబడవు.",
       cat_search_placeholder: "కస్టమర్‌ను వెతకండి…", cat_th_customer: "కస్టమర్", cat_th_products: "ఉత్పత్తులు",
+      cat_th_actions: "చర్యలు",
       cat_empty: "కేటలాగ్‌లో ఇంకా కస్టమర్లు లేరు.",
       cat_count: "{n} కస్టమర్లు", cat_importing: "దిగుమతి అవుతోంది…",
       cat_import_done: "{customers} కొత్త కస్టమర్లు మరియు {products} కొత్త ఉత్పత్తులు జోడించబడ్డాయి ({unchanged} ఇప్పటికే ఉన్నాయి).",
@@ -3691,6 +3781,20 @@
       cat_err_parse: "ఆ ఫైల్‌ను చదవలేకపోయాము — ఇది చెల్లుబాటు అయ్యే .xlsx లేదా .xls ఫైల్ అని నిర్ధారించుకోండి.",
       cat_err_noheader: "ఆ ఫైల్‌లో \"Customer name\" మరియు \"Product name\" కాలమ్‌లు కనుగొనబడలేదు.",
       cat_err_norows: "ఆ ఫైల్‌లో చెల్లుబాటు అయ్యే Customer/Product వరుసలు కనుగొనబడలేదు.",
+      cat_delete_confirm: "\"{name}\" మరియు దాని {count} ఉత్పత్తులను కేటలాగ్ నుండి తొలగించాలా? దీన్ని తిరిగి పొందలేరు.",
+      cat_delete_err: "ఆ కస్టమర్‌ను తొలగించలేకపోయాము. మళ్ళీ ప్రయత్నించండి.",
+      cat_edit_title: "కస్టమర్‌ను ఎడిట్ చేయండి",
+      cat_edit_desc: "ఇది ఈ పాత కేటలాగ్‌లోని Ply/Type/Quantity-per-Bundle రికార్డులను మాత్రమే మారుస్తుంది. ఇది ఈ కస్టమర్‌ను యాప్‌లో ఎక్కడైనా Customer Name డ్రాప్‌డౌన్ నుండి జోడించదు లేదా తీసివేయదు — ఆ జాబితా Product Rates కేటలాగ్ ద్వారా నడుస్తుంది.",
+      cat_edit_name_label: "కస్టమర్ పేరు", cat_edit_products_label: "ఉత్పత్తులు",
+      cat_edit_th_product: "ఉత్పత్తి", cat_edit_th_ply: "ప్లై", cat_edit_th_type: "టైప్", cat_edit_th_qtybundle: "క్వాంటిటీ/బండిల్",
+      cat_edit_no_products: "ఇంకా ఉత్పత్తులు లేవు — దిగువ ఒకటి జోడించండి.",
+      cat_edit_add_product_btn: "+ ఉత్పత్తిని జోడించండి",
+      cat_edit_remove_product_title: "ఈ ఉత్పత్తిని తీసివేయండి",
+      cat_edit_err_name_required: "కస్టమర్ పేరు ఖాళీగా ఉండకూడదు.",
+      cat_edit_err_duplicate: "ఈ పేరు ఇప్పటికే మరో కస్టమర్‌కు ఉంది.",
+      cat_edit_err_product_name_required: "ప్రతి ఉత్పత్తికి పేరు ఉండాలి.",
+      cat_edit_err_duplicate_product: "రెండు ఉత్పత్తులకు ఒకే పేరు ఉండకూడదు.",
+      cat_edit_err_save: "మార్పులు సేవ్ చేయలేకపోయాము. మళ్ళీ ప్రయత్నించండి.",
       cat_err_save: "దిగుమతి చేసిన కేటలాగ్‌ను సేవ్ చేయలేకపోయాము.",
       view_board: "బోర్డు", view_log: "లాగ్",
       btn_add_entry: "+ ఎంట్రీ జోడించండి",
@@ -4671,6 +4775,15 @@
     catalogEmpty: document.getElementById("catalogEmpty"),
     catalogCount: document.getElementById("catalogCount"),
     catalogCloseBtn: document.getElementById("catalogCloseBtn"),
+    catalogListError: document.getElementById("catalogListError"),
+    catalogEditModalOverlay: document.getElementById("catalogEditModalOverlay"),
+    catEditCustomerNameInput: document.getElementById("catEditCustomerNameInput"),
+    catEditProductsTbody: document.getElementById("catEditProductsTbody"),
+    catEditProductsEmpty: document.getElementById("catEditProductsEmpty"),
+    catEditAddProductBtn: document.getElementById("catEditAddProductBtn"),
+    catalogEditError: document.getElementById("catalogEditError"),
+    catalogEditCancelBtn: document.getElementById("catalogEditCancelBtn"),
+    catalogEditSaveBtn: document.getElementById("catalogEditSaveBtn"),
     deleteConfirmOverlay: document.getElementById("deleteConfirmOverlay"),
     deleteConfirmSummary: document.getElementById("deleteConfirmSummary"),
     deleteConfirmName: document.getElementById("deleteConfirmName"),
@@ -6127,6 +6240,16 @@
     if(deviceHasQcAccess() && QC_MANAGED_EXTRA_STAGES.indexOf(stage) !== -1) return true;
     return false;
   }
+  // Admin can always add/edit/delete a PO or a Priority Task, same as always; a non-admin device
+  // gets that same ability only once it's been specifically assigned the "PO"/"Priority Task" stage
+  // in Manage Users (see el.addPoBtn.hidden/el.addTaskBtn.hidden, openPoModal/openTaskModal's own
+  // readOnly gate, and renderPos/renderTasks' own canEdit gate — all four now check this instead of
+  // state.isAdminDevice alone). Deliberately does NOT fold in QC_MANAGED_EXTRA_STAGES the way most
+  // other stages do — a QC device seeing every OTHER stage read-only is unrelated to being trusted
+  // to add/edit/delete a Purchase Order or Task, which is why "PO"/"Priority Task" sit in
+  // NON_BOARD_STAGES (excluded from that blanket QC grant) rather than being an ordinary stage.
+  function deviceCanManagePo(){ return state.isAdminDevice || deviceCanViewStage("PO"); }
+  function deviceCanManageTasks(){ return state.isAdminDevice || deviceCanViewStage("Priority Task"); }
   // The set of stages this device's Board/Log/Export should show — its own assigned stages plus
   // the QC-managed extra stages when it has QC access, kept in the same order stages normally
   // flow in. NON_BOARD_STAGES (Inventory Management) is always excluded here — it has its own
@@ -8091,14 +8214,15 @@
     el.activityLogBtn.hidden = !state.isAdminDevice;
     el.fld_layerreeloverride.hidden = !state.isAdminDevice;
     el.exportMasterSheetBtn.hidden = !state.isAdminDevice;
-    // Priority Tasks: every device can still see the board, but only the admin device can add,
-    // edit, delete, or reorder a task — everyone else can open one to read it (see openTaskModal's
-    // read-only mode and renderTasks' drag-handle/checkbox gating below), same admin-only pattern
-    // as Manage Users/Activity Log above.
-    el.addTaskBtn.hidden = !state.isAdminDevice;
-    // Purchase Orders: same admin-only add/edit/delete/mark-received pattern as Priority Tasks
-    // just above — every device can still see the PO board, just read-only.
-    el.addPoBtn.hidden = !state.isAdminDevice;
+    // Priority Tasks: every device can still see the board, but only Admin or a device specifically
+    // granted the "Priority Task" stage (Manage Users) can add, edit, delete, or reorder a task —
+    // everyone else can open one to read it (see openTaskModal's read-only mode and renderTasks'
+    // drag-handle/checkbox gating below), same pattern as Manage Users/Activity Log above being
+    // admin-only, just with one more device able to unlock it (see deviceCanManageTasks).
+    el.addTaskBtn.hidden = !deviceCanManageTasks();
+    // Purchase Orders: same pattern as Priority Tasks just above (see deviceCanManagePo) — every
+    // device can still see the PO board, just read-only unless granted the "PO" stage or Admin.
+    el.addPoBtn.hidden = !deviceCanManagePo();
     // Inventory nav link: visible to Admin (full access, same as everywhere else) or to a device
     // specifically assigned the "Inventory Management" stage via Manage Users — the Store
     // department. Curating the item catalog itself stays Admin-only (see Manage Inventory Items).
@@ -12968,6 +13092,7 @@
   // see subscribeCatalog/upsertCatalogEntry above); this just gives an admin a bulk way to load it
   // from a spreadsheet instead of it only ever growing one entry at a time as job cards get saved.
   function renderCatalogList(){
+    el.catalogListError.hidden = true;
     var q = normalizeKey(el.catalogSearchInput.value);
     var names = Object.keys(state.catalog.customers || {}).sort(catalogSortCmp);
     if(q) names = names.filter(function(n){ return normalizeKey(n).indexOf(q) !== -1; });
@@ -12975,8 +13100,18 @@
     names.forEach(function(name){
       var count = Object.keys((state.catalog.customers[name] || {}).products || {}).length;
       var tr = document.createElement("tr");
-      tr.innerHTML = "<td>" + esc(name) + "</td><td>" + count.toLocaleString() + "</td>";
+      tr.innerHTML = "<td>" + esc(name) + "</td><td>" + count.toLocaleString() + "</td>" +
+        '<td style="white-space:nowrap;">' +
+          "<button type=\"button\" class=\"btn ghost small\" data-cat-edit=\"" + esc(name) + "\">" + esc(t("generic_edit")) + "</button> " +
+          "<button type=\"button\" class=\"btn danger small\" data-cat-delete=\"" + esc(name) + "\">" + esc(t("generic_delete")) + "</button>" +
+        "</td>";
       el.catalogBody.appendChild(tr);
+    });
+    el.catalogBody.querySelectorAll("button[data-cat-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){ openCatalogEditModal(btn.getAttribute("data-cat-edit")); });
+    });
+    el.catalogBody.querySelectorAll("button[data-cat-delete]").forEach(function(btn){
+      btn.addEventListener("click", function(){ deleteCatalogCustomer(btn.getAttribute("data-cat-delete")); });
     });
     el.catalogEmpty.hidden = names.length !== 0;
     el.catalogCount.textContent = names.length ? tf("cat_count", { n: names.length }) : "";
@@ -12992,6 +13127,142 @@
     if(ev.target === el.catalogModalOverlay) el.catalogModalOverlay.hidden = true;
   });
   el.catalogSearchInput.addEventListener("input", renderCatalogList);
+
+  // ---------- Manage Catalog: Edit (rename customer + manage its products) / Delete ----------
+  // Both write straight to catalog/customerProducts as a full replacement of its one `customers`
+  // field (state.db...set({customers: clone}) — no {merge:true}) rather than the dot-path
+  // FieldValue.delete() updates the one-time data-fix functions above use: those exist to make a
+  // SURGICAL, minimal-risk change during an automatic snapshot-triggered pass; this is a deliberate,
+  // occasional admin action on the one document this whole modal already has loaded in
+  // state.catalog, so replacing that one field outright is simpler and just as safe. See
+  // cat_edit_desc in the modal's own markup for the important caveat surfaced to the admin: this
+  // catalog no longer decides which Customer/Product names are selectable anywhere (Product Rates
+  // does, see the big Round 13 comment above productRatesCustomerNames) — editing/deleting here only
+  // changes its own Ply/Type/Quantity-per-Bundle metadata records.
+  function deleteCatalogCustomer(name){
+    var entry = state.catalog.customers[name];
+    if(!entry) return;
+    var productCount = Object.keys(entry.products || {}).length;
+    if(!window.confirm(tf("cat_delete_confirm", { name: name, count: productCount }))) return;
+    var clone = Object.assign({}, state.catalog.customers);
+    delete clone[name];
+    state.db.collection("catalog").doc("customerProducts").set({ customers: clone }).catch(function(err){
+      el.catalogListError.hidden = false;
+      el.catalogListError.textContent = t("cat_delete_err") + " " + (err && err.message ? err.message : "");
+    });
+  }
+  var catalogEditOriginalName = null;
+  var catalogEditProducts = []; // [{ name, ply, type, qtyPerBundle }] -- working copy, saved on Save
+  function renderCatalogEditProducts(){
+    el.catEditProductsTbody.innerHTML = "";
+    catalogEditProducts.forEach(function(row, idx){
+      var tr = document.createElement("tr");
+      var plyOptions = ["", "3 Ply", "5 Ply", "7 Ply"].map(function(p){
+        return '<option value="' + esc(p) + '"' + (p === (row.ply || "") ? " selected" : "") + '>' + (p || "—") + '</option>';
+      }).join("");
+      tr.innerHTML =
+        '<td><input type="text" data-f="name" value="' + esc(row.name || "") + '"></td>' +
+        '<td><select data-f="ply">' + plyOptions + '</select></td>' +
+        '<td><input type="text" data-f="type" value="' + esc(row.type || "") + '"></td>' +
+        '<td><input type="number" class="mono" min="0" step="1" data-f="qtyPerBundle" value="' + (row.qtyPerBundle != null ? row.qtyPerBundle : "") + '"></td>' +
+        '<td><button type="button" class="invExtractRemoveBtn" data-i18n-title="cat_edit_remove_product_title" title="' + esc(t("cat_edit_remove_product_title")) + '">✕</button></td>';
+      tr.querySelectorAll("[data-f]").forEach(function(input){
+        var field = input.getAttribute("data-f");
+        var evtName = input.tagName === "SELECT" ? "change" : "input";
+        input.addEventListener(evtName, function(){
+          row[field] = field === "qtyPerBundle" ? (input.value === "" ? null : Number(input.value)) : input.value;
+        });
+      });
+      tr.querySelector(".invExtractRemoveBtn").addEventListener("click", function(){
+        catalogEditProducts.splice(idx, 1);
+        renderCatalogEditProducts();
+      });
+      el.catEditProductsTbody.appendChild(tr);
+    });
+    el.catEditProductsEmpty.hidden = catalogEditProducts.length !== 0;
+  }
+  function openCatalogEditModal(name){
+    var entry = state.catalog.customers[name];
+    if(!entry) return;
+    catalogEditOriginalName = name;
+    el.catEditCustomerNameInput.value = name;
+    var products = entry.products || {};
+    catalogEditProducts = Object.keys(products).sort(catalogSortCmp).map(function(pname){
+      var p = products[pname] || {};
+      return { name: pname, ply: p.ply || "", type: p.type || "", qtyPerBundle: p.qtyPerBundle != null ? p.qtyPerBundle : null };
+    });
+    renderCatalogEditProducts();
+    el.catalogEditError.hidden = true;
+    el.catalogEditModalOverlay.hidden = false;
+  }
+  function closeCatalogEditModal(){
+    el.catalogEditModalOverlay.hidden = true;
+    catalogEditOriginalName = null;
+    catalogEditProducts = [];
+  }
+  el.catEditAddProductBtn.addEventListener("click", function(){
+    catalogEditProducts.push({ name: "", ply: "", type: "", qtyPerBundle: null });
+    renderCatalogEditProducts();
+    var lastRow = el.catEditProductsTbody.lastElementChild;
+    var nameInput = lastRow && lastRow.querySelector('[data-f="name"]');
+    if(nameInput) nameInput.focus();
+  });
+  el.catalogEditCancelBtn.addEventListener("click", closeCatalogEditModal);
+  el.catalogEditModalOverlay.addEventListener("click", function(ev){
+    if(ev.target === el.catalogEditModalOverlay) closeCatalogEditModal();
+  });
+  el.catalogEditSaveBtn.addEventListener("click", function(){
+    el.catalogEditError.hidden = true;
+    var newName = el.catEditCustomerNameInput.value.trim();
+    if(!newName){
+      el.catalogEditError.hidden = false;
+      el.catalogEditError.textContent = t("cat_edit_err_name_required");
+      return;
+    }
+    // Renaming onto another existing customer (case-insensitively) would silently discard that
+    // other customer's own products, so it's blocked outright rather than guessing whether the
+    // admin meant to merge the two.
+    var newNameKey = normalizeKey(newName);
+    var collision = Object.keys(state.catalog.customers).some(function(n){
+      return n !== catalogEditOriginalName && normalizeKey(n) === newNameKey;
+    });
+    if(collision){
+      el.catalogEditError.hidden = false;
+      el.catalogEditError.textContent = t("cat_edit_err_duplicate");
+      return;
+    }
+    var seenProductKeys = {};
+    var newProducts = {};
+    for(var i = 0; i < catalogEditProducts.length; i++){
+      var row = catalogEditProducts[i];
+      var pname = (row.name || "").trim();
+      if(!pname){
+        el.catalogEditError.hidden = false;
+        el.catalogEditError.textContent = t("cat_edit_err_product_name_required");
+        return;
+      }
+      var pkey = normalizeKey(pname);
+      if(seenProductKeys[pkey]){
+        el.catalogEditError.hidden = false;
+        el.catalogEditError.textContent = t("cat_edit_err_duplicate_product");
+        return;
+      }
+      seenProductKeys[pkey] = true;
+      newProducts[pname] = { ply: row.ply || "", type: row.type || "", qtyPerBundle: row.qtyPerBundle != null ? row.qtyPerBundle : null };
+    }
+    var clone = Object.assign({}, state.catalog.customers);
+    delete clone[catalogEditOriginalName];
+    clone[newName] = { products: newProducts };
+    el.catalogEditSaveBtn.disabled = true;
+    state.db.collection("catalog").doc("customerProducts").set({ customers: clone }).then(function(){
+      el.catalogEditSaveBtn.disabled = false;
+      closeCatalogEditModal();
+    }).catch(function(err){
+      el.catalogEditSaveBtn.disabled = false;
+      el.catalogEditError.hidden = false;
+      el.catalogEditError.textContent = t("cat_edit_err_save") + " " + (err && err.message ? err.message : "");
+    });
+  });
   // Same dynamic header-row detection as findRateHeaderRow (Product Rates' own import) — just
   // without requiring a Rate column, since this file only needs Customer/Product name pairs.
   function findCatalogHeaderRow(sheetRows){
@@ -14529,11 +14800,12 @@
     // Scoped to just the product line this task is actually linked to (task.poProductId) — a
     // multi-product PO's other products' own reservations must never show up on this task's card.
     var reservedLine = task.poId ? reservedReelsSummaryForPo(task.poId, task.poProductId) : "";
-    // Only the admin device can change anything here — the drag handle is left out of the
-    // markup entirely (rather than just hidden) for every other device, and the Done/Pending
-    // checkbox is disabled, so the only thing a non-admin device can do with a task is open it
-    // (read-only — see openTaskModal) to read its full details.
-    var canEdit = state.isAdminDevice;
+    // Only Admin or a device granted the "Priority Task" stage can change anything here (see
+    // deviceCanManageTasks) — the drag handle is left out of the markup entirely (rather than just
+    // hidden) for every other device, and the Done/Pending checkbox is disabled, so the only thing
+    // an ungranted device can do with a task is open it (read-only — see openTaskModal) to read its
+    // full details.
+    var canEdit = deviceCanManageTasks();
     // "Promote to QC": a shortcut that opens a brand-new QC entry pre-filled from this task's own
     // Client/Product/Type/Quantity/PO (see openModal's prefill parameter) — NOT a save, nothing is
     // written here; the user still reviews (fills in Job Card No) and saves it themselves, so every
@@ -14767,10 +15039,11 @@
     TASK_FORM_FIELDS.push(el["t_layer" + tLayerFieldN + "_sku"], el["t_layer" + tLayerFieldN + "_reelweight"]);
   }
   function openTaskModal(task){
-    // Only the admin device may add/edit/delete/reorder a task (see el.addTaskBtn.hidden in
-    // applyDeviceStage and the drag-handle/checkbox gating in renderTasks) — every other device
-    // can still open a task to read it, just with every field disabled and no Save/Delete.
-    var readOnly = !state.isAdminDevice;
+    // Only Admin or a device granted the "Priority Task" stage may add/edit/delete/reorder a task
+    // (see el.addTaskBtn.hidden in applyDeviceStage, deviceCanManageTasks, and the drag-handle/
+    // checkbox gating in renderTasks) — every other device can still open a task to read it, just
+    // with every field disabled and no Save/Delete.
+    var readOnly = !deviceCanManageTasks();
     if(!task && readOnly) return; // defensive: the Add Task button is hidden for these devices anyway
     state.editingTaskId = task ? task.id : null;
     state.taskModalReadOnly = readOnly;
@@ -15017,9 +15290,10 @@
     // Reels currently held Reserved against this PO — from ANY source (a reel row's own Reserve
     // button, Update Status, or a Priority Task's Reel checkbox), not just ones reserved from here.
     var reservedLine = reservedReelsSummaryForPo(po.id);
-    // Only the admin device can toggle/edit/delete a PO — the checkbox is disabled (not removed)
-    // for everyone else, same read-vs-write split as a Priority Task's Done checkbox.
-    var canEdit = state.isAdminDevice;
+    // Only Admin or a device granted the "PO" stage can toggle/edit/delete a PO (see
+    // deviceCanManagePo) — the checkbox is disabled (not removed) for everyone else, same
+    // read-vs-write split as a Priority Task's Done checkbox.
+    var canEdit = deviceCanManagePo();
     item.innerHTML =
       '<span class="taskDragHandleSpacer"></span>' +
       '<input type="checkbox" class="taskCheck poReceivedCheck"' + (received ? " checked" : "") + (canEdit ? "" : " disabled") + '>' +
@@ -15064,9 +15338,10 @@
     el.poAddProductBtn.disabled = disabled;
   }
   function openPoModal(po){
-    // Only the admin device may add/edit/delete/mark-received a PO — every other device can still
-    // open one to read it, same read-only pattern as openTaskModal.
-    var readOnly = !state.isAdminDevice;
+    // Only Admin or a device granted the "PO" stage may add/edit/delete/mark-received a PO (see
+    // deviceCanManagePo) — every other device can still open one to read it, same read-only pattern
+    // as openTaskModal.
+    var readOnly = !deviceCanManagePo();
     if(!po && readOnly) return; // defensive: the Add PO button is hidden for these devices anyway
     state.editingPoId = po ? po.id : null;
     state.poModalReadOnly = readOnly;
