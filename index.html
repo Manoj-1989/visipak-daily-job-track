@@ -1886,16 +1886,19 @@
         <input type="number" id="invStatusQtyInput" min="0" step="1">
       </label>
     </div>
-    <!-- Only meaningful (and only shown) when moving stock OUT OF Available — the normal case
-         reduces Available by this qty, same as any transfer. Checking this instead means "this qty
-         was never really in Available to begin with" (e.g. correcting a bucket, such as Reserved,
-         that drifted negative from historical drift) — Available is left exactly as it reads now,
-         and the qty is recorded as newly-accounted-for stock straight into the target bucket. See
-         addStockNeutralCorrection in the script below. -->
+    <!-- Escape hatch for when the FROM status's own ledger count is wrong (e.g. a Reserved bucket
+         that drifted negative, or an In Use bucket that reads less than what's physically checked
+         out because older consumption was never logged here) — the normal transfer above can only
+         draw qty out of a bucket that already shows at least that much, and rightly refuses
+         otherwise. Checking this instead means "this qty was never really tracked in {from} to
+         begin with" — {from} and Available both end up unchanged, and the qty is recorded as
+         newly-accounted-for stock straight into the target (To) bucket. Label text is filled in
+         dynamically (see refreshInvStatusPoVisibility) since it names whichever status is
+         currently picked as From. See addStockNeutralCorrection in the script below. -->
     <div class="supAddRow" style="grid-template-columns:1fr;" id="invStatusKeepAvailableRow" hidden>
       <label class="invStatusNoPoCheck">
         <input type="checkbox" id="invStatusKeepAvailableCheck">
-        <span data-i18n="inv_status_keep_available_label">Don't reduce Available — record as newly found stock instead</span>
+        <span id="invStatusKeepAvailableLabel">Don't reduce Available — record as newly found stock instead</span>
       </label>
     </div>
     <!-- Only meaningful (and only shown) when moving stock TO Reserved — ties the held stock to the
@@ -3357,7 +3360,7 @@
       inv_status_qty_label: "Quantity",
       inv_status_po_label: "PO", inv_status_po_placeholder: "Click to select a PO",
       inv_status_no_po_label: "Manual correction — not tied to a specific PO",
-      inv_status_keep_available_label: "Don't reduce Available — record as newly found stock instead",
+      inv_status_keep_available_label: "Don't reduce {from} — record as newly found stock instead",
       inv_status_note_label: "Note (optional)",
       inv_status_note_placeholder: "e.g. checked out for Job Card #.., dropped and cracked…",
       inv_status_confirm: "Save",
@@ -3759,7 +3762,7 @@
       inv_status_qty_label: "मात्रा",
       inv_status_po_label: "PO", inv_status_po_placeholder: "PO चुनने के लिए क्लिक करें",
       inv_status_no_po_label: "मैन्युअल सुधार — किसी विशेष PO से जुड़ा नहीं",
-      inv_status_keep_available_label: "Available कम न करें — इसके बजाय नया मिला स्टॉक दर्ज करें",
+      inv_status_keep_available_label: "{from} कम न करें — इसके बजाय नया मिला स्टॉक दर्ज करें",
       inv_status_note_label: "नोट (वैकल्पिक)",
       inv_status_note_placeholder: "जैसे, जॉब कार्ड #.. के लिए निकाला गया, गिरकर टूट गया…",
       inv_status_confirm: "सेव करें",
@@ -4161,7 +4164,7 @@
       inv_status_qty_label: "పరిమాణం",
       inv_status_po_label: "PO", inv_status_po_placeholder: "PO ఎంచుకోవడానికి క్లిక్ చేయండి",
       inv_status_no_po_label: "మాన్యువల్ కరెక్షన్ — ఏ నిర్దిష్ట PO‌కి సంబంధించినది కాదు",
-      inv_status_keep_available_label: "Available తగ్గించవద్దు — బదులుగా కొత్తగా దొరికిన స్టాక్‌గా నమోదు చేయండి",
+      inv_status_keep_available_label: "{from} తగ్గించవద్దు — బదులుగా కొత్తగా దొరికిన స్టాక్‌గా నమోదు చేయండి",
       inv_status_note_label: "నోట్ (ఐచ్ఛికం)",
       inv_status_note_placeholder: "ఉదా. జాబ్ కార్డ్ #.. కోసం తీసుకున్నారు, పడి పగిలింది…",
       inv_status_confirm: "సేవ్ చేయండి",
@@ -4688,6 +4691,7 @@
     invStatusToSelect: document.getElementById("invStatusToSelect"),
     invStatusQtyInput: document.getElementById("invStatusQtyInput"),
     invStatusKeepAvailableRow: document.getElementById("invStatusKeepAvailableRow"),
+    invStatusKeepAvailableLabel: document.getElementById("invStatusKeepAvailableLabel"),
     invStatusKeepAvailableCheck: document.getElementById("invStatusKeepAvailableCheck"),
     invStatusPoRow: document.getElementById("invStatusPoRow"),
     invStatusNoPoCheck: document.getElementById("invStatusNoPoCheck"),
@@ -9644,7 +9648,15 @@
           var sel = el["f_layer" + n + "_sku"];
           if(sel && sku && state.invCatalog[sku]){
             sel.value = sku;
+            // refreshLayerReelStatus (via refreshLayerReelNoOptions) has to run BEFORE we set the
+            // Reel No select's own value, not after -- that select currently holds only its blank
+            // placeholder option (nothing's been picked on this row yet), so setting .value to a
+            // Reel No that doesn't match any <option> YET is a silent no-op; the browser just leaves
+            // it blank. Only once refreshLayerReelStatus has rebuilt this row's Reel No options for
+            // the sku we just set does an <option> for this specific reel actually exist to select.
             refreshLayerReelStatus(n);
+            var reelNoEl = el["f_layer" + n + "_reelno"];
+            if(reelNoEl && layerRow.reelNo) reelNoEl.value = layerRow.reelNo;
           }
           var rwEl = el["f_layer" + n + "_reelweight"];
           if(rwEl && layerRow && layerRow.reelWeight) rwEl.value = layerRow.reelWeight;
@@ -9702,7 +9714,13 @@
         if(sel && sku && state.invCatalog[sku]){
           sel.value = sku;
           taskLayerReservedSku[n] = sku;
+          // Same fix as the Entry/Plant/QC side (applyPoPlyLayersAutofillToEntry): this row's Reel
+          // No select currently holds only its blank placeholder option, so setting its value to a
+          // Reel No before refreshTaskLayerReelStatus rebuilds the option list for the sku we just
+          // set is a silent no-op — the option to select doesn't exist yet. Refresh FIRST, then seed.
           refreshTaskLayerReelStatus(n);
+          var reelNoEl = el["t_layer" + n + "_reelno"];
+          if(reelNoEl && layerRow.reelNo) reelNoEl.value = layerRow.reelNo;
         }
         var rwEl = el["t_layer" + n + "_reelweight"];
         if(rwEl && layerRow && layerRow.reelWeight) rwEl.value = layerRow.reelWeight;
@@ -9942,22 +9960,28 @@
     return state.db.collection("statusTransfers").add(payload);
   }
   // A ledger correction for when the thing that's actually wrong is a BUCKET TOTAL itself (e.g. a
-  // Reserved bucket that read -3 from historical drift) rather than a real movement of already-
-  // counted stock. addStatusTransfer always moves existing units between buckets — it can't put
-  // units into a bucket without taking them from another, so fixing a negative bucket that way
-  // necessarily changes whichever bucket you draw from (normally Available). This instead records
-  // `qty` as newly-accounted-for stock — a zero-cost purchases row, so Available briefly gains qty —
-  // and moves that exact same qty straight into `toStatus` in the same breath, netting Available
-  // back to unchanged. The deliberate trade-off: this sku's total recorded stock goes up by qty,
-  // because the correction is modeled as "we found qty more units than the system ever logged, and
-  // they were already sitting in this status" — the honest alternative to silently reducing whatever
-  // bucket happened to be drawn from. Writes the transfer directly (not through addStatusTransfer)
-  // since its qty<=fromQty guard would otherwise race the still-in-flight purchase write above it.
-  function addStockNeutralCorrection(sku, toStatus, qty, note, extra){
+  // Reserved bucket that read -3 from historical drift, or an In Use bucket that reads less than
+  // what's physically checked out because older consumption was never logged here) rather than a
+  // real movement of already-counted stock. addStatusTransfer always moves existing units between
+  // buckets — it can't move qty out of `fromStatus` unless the ledger already shows at least that
+  // much sitting there, and rightly refuses ("Only 0 available in that status") when it doesn't.
+  // This instead records `qty` as newly-accounted-for stock — a zero-cost purchases row, so
+  // Available briefly gains qty — credits that same qty straight into `fromStatus` first when
+  // `fromStatus` isn't Available itself (so it has a balance to draw from), and only then makes the
+  // originally-requested `fromStatus` -> `toStatus` move. Net effect: Available and `fromStatus` both
+  // end up exactly where they started, and only `toStatus` is higher by qty. The deliberate
+  // trade-off: this sku's total recorded stock goes up by qty, because the correction is modeled as
+  // "we found qty more units than the system ever logged, and they were already sitting in
+  // `fromStatus`" — the honest alternative to silently reducing whatever bucket happened to be
+  // drawn from, or simply refusing the correction outright. Writes every transfer directly (not
+  // through addStatusTransfer) since its qty<=fromQty guard would otherwise reject exactly the
+  // drift this function exists to correct.
+  function addStockNeutralCorrection(sku, fromStatus, toStatus, qty, note, extra){
     var item = state.invCatalog[sku];
     if(!item) return Promise.reject(new Error(t("inv_err_unknown_item")));
     qty = Number(qty);
     if(!isFinite(qty) || qty <= 0) return Promise.reject(new Error(t("inv_err_bad_qty")));
+    if(fromStatus === toStatus) return Promise.reject(new Error(t("inv_status_err_same")));
     var trimmedNote = (note || "").trim() || "Manual stock-count correction";
     var purchasePayload = {
       sku: sku, itemName: item.name, qty: qty, weightPerReel: null, weight: null,
@@ -9966,8 +9990,17 @@
       note: trimmedNote, date: state.date, shift: state.shift || "", createdAt: Date.now()
     };
     return state.db.collection("purchases").add(purchasePayload).then(function(){
+      if(fromStatus === "available") return null;
+      // Credit the found stock straight into fromStatus itself first, so the real move below has a
+      // balance to draw from without ever touching Available's own recorded count.
+      return state.db.collection("statusTransfers").add({
+        sku: sku, itemName: item.name, fromStatus: "available", toStatus: fromStatus, qty: qty,
+        note: trimmedNote, by: deviceSupervisorName || "",
+        date: state.date, shift: state.shift || "", createdAt: Date.now()
+      });
+    }).then(function(){
       var transferPayload = Object.assign({
-        sku: sku, itemName: item.name, fromStatus: "available", toStatus: toStatus, qty: qty,
+        sku: sku, itemName: item.name, fromStatus: fromStatus, toStatus: toStatus, qty: qty,
         note: trimmedNote, by: deviceSupervisorName || "",
         date: state.date, shift: state.shift || "", createdAt: Date.now()
       }, extra || {});
@@ -11959,11 +11992,16 @@
   // swaps the PO picker for a plain note, and the write below goes untagged (no poId/poNumber),
   // same as any other manual correction in this app.
   //
-  // The "keep Available unchanged" row is a separate, orthogonal option — relevant any time stock
-  // is moving OUT of Available (whatever it's moving into), not just into Reserved. See
+  // The ledger-correction row below is a separate, orthogonal option — always shown (not just when
+  // moving out of Available), since the FROM status's own count can drift regardless of which
+  // status that happens to be (Reserved going negative, In Use undercounting older unlogged
+  // consumption, etc). Its label always names whichever status is currently picked as From, reusing
+  // that select's own already-localized option text rather than a second lookup table. See
   // addStockNeutralCorrection below for what checking it actually does.
   function refreshInvStatusPoVisibility(){
-    el.invStatusKeepAvailableRow.hidden = el.invStatusFromSelect.value !== "available";
+    el.invStatusKeepAvailableRow.hidden = false;
+    var fromOpt = el.invStatusFromSelect.options[el.invStatusFromSelect.selectedIndex];
+    el.invStatusKeepAvailableLabel.textContent = tf("inv_status_keep_available_label", { from: fromOpt ? fromOpt.textContent : "" });
     el.invStatusPoRow.hidden = el.invStatusToSelect.value !== "reserved";
     el.invStatusPoField.hidden = el.invStatusNoPoCheck.checked;
   }
@@ -11994,11 +12032,11 @@
       return;
     }
     var fromStatus = el.invStatusFromSelect.value;
-    var keepAvailable = fromStatus === "available" && el.invStatusKeepAvailableCheck.checked;
+    var keepUnchanged = el.invStatusKeepAvailableCheck.checked;
     var extra = taggingPo ? { poNumber: invStatusSelectedPo.poNumber, poId: invStatusSelectedPo.id } : undefined;
     el.invStatusConfirmBtn.disabled = true;
-    var writeP = keepAvailable
-      ? addStockNeutralCorrection(invStatusContext.sku, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value, extra)
+    var writeP = keepUnchanged
+      ? addStockNeutralCorrection(invStatusContext.sku, fromStatus, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value, extra)
       : addStatusTransfer(invStatusContext.sku, fromStatus, toStatus, el.invStatusQtyInput.value, el.invStatusNoteInput.value, extra);
     writeP.then(function(){
         el.invStatusConfirmBtn.disabled = false;
